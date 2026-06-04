@@ -58,6 +58,7 @@
       "name": "@pcl/shared",
       "version": "0.0.0",
       "dependencies": {
+        "postgres": "^3.4.5",
         "viem": "^2.21.54",
         "zod": "^3.24.1",
       },
