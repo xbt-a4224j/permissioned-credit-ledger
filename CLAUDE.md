@@ -139,3 +139,24 @@ Documented in `docs/architecture/DESIGN.md` so the boundary is explicit, not acc
 ## Mortgage-general by design
 
 A position is a first-lien **mortgage** on a `Property`, not an abstract credit line. `collateralType ∈ {CRE, RESIDENTIAL}` is the seam: the platform is built mortgage-general and seeded CRE-first (5 CRE + 1 residential), so residential plugs into the same rails. Residential-specific consumer-law gating (TILA / RESPA / ability-to-repay) is a named **extension point** on the ComplianceRegistry — **deliberately cut** here (see DESIGN.md), not built.
+
+## Build standards (every ticket inherits these)
+
+- **Tests ship with the feature.** No feature ticket is done without its tests — forge tests for contracts incl. ≥1 fuzz/invariant; Vitest + fast-check off-chain incl. the deterministic-replay property. Acceptance criteria state numeric counts.
+- **Optimize for simplicity & readability.** Small pure functions, explicit types, the boring solution. Fewer abstractions; no cleverness a reviewer must decode. Delete before you add.
+- **Comments cite the issue #.** Every non-trivial file/function carries a short comment naming the issue it implements and why — e.g. `// #18 reconciliation invariant I2: claimable <= collected`. Any line should trace back to its ticket.
+- **Enterprise / bank-grade UI** (see #24): institutional, calm, data-dense; tabular numerics for money; no crypto-gradient styling; clean empty/loading/error states; every view demoable on seeded data.
+- **Everything is demoable.** No feature without a path to show it — from the UI or `scripts/verify_matrix.ts`. If it can't be demoed, it's out of scope.
+- **The README lands** (see #30): value prop, hero diagram, a working 60-second quickstart, the 10-scenario script.
+- **Idempotent, port-safe dev** (see #31): `bun run dev` stops conflicting processes, runs tests, then starts the whole stack on fixed non-default ports — re-runnable safely.
+
+## Ports (fixed, non-conflicting — override via .env)
+
+| Service | Port |
+|---|---|
+| Postgres | 55432 |
+| Local EVM node (anvil) | 18545 |
+| GraphQL API (Bun) | 41990 |
+| Web (Vite) | 51730 |
+
+Chosen to avoid common dev ports (3000 / 5173 / 5432 / 8545 / 8080). `scripts/dev.sh` frees these before starting.
