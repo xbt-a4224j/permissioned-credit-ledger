@@ -36,7 +36,8 @@ describe("applyMigrations against a fresh database", () => {
     `;
     const names = tables.map((t) => t.table_name);
     // 7 read models (loans, identities, positions, chain_events, nav_readings, reserve,
-    // recon_status) + properties (mortgage modeling) + applied_migrations + indexer_cursor (#16).
+    // recon_status) + properties (mortgage modeling) + applied_migrations + indexer_cursor (#16)
+    // + the tx-tracking tables tx_status + optimistic_positions (#23 GraphQL tx lifecycle).
     expect(names).toEqual(
       [
         "applied_migrations",
@@ -45,10 +46,12 @@ describe("applyMigrations against a fresh database", () => {
         "indexer_cursor",
         "loans",
         "nav_readings",
+        "optimistic_positions",
         "positions",
         "properties",
         "recon_status",
         "reserve",
+        "tx_status",
       ].sort(),
     );
   });
