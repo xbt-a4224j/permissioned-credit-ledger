@@ -118,6 +118,9 @@ export const ChainEventSchema = z.discriminatedUnion("name", [
   z.object({
     ...eventBase,
     name: z.literal("Transfer"),
+    // #14 loan is resolved from the emitting token (one CreditToken == one loan series) at
+    // decode time (#16) so the Transfer event is self-contained for the (loan, holder) projection.
+    loan: LoanIdSchema,
     from: IdentityAddrSchema,
     to: IdentityAddrSchema,
     amount: Usdc6Schema,
