@@ -49,9 +49,16 @@ contract CreditToken is ERC20, AccessControl, ReentrancyGuard, ICreditToken {
     // interest after it is excluded — without eagerly settling each holder.
     uint64 public accrualEndsAt;
 
+    // #9 cumulative seconds the series has spent in FINALIZED halt windows — each
+    // DEFAULT -> resume folds its span in here on resume. Subtracted from a
+    // holder's elapsed so a resumed loan never accrues over the halted gap, even
+    // for a holder left unsettled across the whole halt — without enumerating holders.
+    uint64 public haltedElapsed;
+
     // #9 per-holder accrual bookkeeping.
     struct Accrual {
-        uint64 lastAccruedAt; // timestamp of last settle
+        uint64 lastAccruedAt; // accrual-clock instant of last settle
+        uint64 haltedSnapshot; // haltedElapsed captured at that settle
         uint256 accrued; // settled-but-unclaimed interest
     }
 
@@ -95,8 +102,11 @@ contract CreditToken is ERC20, AccessControl, ReentrancyGuard, ICreditToken {
     function setLoanStatus(uint256 loanId, LoanStatus newStatus) external onlyRole(ISSUER_ROLE) {
         if (newStatus == LoanStatus.DEFAULT && accrualEndsAt == 0) {
             accrualEndsAt = uint64(block.timestamp);
-        } else if (newStatus != LoanStatus.DEFAULT && !accrualFrozen) {
-            accrualEndsAt = 0; // resume (NAV freeze stays sticky)
+        } else if (newStatus != LoanStatus.DEFAULT && !accrualFrozen && accrualEndsAt != 0) {
+            // resume: fold the just-ended halt span into haltedElapsed before clearing,
+            // so holders unsettled across it skip the gap (NAV freeze stays sticky).
+            haltedElapsed += uint64(block.timestamp) - accrualEndsAt;
+            accrualEndsAt = 0;
         }
         status = newStatus;
         emit LoanStatusChanged(loanId, newStatus);
@@ -125,14 +135,19 @@ contract CreditToken is ERC20, AccessControl, ReentrancyGuard, ICreditToken {
         uint64 clock = _accrualClock();
         if (a.lastAccruedAt == 0) {
             a.lastAccruedAt = uint64(block.timestamp);
+            a.haltedSnapshot = haltedElapsed;
             return;
         }
         if (clock > a.lastAccruedAt) {
-            uint256 elapsed = clock - a.lastAccruedAt;
+            uint64 span = clock - a.lastAccruedAt;
+            uint64 halted = haltedElapsed - a.haltedSnapshot; // halt that fell inside the span
+            uint64 elapsed = span > halted ? span - halted : 0;
             a.accrued += (balanceOf(holder) * ratePerSecond * elapsed) / RATE_SCALE;
         }
-        // Stamp wall-clock so a later resume doesn't double-count the halted gap.
-        a.lastAccruedAt = uint64(block.timestamp);
+        // Stamp the accrual clock (not wall-clock) plus the halt accumulator so the
+        // next settle measures from here and never re-counts the halted gap.
+        a.lastAccruedAt = clock;
+        a.haltedSnapshot = haltedElapsed;
     }
 
     // #9 settled-as-of-now claimable: settled `accrued` plus the not-yet-folded
@@ -142,7 +157,9 @@ contract CreditToken is ERC20, AccessControl, ReentrancyGuard, ICreditToken {
         uint256 total = a.accrued;
         uint64 clock = _accrualClock();
         if (a.lastAccruedAt != 0 && clock > a.lastAccruedAt) {
-            uint256 elapsed = clock - a.lastAccruedAt;
+            uint64 span = clock - a.lastAccruedAt;
+            uint64 halted = haltedElapsed - a.haltedSnapshot;
+            uint64 elapsed = span > halted ? span - halted : 0;
             total += (balanceOf(holder) * ratePerSecond * elapsed) / RATE_SCALE;
         }
         return total;
