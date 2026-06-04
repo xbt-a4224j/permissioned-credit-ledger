@@ -1,0 +1,25 @@
+# The Money/Asset Layer · local Postgres for the off-chain read models · #15/#18
+# Single-service compose: the Postgres the migrations (#15), indexer (#16), NAV gate
+# (#17) and reconciliation engine (#18) read/write. Project name `pcl`, fixed
+# non-default port 55432 (CLAUDE.md ports table) so it never collides with a host
+# Postgres on 5432. Brought up/torn down by the verify gate and scripts/dev.sh (#31).
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pcl-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pcl
+    ports:
+      # host 55432 -> container 5432 (DATABASE_URL in .env.example targets 55432).
+      - "55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pcl"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    # ephemeral by design: `docker compose -p pcl down -v` wipes the volume so every
+    # verify run starts from a clean, deterministic read model.
+    tmpfs:
+      - /var/lib/postgresql/data
