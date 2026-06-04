@@ -1,0 +1,38 @@
+# --- private planning (never commit) ---
+INTERVIEW_NOTES.md
+TALKING_POINTS.md
+/_private/
+
+# Note: CLAUDE.md IS committed (project-framed) so a fresh clone has context.
+
+# --- ad-hoc screenshots at repo root ---
+/img*.png
+/Screenshot*.png
+/screenshot*.png
+
+# --- IDE / OS ---
+.idea/
+.vscode/
+.DS_Store
+
+# --- local state ---
+*.db
+*.sqlite3
+/tmp/
+.env
+.env.local
+
+# --- node / bun ---
+node_modules/
+.vite/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+bun.lockb
+
+# --- foundry ---
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+contracts/lib/
