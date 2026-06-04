@@ -9,6 +9,7 @@
     "dev": "bun run src/index.ts"
   },
   "dependencies": {
+    "@pcl/shared": "workspace:*",
     "@pothos/core": "^4.3.0",
     "graphql": "^16.10.0",
     "graphql-yoga": "^5.10.4",
