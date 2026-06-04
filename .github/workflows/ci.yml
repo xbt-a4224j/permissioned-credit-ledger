@@ -1,0 +1,54 @@
+# #3 CI — two parallel jobs (forge, bun), green on the empty scaffold.
+# These two job names are the required status checks the README badge (#30)
+# and branch protection reference. Later jobs (#13 deploy, #28 matrix) extend this.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# #3 cancel superseded in-progress runs on the same ref for fast feedback.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # #3 forge job — fmt + build + test against the pinned Foundry toolchain.
+  forge:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive # forge-std + OZ submodules
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: forge fmt --check
+        run: forge fmt --check
+      - name: forge build --sizes
+        run: forge build --sizes
+      - name: forge test -vv
+        run: forge test -vv
+
+  # #3 bun job — install (frozen lockfile) then lint + typecheck + vitest.
+  bun:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+      - name: bun install --frozen-lockfile
+        run: bun install --frozen-lockfile
+      - name: bun run lint
+        run: bun run lint
+      - name: bun run typecheck
+        run: bun run typecheck
+      - name: bun x vitest run
+        run: bun x vitest run
