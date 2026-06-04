@@ -135,6 +135,79 @@ contract AccrualTest is Test {
         assertEq(token.claimable(holder), before);
     }
 
+    // #9 resume-after-DEFAULT must NOT accrue over the halted gap. A holder left
+    // unsettled across the whole DEFAULT window (no transfer/claim) keeps a
+    // lastAccruedAt that predates the halt; on resume the elapsed math must still
+    // exclude the halted seconds — only the pre-halt + post-resume live windows accrue.
+    function test_resumeAfterDefault_excludesHaltedWindow() public {
+        uint256 liveBefore = 10 days;
+        uint256 haltWindow = 100 days;
+        uint256 liveAfter = 30 days;
+
+        // pre-halt accrual while PERFORMING
+        vm.warp(block.timestamp + liveBefore);
+        uint256 beforeHalt = token.claimable(holder);
+        assertGt(beforeHalt, 0);
+
+        // DEFAULT halts accrual at this instant; deliberately do NOT settle the holder.
+        vm.prank(admin);
+        token.setLoanStatus(LOAN_ID, ICreditToken.LoanStatus.DEFAULT);
+
+        // the full halt window elapses with the holder untouched (the latent path)
+        vm.warp(block.timestamp + haltWindow);
+        assertEq(token.claimable(holder), beforeHalt); // flat across the halt
+
+        // resume to PERFORMING
+        vm.prank(admin);
+        token.setLoanStatus(LOAN_ID, ICreditToken.LoanStatus.PERFORMING);
+
+        // post-resume accrual
+        vm.warp(block.timestamp + liveAfter);
+
+        // claimable reflects ONLY the live windows; the 100-day halt is excluded.
+        uint256 bal = token.balanceOf(holder);
+        uint256 expected = bal * RATE * (liveBefore + liveAfter) / token.RATE_SCALE();
+        assertEq(token.claimable(holder), expected);
+
+        // and it is strictly less than if the halted gap had been (wrongly) counted.
+        uint256 ifHaltCounted = bal * RATE * (liveBefore + haltWindow + liveAfter) / token.RATE_SCALE();
+        assertLt(token.claimable(holder), ifHaltCounted);
+    }
+
+    // #9 the SETTLE path (claim) must also exclude the halted gap across a
+    // DEFAULT -> resume cycle: a claim during DEFAULT pays only the pre-halt
+    // interest, and a claim after resume pays only the post-resume interest —
+    // never the halted window. Exercises _settleAccrual's stamp-at-clock + the
+    // accumulator (the view-only test above never settles during the halt).
+    function test_claimAcrossDefaultCycle_excludesHaltedWindow() public {
+        uint256 liveBefore = 10 days;
+        uint256 haltWindow = 50 days;
+        uint256 liveAfter = 30 days;
+        uint256 perSecond = token.balanceOf(holder) * RATE / token.RATE_SCALE();
+        reserve.mint(address(token), 1_000_000e6); // fund generously
+
+        // accrue pre-halt, then DEFAULT
+        vm.warp(block.timestamp + liveBefore);
+        vm.prank(admin);
+        token.setLoanStatus(LOAN_ID, ICreditToken.LoanStatus.DEFAULT);
+
+        // claim DURING the halt pays exactly the pre-halt window, nothing more
+        vm.warp(block.timestamp + haltWindow);
+        uint256 paidBefore = reserve.balanceOf(holder);
+        vm.prank(holder);
+        token.claim();
+        assertEq(reserve.balanceOf(holder) - paidBefore, perSecond * liveBefore);
+
+        // resume, accrue, claim again: pays exactly the post-resume window
+        vm.prank(admin);
+        token.setLoanStatus(LOAN_ID, ICreditToken.LoanStatus.PERFORMING);
+        vm.warp(block.timestamp + liveAfter);
+        uint256 paidMid = reserve.balanceOf(holder);
+        vm.prank(holder);
+        token.claim();
+        assertEq(reserve.balanceOf(holder) - paidMid, perSecond * liveAfter);
+    }
+
     // #9 DELINQUENT still accrues (only DEFAULT halts).
     function test_delinquentStatus_stillAccrues() public {
         vm.prank(admin);
