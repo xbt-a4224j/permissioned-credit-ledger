@@ -25,9 +25,9 @@ describe("applyMigrations against a fresh database", () => {
     await dropThrowawayDb(dbName);
   });
 
-  test("creates the 9 tables (7 read models + properties + applied_migrations)", async () => {
+  test("creates the read-model tables (7 read models + properties + applied_migrations + cursor)", async () => {
     const first = await applyMigrations(sql);
-    expect(first.applied.length).toBeGreaterThanOrEqual(4); // 4 migration files
+    expect(first.applied.length).toBeGreaterThanOrEqual(4); // >=4 migration files
 
     const tables = await sql<{ table_name: string }[]>`
       select table_name from information_schema.tables
@@ -36,12 +36,13 @@ describe("applyMigrations against a fresh database", () => {
     `;
     const names = tables.map((t) => t.table_name);
     // 7 read models (loans, identities, positions, chain_events, nav_readings, reserve,
-    // recon_status) + properties (mortgage modeling) + applied_migrations.
+    // recon_status) + properties (mortgage modeling) + applied_migrations + indexer_cursor (#16).
     expect(names).toEqual(
       [
         "applied_migrations",
         "chain_events",
         "identities",
+        "indexer_cursor",
         "loans",
         "nav_readings",
         "positions",

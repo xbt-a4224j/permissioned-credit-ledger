@@ -5,3 +5,5 @@
 export * from "./brand.ts";
 export * from "./reasons.ts";
 export * from "./schemas.ts";
+// #15 the raw Postgres client + migration runner (no ORM).
+export * from "./db/index.ts";
