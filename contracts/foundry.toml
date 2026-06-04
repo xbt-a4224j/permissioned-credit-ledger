@@ -11,6 +11,10 @@ remappings = [
     "@openzeppelin/=lib/openzeppelin-contracts/",
     "forge-std/=lib/forge-std/src/",
 ]
+# #12 grant Deploy.s.sol write access to the repo-root deployments/ dir so it can emit
+# the seed manifest (deployments/<chainId>.json) the off-chain layer consumes. Scoped to
+# that one directory — no broad fs access.
+fs_permissions = [{access = "read-write", path = "../deployments"}]
 
 # #2 >=256 fuzz/invariant runs wired here; the property tests ship in #11/#19.
 [fuzz]
