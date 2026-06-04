@@ -17,6 +17,10 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "@pcl/shared": ["./shared/src/index.ts"],
+      "@pcl/shared/*": ["./shared/src/*"]
+    }
   }
 }

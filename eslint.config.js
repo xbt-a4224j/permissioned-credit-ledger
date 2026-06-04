@@ -23,5 +23,10 @@ export default tseslint.config(
       ecmaVersion: 2022,
       sourceType: "module",
     },
+    rules: {
+      // #14 underscore-prefixed args/vars are intentional unused (interface params,
+      // type-only fixtures, `_ev` placeholders in projector signatures).
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
+    },
   },
 );
