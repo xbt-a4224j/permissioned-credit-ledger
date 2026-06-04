@@ -4,7 +4,7 @@ import {defineConfig} from "vitest/config";
 
 export default defineConfig({
   test: {
-    include: ["{api,indexer,scripts}/**/*.{test,spec}.ts"],
+    include: ["{shared,api,indexer,scripts}/**/*.{test,spec}.ts"],
     exclude: ["**/node_modules/**", "**/dist/**", "contracts/**", "web/**"],
   },
 });

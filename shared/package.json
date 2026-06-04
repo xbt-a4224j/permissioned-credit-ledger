@@ -1,0 +1,16 @@
+{
+  "// #14": "Asset Layer · shared domain vocabulary (branded types + zod + reason taxonomy) every off-chain module speaks so on-chain claimable and off-chain collected compare as the same branded Usdc6.",
+  "name": "@pcl/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "viem": "^2.21.54",
+    "zod": "^3.24.1"
+  }
+}

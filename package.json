@@ -6,6 +6,7 @@
   "description": "Deterministic permissioned tokenized-credit ledger with an off-chain<->on-chain reconciliation gate",
   "license": "MIT",
   "workspaces": [
+    "shared",
     "api",
     "indexer",
     "web",
@@ -13,7 +14,7 @@
   ],
   "scripts": {
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit -p api && tsc --noEmit -p indexer && tsc --noEmit -p scripts && tsc --noEmit -p web",
+    "typecheck": "tsc --noEmit -p shared && tsc --noEmit -p api && tsc --noEmit -p indexer && tsc --noEmit -p scripts && tsc --noEmit -p web",
     "test": "vitest run",
     "prepare": "husky"
   },
