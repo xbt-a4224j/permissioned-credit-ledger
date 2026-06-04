@@ -1,0 +1,4 @@
+/* #2 Tailwind v3 entry — the three required directives. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

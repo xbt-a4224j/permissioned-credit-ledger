@@ -1,0 +1,6 @@
+{
+  "// #2": "root tsconfig for editor context; each workspace has its own extending tsconfig.base.json.",
+  "extends": "./tsconfig.base.json",
+  "include": [],
+  "files": []
+}
