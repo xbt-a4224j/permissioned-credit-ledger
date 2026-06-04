@@ -5,6 +5,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@pcl/shared": "workspace:*",
     "postgres": "^3.4.5",
     "viem": "^2.21.54",
     "zod": "^3.24.1"
