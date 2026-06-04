@@ -10,6 +10,10 @@ import type { Sql } from "@pcl/shared";
 import { evaluateInvariants } from "./invariants.ts";
 import { loadSnapshot, type SnapshotManifest } from "./snapshot.ts";
 import type { ReconResult, ReconSnapshot } from "./types.ts";
+// #19 the live cycle's state_hash is a COLD replay of the same DB inputs, so the recon_status
+// row and an independent replay share one fingerprint (live and replay provably agree).
+import { loadInputs, replay } from "../replay/replay.ts";
+import { stateHash as replayStateHash } from "../replay/hash.ts";
 
 // #18 default state_hash: a deterministic keccak over the snapshot's money-bearing fields.
 // #19 rewires runReconCycle to use stateHash(replay(loadInputs)) so the live row and a cold
@@ -28,9 +32,12 @@ export function snapshotHash(s: ReconSnapshot): `0x${string}` {
   return keccak256(toHex(canonical));
 }
 
-// #18 the engine's state-hash source. #19 overrides this via setStateHasher so engine + replay
-// agree without rewriting the cycle body.
-let stateHasher: (sql: Sql, fallback: ReconSnapshot) => Promise<string> = async (_sql, snapshot) => snapshotHash(snapshot);
+// #18/#19 the engine's state-hash source. The default folds a cold replay of the DB inputs
+// (chain_events + nav_readings) into the deterministic stateHash, so the live recon_status row
+// equals an independent replay's fingerprint. setStateHasher lets tests/tools override it (e.g.
+// the snapshot fingerprint) without rewriting the cycle body.
+let stateHasher: (sql: Sql, fallback: ReconSnapshot) => Promise<string> = async (sql, _snapshot) =>
+  replayStateHash(replay(await loadInputs(sql)));
 
 export function setStateHasher(fn: (sql: Sql, fallback: ReconSnapshot) => Promise<string>): void {
   stateHasher = fn;
