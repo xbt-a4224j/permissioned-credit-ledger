@@ -1,0 +1,2 @@
+# #4 lint the commit message against the conventional-commit grammar.
+bun x commitlint --edit "$1"
