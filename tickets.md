@@ -1,7 +1,9 @@
 # tickets
 
-Ordered ticket list for `permissioned-credit-ledger`. These are mirrored as GitHub issues **#1–#30**
+Ordered ticket list for `permissioned-credit-ledger`. Mirrored as GitHub issues **#1–#31**
 (issue number == ticket number, so every "Blocked by #X" reference resolves). Build in order.
+**Every ticket inherits the build standards in `CLAUDE.md`** (tests with the feature, simplicity,
+comments that cite the issue #, enterprise UI, demoable, fixed non-conflicting ports).
 
 ## Summary
 
@@ -37,6 +39,7 @@ Ordered ticket list for `permissioned-credit-ledger`. These are mirrored as GitH
 | 28 | ci(ci): wire verify_matrix into CI on a local node | 6 | #27 | 35m |
 | 29 | docs(docs): DESIGN.md + 4 architecture SVGs | 7 | #18 | 45m |
 | 30 | docs(docs): README + DEMO.md + demo_reset | 7 | #27 | 35m |
+| 31 | feat(scripts): idempotent port-safe dev script (stop → test → start) | 6 | #12, #15, #16, #21, #25 | 40m |
 
 ## Tickets
 
@@ -951,6 +954,9 @@ Public surface: `App`, `MarketplaceView`, `PositionDashboardView`, `LoanCard`, `
 ---
 **Mortgage modeling.** Marketplace cards show a `collateralType` badge (CRE / RESIDENTIAL) next to LTV/DSCR and the data-room, so the generality is visible in the UI.
 
+---
+**Enterprise / bank-grade UX (sets the visual system for #24–#26).** Establish a restrained institutional design language here: neutral/navy palette, generous whitespace, calm data-dense tables, **tabular-figure numerics** for money, subtle borders over heavy shadows, `Inter`/system type — NO playful or crypto-gradient styling. Define design tokens (`web/src/theme.ts`: colors, spacing, radii, type scale) and a small reused primitive set (`Card`, `StatPill`, `DataTable`, `Badge`, `Banner`). Money formatted with fixed decimals + currency. Every view is demoable on seeded data with clean **empty / loading / error** states.
+
 ### #25 feat(ui): invest + claim flow with wallet
 
 **Block:** 5 · **Type:** feat · **Scope:** ui · **Estimate:** 55m · **Blocked by:** #24 · **Labels:** block-5, ui
@@ -1220,4 +1226,37 @@ Files to create:
 - Authoring `DESIGN.md` or the architecture SVGs — owned by #29; README only links to them.
 
 **Notes.** Landmine: the Fuji walkthrough depends on `FUJI_RPC` + `PRIVATE_KEY` in `.env` and a faucet-funded deployer — `demo_reset.ts` must target the **local** node, never Fuji, or a fumbled live reset could broadcast real testnet txs and burn the faucet balance mid-demo; guard the reset so a missing/explicit local RPC is required and a Fuji RPC is refused. Keep the CI badge URL and the workflow filename (`ci.yml`) in exact sync with #3, or the badge renders broken. State the local-node reset budget as a number the demo can rely on, consistent with the sibling project's sub-30s discipline.
+
+---
+**The README must LAND + every feature demoable.** README opens with a one-line value prop + a hero diagram (the off-chain↔on-chain reconciliation), a 60-second quickstart that actually works (`bun run dev` brings the whole stack up — #31), a screenshot/GIF of the marketplace + the reconciliation HALT banner, and a "Run the 10 scenarios" section. `DEMO.md` is a click-by-click script where **every** feature is reachable from the running app: invest (eligible + rejected-with-reason-badge), live accrual ticker, claim, a `NavAnomaly` HALT, a `ReconMismatch` HALT. If a feature can't be shown from the UI or `verify_matrix`, it's out of scope.
+
+### #31 feat(scripts): idempotent port-safe dev script (stop → test → start)
+
+**Block:** 6 · **Type:** feat · **Scope:** scripts · **Estimate:** 40m · **Blocked by:** #12, #15, #16, #21, #25 · **Labels:** block-6, infra
+
+**Why.** A one-command, re-runnable dev experience is what makes the whole thing demoable on demand (#30) and keeps CI honest (#28). It must be **idempotent** — safe to run repeatedly — and never collide with already-running services, because a flaky "it won't start" kills a live demo.
+
+**What.**
+- Files to create: `scripts/dev.sh` (executable), `scripts/stop.sh`, `scripts/lib/ports.sh` (the fixed port map + helpers); add `"dev": "./scripts/dev.sh"` and `"stop": "./scripts/stop.sh"` to root `package.json`. Pidfiles in `.dev/` (gitignored).
+- **Fixed, non-default ports** (override via `.env`): Postgres `55432`, local EVM node (anvil) `18545`, GraphQL API `41990`, web (Vite) `51730` — chosen to avoid common dev ports (3000 / 5173 / 5432 / 8545 / 8080).
+- `dev.sh` flow, `set -euo pipefail`, with an `EXIT` trap that tears down background procs:
+  1. **STOP (idempotent):** free each of the 4 ports (`lsof -ti tcp:$PORT | xargs -r kill -9`), `docker compose -p pcl down -v --remove-orphans`, kill stale anvil/indexer/api/web by pidfile. Two runs back-to-back both succeed.
+  2. **TEST:** `(cd contracts && forge test -vv)` then `bun test` — abort start on failure. `--no-test` skips for fast restarts.
+  3. **START:** Postgres (compose) on `55432`; `anvil --port 18545`; `wait-on` both; run SQL migrations; `forge script Deploy.s.sol --rpc-url localhost:18545 --broadcast` (seed identities + mortgages); start indexer, api, web (pidfiles in `.dev/`); `wait-on http://localhost:41990/health` + the web port.
+  4. Print a banner: API GraphQL URL, web URL, seeded demo accounts.
+- Flags: `--reset` (wipe Postgres volume + redeploy via `scripts/demo_reset` from #30), `--no-test`.
+
+**Acceptance criteria.**
+- [ ] `./scripts/dev.sh` run **twice consecutively** both end stack-healthy (idempotency); a check asserts the 4 ports are owned by our procs.
+- [ ] With a foreign process squatting one of the 4 ports, `dev.sh` frees it and still comes up green (no port conflict).
+- [ ] forge + bun tests run and must pass before any service starts; `--no-test` skips.
+- [ ] `wait-on` health gates pass (API `/health` 200 + web reachable) before the banner prints.
+- [ ] `Ctrl-C` (EXIT trap) stops every background process and frees all 4 ports.
+- [ ] `bun run dev` / `bun run stop` aliases work.
+
+**Out of scope.**
+- Production process management (pm2 / systemd) — dev/demo orchestrator only.
+- Multi-OS support beyond macOS/Linux (the dev + CI targets).
+
+**Notes.** POSIX-bash + `lsof` + `wait-on`; no heavy task runner. `scripts/verify_matrix.ts` (#27) and CI (#28) reuse this to bring the stack up deterministically.
 
