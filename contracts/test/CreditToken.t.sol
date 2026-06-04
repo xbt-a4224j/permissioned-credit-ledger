@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {IdentityRegistry} from "../src/IdentityRegistry.sol";
 import {ComplianceRegistry} from "../src/ComplianceRegistry.sol";
 import {CreditToken} from "../src/CreditToken.sol";
+import {MockUSDC} from "../src/MockUSDC.sol";
 import {ICreditToken} from "../src/interfaces/ICreditToken.sol";
 import {IComplianceRegistry} from "../src/interfaces/IComplianceRegistry.sol";
 import {IIdentityRegistry} from "../src/interfaces/IIdentityRegistry.sol";
@@ -28,10 +29,14 @@ contract CreditTokenTest is Test {
     address internal unverified = address(0x31);
     address internal frozen = address(0x41);
 
+    MockUSDC internal reserve;
+
     function setUp() public {
         id = new IdentityRegistry(admin);
         compliance = new ComplianceRegistry(admin, address(id), IComplianceRegistry.Offering.RegD);
-        token = new CreditToken(admin, address(id), address(compliance));
+        reserve = new MockUSDC();
+        // rate 0: this suite exercises the gauntlet, not accrual (covered in Accrual.t.sol).
+        token = new CreditToken(admin, address(id), address(compliance), address(reserve), 0);
 
         vm.startPrank(admin);
         id.setClaims(accreditedUS, IIdentityRegistry.Claims(true, true, IIdentityRegistry.Jurisdiction.US, false));
