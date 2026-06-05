@@ -9,7 +9,17 @@ import { usdc6ToString } from "@pcl/shared";
 import type { ReplayState } from "./types.ts";
 
 // #19 a fully-sorted, bigint-safe plain object — the single canonical form of a ReplayState.
+// #19 openedAt is stamped from the PositionOpened *block number* (fold.ts), an absolute
+// deployment placement chosen by anvil's tx-to-block batching — NOT ledger state. Folding the
+// raw block into the fingerprint made the golden drift on a toolchain bump alone (foundry 1.5.1
+// repacks the 19 deploy txs into blocks 1–3, landing the anchor at block 3 instead of 5) with
+// zero logic change. So normalize to a deployment-stable open-ordinal: the rank of each
+// position's open-block in ascending order (0,1,2,…), null if never opened. The fingerprint then
+// depends on WHAT opened and in what ORDER — never WHERE on chain it happened to land — so the
+// hash reproduces across deployments and foundry versions while staying sensitive to real state.
 export function canonicalize(s: ReplayState): unknown {
+  const openBlocks = [...new Set([...s.positions.values()].flatMap((p) => (p.openedAt === null ? [] : [Number(p.openedAt)])))].sort((a, b) => a - b);
+
   const positions = [...s.positions.entries()]
     .map(([id, p]) => ({
       id,
@@ -17,7 +27,7 @@ export function canonicalize(s: ReplayState): unknown {
       holder: p.holder,
       principal: usdc6ToString(p.principal),
       accrued: usdc6ToString(p.accrued),
-      openedAt: p.openedAt,
+      openedAt: p.openedAt === null ? null : openBlocks.indexOf(Number(p.openedAt)),
     }))
     .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
