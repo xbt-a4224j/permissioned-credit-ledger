@@ -23,7 +23,7 @@ export function PositionRow(props: { position: Position; tick?: AccrualTick | un
       </td>
       <td className="px-3 py-3 text-right font-tabular tabular-nums">{fmtUsd6(position.principal)}</td>
       <td className="px-3 py-3 text-right font-tabular tabular-nums" aria-live="polite">
-        <span className={frozen ? "text-slate-400" : "text-positive"}>{fmtUsd6(claimable)}</span>
+        <span className={`text-lg font-semibold ${frozen ? "text-slate-400" : "text-positive"}`}>{fmtUsd6(claimable)}</span>
       </td>
       <td className="px-3 py-3 text-left">
         {frozen ? (

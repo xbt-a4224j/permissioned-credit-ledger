@@ -2,7 +2,7 @@
 // The institutional frame the four views mount in. Header carries the project name + a network pill
 // (Fuji | Local from VITE_CHAIN_LABEL). The Nav switches the two #24 views (Marketplace, Positions);
 // #25 adds the invest/claim actions inside them and #26 adds the Health view + a global recon pill.
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MarketplaceView } from "./views/MarketplaceView.tsx";
 import { PositionDashboardView } from "./views/PositionDashboardView.tsx";
 import { HealthView } from "./views/HealthView.tsx";
@@ -28,9 +28,14 @@ const NAV: { key: ViewKey; label: string }[] = [
 
 export function App(): JSX.Element {
   const [view, setView] = useState<ViewKey>("marketplace");
-  // #25 one wallet instance, shared across the views so the invest/claim/transfer flows and the
-  // dashboard's holder filter all read the same connected address.
   const wallet = useWallet();
+
+  // Pre-select Accredited US #1 on load so the demo opens ready — no "Select an identity…" blank.
+  useEffect(() => {
+    if (wallet.address === undefined && DEMO_IDENTITIES[0] !== undefined) {
+      wallet.selectDemoIdentity(DEMO_IDENTITIES[0].address);
+    }
+  }, []);
   // #26 one recon source for the WHOLE shell: the header pill and the Health panel read the same
   // stream so a HALT is visible from every view — never a cheery green ticker while the engine halts.
   const recon = useReconStream();
@@ -43,7 +48,10 @@ export function App(): JSX.Element {
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <span className="text-base font-semibold tracking-tight text-navy-900">Permissioned Credit Ledger</span>
+            <div>
+              <div className="text-base font-semibold tracking-tight text-navy-900">Permissioned Credit Ledger</div>
+              <div className="text-xs text-slate-400 leading-none mt-0.5">Tokenized credit · provable yield integrity</div>
+            </div>
             <Badge tone="navy" title={`Connected network: ${CHAIN_LABEL}`}>{CHAIN_LABEL}</Badge>
             {/* #26 the global recon pill — green OK / red HALTED, visible from every view. */}
             <Badge tone={halted ? "halt" : "positive"} title="Reconciliation engine status">

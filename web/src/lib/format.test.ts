@@ -7,37 +7,36 @@ import fc from "fast-check";
 import { fmtApy, fmtBps, fmtDscr, fmtLtv, fmtUsd6, parseUsd6 } from "./format.ts";
 
 describe("fmtUsd6", () => {
-  // fmtUsd6 rounds to 2 decimal places (cents), so the round-trip property holds only for
-  // multiples of 10_000 base units (one cent = 10_000 units in 6-decimal USDC).
-  it("round-trips any cent-aligned bigint in [0, 10^24]", () => {
+  // fmtUsd6 shows 4 decimal places; round-trip holds for multiples of 100 base units (1 unit = $0.000001).
+  it("round-trips any 4-decimal-aligned bigint in [0, 10^24]", () => {
     fc.assert(
       fc.property(fc.bigInt({ min: 0n, max: 10n ** 24n }), (wei) => {
-        const centAligned = (wei / 10_000n) * 10_000n;
-        expect(parseUsd6(fmtUsd6(centAligned))).toBe(centAligned);
+        const aligned = (wei / 100n) * 100n;
+        expect(parseUsd6(fmtUsd6(aligned))).toBe(aligned);
       }),
       { numRuns: 200 },
     );
   });
 
-  it("is monotonic for cent-aligned amounts", () => {
+  it("is monotonic for 4-decimal-aligned amounts", () => {
     fc.assert(
       fc.property(fc.bigInt({ min: 0n, max: 10n ** 24n }), fc.bigInt({ min: 0n, max: 10n ** 24n }), (a, b) => {
-        const ca = (a / 10_000n) * 10_000n;
-        const cb = (b / 10_000n) * 10_000n;
+        const ca = (a / 100n) * 100n;
+        const cb = (b / 100n) * 100n;
         if (ca < cb) expect(parseUsd6(fmtUsd6(ca)) < parseUsd6(fmtUsd6(cb))).toBe(true);
       }),
       { numRuns: 200 },
     );
   });
 
-  it("formats with 2 decimal places, $ and thousands separators", () => {
-    expect(fmtUsd6(0n)).toBe("$0.00");
-    expect(fmtUsd6(1_000_000n)).toBe("$1.00");
-    expect(fmtUsd6(1_234_560_000n)).toBe("$1,234.56");
+  it("formats with 4 decimal places, $ and thousands separators", () => {
+    expect(fmtUsd6(0n)).toBe("$0.0000");
+    expect(fmtUsd6(1_000_000n)).toBe("$1.0000");
+    expect(fmtUsd6(1_234_567_800n)).toBe("$1,234.5678");
   });
 
   it("preserves the sign of a negative delta", () => {
-    expect(fmtUsd6(-1_000_000n)).toBe("-$1.00");
+    expect(fmtUsd6(-1_000_000n)).toBe("-$1.0000");
   });
 });
 
