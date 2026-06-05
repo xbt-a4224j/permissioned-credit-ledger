@@ -10,21 +10,28 @@ const USDC_SCALE = 10n ** USDC_DECIMALS;
 // #24 fmtUsd6: bigint base units -> "$1,234.560000". Splits whole/frac by integer division so no
 // float ever touches the amount; round-trips back to the same integer (asserted in the property
 // test). Negative amounts (deltas) keep their sign.
+// #24 fmtUsd6: bigint base units -> "$1,234.56". 2 decimal places for readability — the last 4
+// decimals of a 6-decimal USDC amount are sub-cent noise that makes the live ticker look frozen.
 export function fmtUsd6(wei: bigint): string {
   const neg = wei < 0n;
   const abs = neg ? -wei : wei;
   const whole = abs / USDC_SCALE;
   const frac = abs % USDC_SCALE;
-  const fracStr = frac.toString().padStart(Number(USDC_DECIMALS), "0");
+  // round to 2 decimal places (cents)
+  const cents = (frac * 100n) / USDC_SCALE;
   const wholeStr = whole.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return `${neg ? "-" : ""}$${wholeStr}.${fracStr}`;
+  return `${neg ? "-" : ""}$${wholeStr}.${cents.toString().padStart(2, "0")}`;
 }
 
 // #24 the inverse used by the round-trip property test: parse a fmtUsd6 string back to bigint wei.
+// fmtUsd6 now outputs 2 decimal places (cents) so the parser pads to 6 decimals for the round-trip.
+// Note: round-tripping is lossy below 1 cent — sub-cent amounts are rounded in fmt and won't parse
+// back to the original wei. The property test range is adjusted to multiples of 10000 (one cent).
 export function parseUsd6(s: string): bigint {
   const neg = s.startsWith("-");
   const body = s.replace(/[-$,]/g, "");
   const [whole = "0", frac = ""] = body.split(".");
+  // frac is 2 digits (cents); pad to 6 decimals for base-unit reconstruction.
   const fracPadded = frac.padEnd(Number(USDC_DECIMALS), "0").slice(0, Number(USDC_DECIMALS));
   const v = BigInt(whole) * USDC_SCALE + BigInt(fracPadded || "0");
   return neg ? -v : v;
