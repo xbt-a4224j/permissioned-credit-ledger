@@ -5,10 +5,11 @@ import type { TxPhase } from "../lib/txStatus.ts";
 import { Badge } from "./primitives.tsx";
 import type { Tone } from "../theme.ts";
 
-// #25 phase -> label + tone. `signing` is wallet-side; `pending` is broadcast-not-yet-mined.
+// #25 phase -> label + tone. `signing` is the server-side broadcast (no browser wallet needed);
+// the label reflects that — "Submitting…" not "Awaiting signature" (the server signs).
 const PHASE_META: Record<TxPhase, { label: string; tone: Tone }> = {
   idle: { label: "Idle", tone: "neutral" },
-  signing: { label: "Awaiting signature…", tone: "navy" },
+  signing: { label: "Submitting…", tone: "navy" },
   pending: { label: "Pending confirmation", tone: "warn" },
   confirmed: { label: "Confirmed", tone: "positive" },
   reverted: { label: "Reverted", tone: "block" },
