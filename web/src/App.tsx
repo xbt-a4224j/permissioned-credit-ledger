@@ -137,7 +137,7 @@ export function App(): JSX.Element {
           // #38 the platform operator view: NAV gate + servicing cash feed per loan.
           <LoansView />
         ) : (
-          <HealthView />
+          <HealthView status={recon} />
         )}
       </main>
 

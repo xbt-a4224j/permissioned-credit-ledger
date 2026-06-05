@@ -127,6 +127,22 @@ export function useReconStream(): ReconStatus | undefined {
       if (next !== null) setStatus(next);
     };
 
+    // #40 immediate one-shot fetch so the panel/pill render the current status within one request —
+    // never stuck on "Connecting…" waiting for the next SSE publish. SSE then keeps it live; we only
+    // seed if a live frame hasn't already arrived (prev ?? seed), so we never clobber a fresher HALT.
+    void fetch(API_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "{ reconciliationStatus { state cycle checkedAt haltReason invariants { name ok onchain offchain delta } } }" }),
+    })
+      .then((r) => r.json())
+      .then((j: { data?: { reconciliationStatus?: unknown } }) => {
+        if (closed || j.data?.reconciliationStatus === undefined) return;
+        const seed = parseReconFrame(JSON.stringify(j.data.reconciliationStatus));
+        if (seed !== null) setStatus((prev) => prev ?? seed);
+      })
+      .catch(() => { /* SSE will deliver it */ });
+
     const connect = (): void => {
       if (closed) return;
       es = new EventSource(SSE_URL);
