@@ -1,5 +1,5 @@
 {
-  "hash": "0xad3ccf34089e6c567fc3ac2a7c5afc4227e0b8ed0592bb17ed0adb64a3fd7428",
+  "hash": "0xa161763b1a887cc68e31254e78d271f90eb1abf093e611828cb004de24f18998",
   "canonical": {
     "positions": [
       {
@@ -8,7 +8,7 @@
         "holder": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
         "principal": "100000000000",
         "accrued": "0",
-        "openedAt": 5
+        "openedAt": 0
       }
     ],
     "reserve": {
