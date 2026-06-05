@@ -86,6 +86,46 @@ export function EmptyState(props: { label: string }): JSX.Element {
   return <div className="py-16 text-center text-sm text-slate-500">{props.label}</div>;
 }
 
+// #25 Modal — a centered dialog surface for the invest/transfer flows. role="dialog" + aria-modal
+// + an Escape-to-close handler; a labelled title for assistive tech.
+export function Modal(props: { title: string; onClose: () => void; children: ReactNode }): JSX.Element {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={props.title}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") props.onClose();
+      }}
+    >
+      <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-navy-900">{props.title}</h3>
+          <button type="button" onClick={props.onClose} aria-label="Close dialog" className="text-slate-400 hover:text-slate-700">
+            ✕
+          </button>
+        </div>
+        {props.children}
+      </div>
+    </div>
+  );
+}
+
+// #25 Button — the primary/secondary action button (disabled with a tooltip when no wallet).
+export function Button(props: { children: ReactNode; onClick?: () => void; disabled?: boolean; title?: string | undefined; variant?: "primary" | "secondary"; type?: "button" | "submit" }): JSX.Element {
+  const base = "rounded-md px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50";
+  const variant =
+    props.variant === "secondary"
+      ? "border border-slate-300 text-navy-700 hover:bg-slate-50"
+      : "bg-navy-800 text-white hover:bg-navy-700";
+  return (
+    <button type={props.type ?? "button"} onClick={props.onClick} disabled={props.disabled} title={props.title} className={`${base} ${variant}`}>
+      {props.children}
+    </button>
+  );
+}
+
 // #24 DataTable — a calm, data-dense table. Columns carry an optional `align` (money right-aligns).
 export interface Column<T> {
   key: string;
