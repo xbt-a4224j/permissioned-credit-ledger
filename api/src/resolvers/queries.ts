@@ -10,6 +10,7 @@ import type { PositionSource } from "../schema/types/position.ts";
 import type { ReserveStateSource } from "../schema/types/reserve.ts";
 import type { ReconciliationStatusSource } from "../schema/types/reconciliation.ts";
 import type { NavReadingSource } from "../schema/types/navReading.ts";
+import type { ChainEventSource } from "../schema/types/chainEvent.ts";
 import { optimisticPositionsFor } from "../tx/reconcile.ts";
 
 // #21 read-model loan status -> the GraphQL LoanStatus enum. DEFAULT == Matured (no accrual);
@@ -129,6 +130,50 @@ export async function resolveReserve(ctx: ApiContext): Promise<ReserveStateSourc
 // #21 the marquee: the latest reconciliation cycle as the GraphQL status (#18 -> #20 shape).
 export async function resolveReconciliationStatus(ctx: ApiContext): Promise<ReconciliationStatusSource> {
   return ctx.recon.read();
+}
+
+// #39 build a human-readable summary line from a chain_events payload object.
+function eventSummary(name: string, payload: Record<string, unknown>): string {
+  const loan = payload["loan"] ?? payload["loanId"] ?? "?";
+  const short = (addr: unknown): string =>
+    typeof addr === "string" && addr.length > 10 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : String(addr ?? "?");
+  const amt = (v: unknown): string =>
+    typeof v === "string" ? `$${(BigInt(v) / 1_000_000n).toString()}` : "?";
+  if (name === "PositionOpened") return `Loan #${loan} · ${short(payload["holder"])} invested ${amt(payload["amount"])}`;
+  if (name === "InterestClaimed") return `Loan #${loan} · ${short(payload["holder"])} claimed ${amt(payload["amount"])}`;
+  if (name === "Transfer") {
+    const from = payload["from"] as string;
+    const to = payload["to"] as string;
+    const isMint = from === "0x0000000000000000000000000000000000000000";
+    if (isMint) return `Loan #${loan} · minted ${amt(payload["amount"])} → ${short(to)}`;
+    return `Loan #${loan} · ${short(from)} → ${short(to)} (${amt(payload["amount"])})`;
+  }
+  return name;
+}
+
+// #39 recent chain events, newest first. limit is clamped to 50 so a caller can't scan the
+// full table. payload is jsonb — read as unknown then cast; never interpolated.
+export async function resolveChainEvents(ctx: ApiContext, limit: number): Promise<ChainEventSource[]> {
+  const cap = Math.min(Math.max(1, limit), 50);
+  const rows = await ctx.db<{ id: string; name: string; block_number: bigint; log_index: number; payload: unknown; ingested_at: Date }[]>`
+    select id, name, block_number, log_index, payload, ingested_at
+    from chain_events order by block_number desc, log_index desc limit ${cap}
+  `;
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    blockNumber: Number(r.block_number),
+    logIndex: r.log_index,
+    summary: eventSummary(r.name, (r.payload ?? {}) as Record<string, unknown>),
+    ingestedAt: r.ingested_at,
+  }));
+}
+
+// #39 current block number from the indexer cursor (last fully-ingested block). Falls back to
+// 0 before the first block is processed.
+export async function resolveCurrentBlock(ctx: ApiContext): Promise<number> {
+  const rows = await ctx.db<{ block_number: bigint }[]>`select block_number from indexer_cursor where id = 1`;
+  return Number(rows[0]?.block_number ?? 0n);
 }
 
 // #38 the last 10 NAV readings for a loan, newest first. loanId is a parameterized string

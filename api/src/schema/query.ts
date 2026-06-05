@@ -9,6 +9,7 @@ import { ReserveState } from "./types/reserve.ts";
 import { ReconciliationStatus } from "./types/reconciliation.ts";
 import { TxReceiptRef } from "./types/tx.ts";
 import { NavReading } from "./types/navReading.ts";
+import { ChainEvent } from "./types/chainEvent.ts";
 import {
   resolveLoan,
   resolveLoans,
@@ -17,6 +18,8 @@ import {
   resolveReconciliationStatus,
   resolveReserve,
   resolveNavReadings,
+  resolveChainEvents,
+  resolveCurrentBlock,
 } from "../resolvers/queries.ts";
 import { resolveTxStatus } from "../resolvers/tx-queries.ts";
 
@@ -77,6 +80,18 @@ builder.queryType({
       nullable: false,
       args: { loanId: t.arg.id({ required: true }) },
       resolve: (_root, args, ctx) => resolveNavReadings(ctx, String(args.loanId)),
+    }),
+    // #39 recent on-chain events (newest first), capped at 50. Powers the Health live event log.
+    chainEvents: t.field({
+      type: [ChainEvent],
+      nullable: false,
+      args: { limit: t.arg.int({ required: false, defaultValue: 20 }) },
+      resolve: (_root, args, ctx) => resolveChainEvents(ctx, args.limit ?? 20),
+    }),
+    // #39 current block number from the indexer cursor — the last fully-ingested block.
+    currentBlock: t.int({
+      nullable: false,
+      resolve: (_root, _args, ctx) => resolveCurrentBlock(ctx),
     }),
   }),
 });
