@@ -6,8 +6,10 @@ import { useState } from "react";
 import { MarketplaceView } from "./views/MarketplaceView.tsx";
 import { PositionDashboardView } from "./views/PositionDashboardView.tsx";
 import { HealthView } from "./views/HealthView.tsx";
-import { Badge, Button } from "./components/primitives.tsx";
+import { Badge } from "./components/primitives.tsx";
 import { useWallet } from "./lib/wallet.ts";
+import { DEMO_IDENTITIES } from "./lib/identities.ts";
+import type { Address } from "viem";
 import { useReconStream } from "./lib/reconStream.ts";
 import { InvestAction } from "./components/InvestAction.tsx";
 import { PositionActions } from "./components/PositionActions.tsx";
@@ -48,12 +50,29 @@ export function App(): JSX.Element {
               {halted ? "HALTED" : "OK"}
             </Badge>
           </div>
-          {/* #25 wallet connect — the on/off-ramp at the UI edge. */}
-          {wallet.address !== undefined ? (
-            <Badge tone="positive" title="Wallet connected">{wallet.address.slice(0, 6)}…{wallet.address.slice(-4)}</Badge>
-          ) : (
-            <Button onClick={() => void wallet.connect()}>Connect wallet</Button>
-          )}
+          {/* #34 demo identity picker — the server is the signer, so the actor is just an address.
+              One click selects a seeded identity; no browser wallet required. */}
+          <div className="flex items-center gap-2">
+            <label htmlFor="actor" className="text-xs font-medium text-slate-500">Acting as</label>
+            <select
+              id="actor"
+              value={wallet.address ?? ""}
+              onChange={(e) => wallet.selectDemoIdentity(e.target.value as Address)}
+              className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-navy-600 focus:outline-none focus:ring-1 focus:ring-navy-600"
+            >
+              <option value="" disabled>
+                Select an identity…
+              </option>
+              {DEMO_IDENTITIES.map((id) => (
+                <option key={id.address} value={id.address} title={id.note}>
+                  {id.label}
+                </option>
+              ))}
+            </select>
+            {wallet.address !== undefined ? (
+              <Badge tone="positive" title="Acting wallet">{wallet.address.slice(0, 6)}…{wallet.address.slice(-4)}</Badge>
+            ) : null}
+          </div>
         </div>
         <nav className="mx-auto flex max-w-6xl gap-1 px-6" aria-label="Primary">
           {NAV.map((n) => (

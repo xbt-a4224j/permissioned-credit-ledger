@@ -40,6 +40,8 @@ const wallet: WalletApi = {
   chainId: 0x7a69,
   connect: async () => {},
   ensureChain: async () => {},
+  selectDemoIdentity: () => {},
+  isDemo: false,
 };
 
 const loan: Loan = {
@@ -106,7 +108,7 @@ async function fireAction(kind: Row["kind"]): Promise<void> {
 
 describe("wallet gating", () => {
   it("disables the Invest button with a tooltip until a wallet is connected", () => {
-    const noWallet: WalletApi = { connect: async () => {}, ensureChain: async () => {} };
+    const noWallet: WalletApi = { connect: async () => {}, ensureChain: async () => {}, selectDemoIdentity: () => {}, isDemo: false };
     render(<InvestAction loan={loan} wallet={noWallet} />);
     const btn = screen.getByRole("button", { name: "Invest" });
     expect(btn).toBeDisabled();
