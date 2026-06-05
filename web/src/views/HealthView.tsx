@@ -8,6 +8,7 @@ import { HaltBanner } from "../components/HaltBanner.tsx";
 import { InvariantGrid } from "../components/InvariantGrid.tsx";
 import { DeltaTable } from "../components/DeltaTable.tsx";
 import { DemoControls } from "../components/DemoControls.tsx";
+import { ChainActivity } from "../components/ChainActivity.tsx";
 import { Card, LoadingState } from "../components/primitives.tsx";
 
 export function HealthView(): JSX.Element {
@@ -41,6 +42,8 @@ export function HealthView(): JSX.Element {
         <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-navy-900">Balance deltas</div>
         <DeltaTable deltas={status.deltas} />
       </Card>
+
+      <ChainActivity />
 
       <footer className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
         <span>

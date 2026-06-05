@@ -68,7 +68,7 @@ done
 
 # 2. local EVM node (anvil) on 18545, deterministic chain id 31337.
 echo "[dev]   anvil (local EVM node) on ${EVM_PORT}…"
-( exec anvil --port "${EVM_PORT}" --chain-id 31337 --silent > "${DEV_DIR}/anvil.log" 2>&1 ) &
+( exec anvil --port "${EVM_PORT}" --chain-id 31337 --block-time 2 --silent > "${DEV_DIR}/anvil.log" 2>&1 ) &
 write_pidfile "anvil" "$!"
 wait_rpc "${LOCAL_RPC}" 60
 
