@@ -9,6 +9,7 @@ import { useWallet } from "../lib/wallet.ts";
 import { useTxLifecycle } from "../lib/txStatus.ts";
 import { runMutation } from "../lib/runMutation.ts";
 import { TRANSFER_MUTATION } from "../lib/mutations.ts";
+import { logAction } from "../lib/actionLog.ts";
 import { parseUsd6 } from "../lib/format.ts";
 import { Button, Modal } from "./primitives.tsx";
 import { ReasonBadge } from "./ReasonBadge.tsx";
@@ -33,11 +34,13 @@ export function TransferDialog(props: { position: Position; wallet?: WalletApi; 
     if (wallet.address === undefined || amountWei === null || !validTo) return;
     await tx.run(async () => {
       await wallet.ensureChain();
-      return runMutation(
+      const result = await runMutation(
         TRANSFER_MUTATION,
         { input: { loanId: props.position.loanId, from: wallet.address, to, amount: amountWei!.toString() } },
         "transfer",
       );
+      logAction({ action: "transfer", actor: wallet.address as string, loanId: props.position.loanId, to, amount: amountWei!.toString(), result: result.ok ? "ok" : result.code === "NavAnomaly" || result.code === "ReconMismatch" ? "halted" : "rejected", reason: result.ok ? undefined : result.code });
+      return result;
     });
   };
 

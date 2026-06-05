@@ -33,3 +33,4 @@ TALKING_POINTS.md
 /screenshot*.png
 .idea/
 .vscode/
+logs/

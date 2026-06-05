@@ -11,6 +11,7 @@ import { LoansView } from "./views/LoansView.tsx";
 import { Badge } from "./components/primitives.tsx";
 import { useWallet } from "./lib/wallet.ts";
 import { DEMO_IDENTITIES } from "./lib/identities.ts";
+import { logAction } from "./lib/actionLog.ts";
 import type { Address } from "viem";
 import { useReconStream } from "./lib/reconStream.ts";
 import { InvestAction } from "./components/InvestAction.tsx";
@@ -71,7 +72,7 @@ export function App(): JSX.Element {
             <select
               id="actor"
               value={wallet.address ?? ""}
-              onChange={(e) => wallet.selectDemoIdentity(e.target.value as Address)}
+              onChange={(e) => { wallet.selectDemoIdentity(e.target.value as Address); logAction({ action: "identity_switch", actor: e.target.value }); }}
               className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-navy-600 focus:outline-none focus:ring-1 focus:ring-navy-600"
             >
               <option value="" disabled>
@@ -94,7 +95,7 @@ export function App(): JSX.Element {
             <button
               key={n.key}
               type="button"
-              onClick={() => setView(n.key)}
+              onClick={() => { setView(n.key); logAction({ action: "view_change", view: n.key }); }}
               aria-current={view === n.key ? "page" : undefined}
               className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
                 view === n.key ? "border-navy-700 text-navy-900" : "border-transparent text-slate-500 hover:text-slate-800"
@@ -110,7 +111,7 @@ export function App(): JSX.Element {
             <button
               key={n.key}
               type="button"
-              onClick={() => setView(n.key)}
+              onClick={() => { setView(n.key); logAction({ action: "view_change", view: n.key }); }}
               aria-current={view === n.key ? "page" : undefined}
               className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
                 view === n.key ? "border-navy-700 text-navy-900" : "border-transparent text-slate-500 hover:text-slate-800"
