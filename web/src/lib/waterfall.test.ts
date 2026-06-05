@@ -1,4 +1,4 @@
-// #42 waterfall engine tests — pin the worked example (good year / bad year) and the invariants.
+// #38 waterfall engine tests — pin the worked example (good year / bad year) and the invariants.
 import { describe, expect, it } from "vitest";
 import { runWaterfall, DEMO_POOL } from "./waterfall.ts";
 
