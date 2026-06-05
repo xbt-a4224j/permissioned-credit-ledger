@@ -14,6 +14,8 @@ dist/
 .vite/
 *.tsbuildinfo
 # (bun.lockb deliberately tracked — reproducible installs)
+# #31 dev orchestrator pidfiles + service logs (transient)
+.dev/
 
 # core
 .env

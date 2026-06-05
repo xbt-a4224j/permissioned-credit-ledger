@@ -16,6 +16,9 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p shared && tsc --noEmit -p api && tsc --noEmit -p indexer && tsc --noEmit -p scripts && tsc --noEmit -p web",
     "test": "vitest run",
+    "verify:matrix": "bun run scripts/verify_matrix.ts",
+    "dev": "./scripts/dev.sh",
+    "stop": "./scripts/stop.sh",
     "prepare": "husky"
   },
   "devDependencies": {
