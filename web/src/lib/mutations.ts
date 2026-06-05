@@ -54,3 +54,17 @@ export const CLAIM_MUTATION = /* GraphQL */ `
     }
   }
 `;
+
+// #33 demo trigger: push a +40% NAV spike -> NavAnomaly HALT (row 9). Returns the recon status.
+export const PUSH_NAV_MUTATION = /* GraphQL */ `
+  mutation PushNav($loanId: Int!) {
+    pushNav(loanId: $loanId) { state cycle haltReason }
+  }
+`;
+
+// #33 demo trigger: under-fund the reserve -> ReconMismatch HALT (row 10). Returns the recon status.
+export const INJECT_CASH_MUTATION = /* GraphQL */ `
+  mutation InjectCash($loanId: Int!) {
+    injectCash(loanId: $loanId) { state cycle haltReason }
+  }
+`;
