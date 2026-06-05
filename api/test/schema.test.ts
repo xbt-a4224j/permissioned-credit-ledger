@@ -19,7 +19,7 @@ describe("#20 GraphQL schema contract", () => {
 
   test("the write mutations (invest/transfer/claim) + #33 demo triggers (pushNav/injectCash) + #38 ops (submitNav/reportCash)", () => {
     const mutation = schema.getMutationType() as GraphQLObjectType;
-    expect(Object.keys(mutation.getFields()).sort()).toEqual(["claim", "injectCash", "invest", "pushNav", "reportCash", "submitNav", "transfer"]);
+    expect(Object.keys(mutation.getFields()).sort()).toEqual(["claim", "injectCash", "invest", "pushNav", "reportCash", "submitKyc", "submitNav", "transfer"]);
   });
 
   test("the 6 declared query fields (+ txStatus from #23) are present", () => {
