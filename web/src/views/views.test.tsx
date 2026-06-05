@@ -89,7 +89,7 @@ describe("PositionDashboardView", () => {
   it("updates claimable when an accrual SSE frame arrives, and freezes when frozen", async () => {
     gqlMock.mockResolvedValue(positions());
     render(<PositionDashboardView holder={holder} />);
-    await screen.findByText("$1.000000");
+    await screen.findByText("$1.0000");
 
     const es = MockEventSource.instances[0]!;
     act(() =>
@@ -98,13 +98,13 @@ describe("PositionDashboardView", () => {
         JSON.stringify({ loanId: "1", holder, accrued: "1000000", claimable: "2500000", at: new Date(1_700_000_000_000).toISOString() }),
       ),
     );
-    expect(await screen.findByText("$2.500000")).toBeInTheDocument();
+    expect(await screen.findByText("$2.5000")).toBeInTheDocument();
   });
 
   it("freezes the ticker (shows last claimable, Frozen badge) when globalFrozen is set", async () => {
     gqlMock.mockResolvedValue(positions());
     render(<PositionDashboardView holder={holder} globalFrozen />);
-    const cell = await screen.findByText("$1.000000");
+    const cell = await screen.findByText("$1.0000");
     expect(cell).toBeInTheDocument();
     // a frozen accrual frame must NOT advance the displayed value.
     const es = MockEventSource.instances[0]!;
@@ -114,7 +114,7 @@ describe("PositionDashboardView", () => {
         JSON.stringify({ loanId: "1", holder, accrued: "1000000", claimable: "9999999", at: new Date(1_700_000_000_000).toISOString() }),
       ),
     );
-    expect(screen.queryByText("$9.999999")).not.toBeInTheDocument();
+    expect(screen.queryByText("$9.9999")).not.toBeInTheDocument();
     expect(within(screen.getByRole("row", { name: /#1/ })).getByText("Frozen")).toBeInTheDocument();
   });
 

@@ -8,6 +8,7 @@ import { MarketplaceView } from "./views/MarketplaceView.tsx";
 import { PositionDashboardView } from "./views/PositionDashboardView.tsx";
 import { HealthView } from "./views/HealthView.tsx";
 import { LoansView } from "./views/LoansView.tsx";
+import { TranchesView } from "./views/TranchesView.tsx";
 import { Badge } from "./components/primitives.tsx";
 import { useWallet } from "./lib/wallet.ts";
 import { DEMO_IDENTITIES } from "./lib/identities.ts";
@@ -22,7 +23,7 @@ import { Lifecycle } from "./components/Lifecycle.tsx";
 const CHAIN_LABEL = (import.meta.env.VITE_CHAIN_LABEL ?? "Local") as "Fuji" | "Local";
 
 // #38 four views: investor-facing (marketplace, positions) + platform-facing (loans, health).
-type ViewKey = "marketplace" | "positions" | "loans" | "health";
+type ViewKey = "marketplace" | "positions" | "loans" | "tranches" | "health";
 
 // #38 investor tabs and platform tabs are kept separate so the separator renders between groups.
 const INVESTOR_NAV: { key: ViewKey; label: string }[] = [
@@ -31,6 +32,7 @@ const INVESTOR_NAV: { key: ViewKey; label: string }[] = [
 ];
 const PLATFORM_NAV: { key: ViewKey; label: string }[] = [
   { key: "loans", label: "Loans" },
+  { key: "tranches", label: "Tranches" },
   { key: "health", label: "Health" },
 ];
 
@@ -136,6 +138,9 @@ export function App(): JSX.Element {
         ) : view === "loans" ? (
           // #38 the platform operator view: NAV gate + servicing cash feed per loan.
           <LoansView />
+        ) : view === "tranches" ? (
+          // #42 the structuring module: the tranche waterfall visualizer.
+          <TranchesView />
         ) : (
           <HealthView status={recon} />
         )}
