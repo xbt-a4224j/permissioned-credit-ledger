@@ -10,7 +10,7 @@ import { POSITIONS_QUERY } from "../queries.ts";
 import { useQuery } from "../lib/useQuery.ts";
 import { useAccrualStream } from "../lib/sse.ts";
 import { PositionRow } from "../components/PositionRow.tsx";
-import { Card, EmptyState, ErrorState, LoadingState } from "../components/primitives.tsx";
+import { Banner, Card, EmptyState, ErrorState, LoadingState } from "../components/primitives.tsx";
 
 // #24 the demo holder the dashboard reads when no wallet is connected (#25 swaps in the live
 // wallet address). A seeded accredited-US identity so row-1 positions render on first load.
@@ -51,6 +51,14 @@ export function PositionDashboardView(props: {
         <h2 className="text-xl font-semibold text-navy-900">My positions</h2>
         <p className="text-sm text-slate-500">Claimable interest accrues per second, streamed from the reconciliation engine.</p>
       </div>
+      {/* #26 row-9 inline halt hint: the accrual ticker is frozen by a NAV anomaly. */}
+      {props.globalFrozen === true ? (
+        <div className="mb-4">
+          <Banner tone="halt" title="Accrual frozen — NAV anomaly">
+            A NAV anomaly tripped the validation gate; per-second accrual is paused until reconciliation clears. See Health.
+          </Banner>
+        </div>
+      ) : null}
       <Card className="p-0">
         {loading ? (
           <LoadingState label="Loading positions…" />
