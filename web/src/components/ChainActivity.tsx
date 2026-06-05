@@ -46,7 +46,7 @@ export function ChainActivity(): JSX.Element {
       } catch {
         if (alive) setError(true);
       }
-      if (alive) timerRef.current = setTimeout(() => void fetch(), 2000);
+      if (alive) timerRef.current = setTimeout(() => void fetch(), 1000); // #41 1s poll so the block counter ticks live
     };
     void fetch();
     return () => {

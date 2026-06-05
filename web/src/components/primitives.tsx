@@ -24,7 +24,7 @@ export function Card(props: { children: ReactNode; className?: string }): JSX.El
 }
 
 // #24 StatPill — a labelled metric (LTV, DSCR, principal). Tabular numerics for aligned money.
-export function StatPill(props: { label: string; value: ReactNode; tone?: Tone }): JSX.Element {
+export function StatPill(props: { label: ReactNode; value: ReactNode; tone?: Tone }): JSX.Element {
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-xs uppercase tracking-wide text-slate-500">{props.label}</span>

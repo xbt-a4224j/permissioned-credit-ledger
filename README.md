@@ -12,6 +12,12 @@ A first-lien mortgage (CRE-first, residential-ready) is tokenized as an **ERC-36
 
 See [`docs/architecture/DESIGN.md`](docs/architecture/DESIGN.md) for the decisions, the recon-HALT philosophy, and what was deliberately cut.
 
+## Architecture
+
+Who does what in the business, and which component serves it — a borrower's loan flows through an off-chain servicer into a permissioned token, reconciled against the servicer's books before any payout reaches investors:
+
+![business architecture — actors mapped to system components](docs/architecture/05-business-architecture.svg)
+
 ## Quick start
 
 Brings the whole stack up on fixed, non-default ports in about a minute.
