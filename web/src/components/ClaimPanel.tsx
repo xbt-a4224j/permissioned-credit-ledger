@@ -9,7 +9,6 @@ import { useTxLifecycle } from "../lib/txStatus.ts";
 import { runMutation } from "../lib/runMutation.ts";
 import { CLAIM_MUTATION } from "../lib/mutations.ts";
 import { logAction } from "../lib/actionLog.ts";
-import { fmtUsd6 } from "../lib/format.ts";
 import { Button } from "./primitives.tsx";
 import { ReasonBadge } from "./ReasonBadge.tsx";
 import { TxStatusInline } from "./TxStatusInline.tsx";
@@ -32,7 +31,6 @@ export function ClaimPanel(props: { position: Position; wallet?: WalletApi }): J
   return (
     <div className="flex flex-col items-end gap-1">
       <div className="flex items-center gap-2">
-        <span className="font-tabular tabular-nums text-sm text-slate-600">{fmtUsd6(props.position.claimable)}</span>
         <Button
           variant="secondary"
           onClick={submit}
@@ -44,7 +42,6 @@ export function ClaimPanel(props: { position: Position; wallet?: WalletApi }): J
       </div>
       <TxStatusInline phase={tx.phase} txHash={tx.txHash} />
       {tx.phase === "reverted" && tx.reason !== undefined ? <ReasonBadge code={tx.reason} /> : null}
-      {tx.phase === "confirmed" ? <span className="text-xs text-positive">InterestClaimed — reserve debited.</span> : null}
     </div>
   );
 }

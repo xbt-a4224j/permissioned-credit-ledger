@@ -22,7 +22,7 @@ const RATE_SCALE = 10n ** 18n;
 // burying the per-second tick. Instead the source anchors each position the first time it sees it
 // (live wall-clock); claimable then starts at the settled `accrued` (≈0) and counts up visibly. The
 // anchor lives only in memory, so a restart/reset cleanly restarts the ticker near zero.
-async function emitAccrualTicks(sql: Sql, manifest: Manifest, bus: EventBus, now: number, anchors: Map<string, number>): Promise<void> {
+async function emitAccrualTicks(sql: Sql, manifest: Manifest, bus: EventBus, now: number, anchors: Map<string, number>, prevAccrued: Map<string, bigint>): Promise<void> {
   // money is selected ::text so it arrives as a decimal string; BigInt it for the math (the
   // numeric parser only fires on the numeric OID, not on a ::text cast — #15 client note).
   const rows = await sql<{ loan_id: string; holder: string; principal: string; accrued: string; opened_at: bigint | null }[]>`
@@ -33,13 +33,20 @@ async function emitAccrualTicks(sql: Sql, manifest: Manifest, bus: EventBus, now
     const ln = manifest.loans[r.loan_id];
     const ratePerSecond = ln !== undefined ? BigInt(ln.ratePerSecond) : 0n;
     const key = `${r.loan_id}:${r.holder}`;
+    const accrued = BigInt(r.accrued);
     let anchor = anchors.get(key);
     if (anchor === undefined) {
       anchor = now;
       anchors.set(key, anchor);
     }
+    // reset anchor when accrued drops to 0 (claim confirmed on-chain) so claimable ticks from $0
+    const prev = prevAccrued.get(key) ?? accrued;
+    if (accrued === 0n && prev > 0n) {
+      anchor = now;
+      anchors.set(key, anchor);
+    }
+    prevAccrued.set(key, accrued);
     const elapsed = BigInt(Math.max(0, now - anchor));
-    const accrued = BigInt(r.accrued);
     const pending = (BigInt(r.principal) * ratePerSecond * elapsed) / RATE_SCALE;
     const claimable = accrued + pending;
     bus.publish({
@@ -66,10 +73,13 @@ export function startAccrualSource(
   let stopped = false;
   // #41 in-memory wall-clock anchors per position (see emitAccrualTicks); reset with the process.
   const anchors = new Map<string, number>();
+  // #41 track previous accrued per position so we can detect a claim (accrued drops to 0) and
+  // reset the anchor — making the displayed claimable drop back to $0.0000 as expected.
+  const prevAccrued = new Map<string, bigint>();
   const tick = async (): Promise<void> => {
     if (stopped) return;
     try {
-      await emitAccrualTicks(ctx.db, ctx.manifest, bus, nowFn(), anchors);
+      await emitAccrualTicks(ctx.db, ctx.manifest, bus, nowFn(), anchors, prevAccrued);
     } catch {
       // transient read error — the next tick retries.
     }
