@@ -16,6 +16,7 @@ import type { Address } from "viem";
 import { useReconStream } from "./lib/reconStream.ts";
 import { InvestAction } from "./components/InvestAction.tsx";
 import { PositionActions } from "./components/PositionActions.tsx";
+import { Lifecycle } from "./components/Lifecycle.tsx";
 
 // #24 the network label (Fuji testnet vs the local anvil node), read from Vite env at build.
 const CHAIN_LABEL = (import.meta.env.VITE_CHAIN_LABEL ?? "Local") as "Fuji" | "Local";
@@ -139,6 +140,9 @@ export function App(): JSX.Element {
           <HealthView />
         )}
       </main>
+
+      {/* #40 always-visible lifecycle strip — the end-to-end sequence at a glance, for the room. */}
+      <Lifecycle />
     </div>
   );
 }
