@@ -7,8 +7,9 @@
 // a fumbled trigger can never touch Fuji.
 import { GraphQLError } from "graphql";
 import { toHex } from "viem";
-import { loanId as toLoanId } from "@pcl/shared";
+import { loanId as toLoanId, unixSeconds, bps } from "@pcl/shared";
 import { simulateFeed } from "../nav/feed.ts";
+import { ingestNav } from "../nav/gate.ts";
 import { loadSnapshot, type SnapshotManifest } from "../recon/snapshot.ts";
 import { runReconCycle } from "../recon/engine.ts";
 import { runOneCycle } from "../recon/driver.ts";
@@ -65,6 +66,39 @@ export async function resolveInjectCash(ctx: ApiContext, loanIdInt: number): Pro
   const snapshot = await loadSnapshot(ctx.db, ctx.chain.publicClient, ctx.manifest as unknown as SnapshotManifest);
   const shortfall = snapshot.onchainClaimableTotal > 0n ? snapshot.onchainClaimableTotal - 1n : 0n;
   await ctx.db`update reserve set balance = ${shortfall.toString()} where id = 1`;
+  await runReconCycle(ctx.db, ctx.chain.publicClient, ctx.manifest as unknown as SnapshotManifest);
+  return ctx.recon.read();
+}
+
+// #38 the platform ops path: submit any navBps reading via the NAV gate (ingestNav), run one cycle,
+// return recon status. The gate performs bounds validation — this is NOT a demo spike; it accepts
+// any mark and lets the gate decide. Local-node only (same posture as the demo triggers).
+export async function resolveSubmitNav(ctx: ApiContext, loanIdInt: number, navBps: number): Promise<ReconStatusView> {
+  assertLocal(ctx);
+  const ln = checkedLoanId(loanIdInt);
+  const reading = {
+    loan: ln,
+    navBps: bps(navBps),
+    observedAt: unixSeconds(Math.floor(Date.now() / 1000)),
+    source: "ops",
+  };
+  await ingestNav(ctx.db, reading, reading.observedAt);
+  await runOneCycle(ctx);
+  return ctx.recon.read();
+}
+
+// #38 the platform ops path: set the reserve balance to amountUsdc6, run one recon cycle, return
+// status. Validates amountUsdc6 is a non-negative bigint string before touching the DB.
+// Local-node only — the mock reserve is an on-chain fixture, not the real USDC escrow.
+export async function resolveReportCash(ctx: ApiContext, loanIdInt: number, amountUsdc6: string): Promise<ReconStatusView> {
+  assertLocal(ctx);
+  checkedLoanId(loanIdInt);
+  if (!/^\d+$/.test(amountUsdc6)) {
+    throw new GraphQLError("amount must be a non-negative integer string (Usdc6 base units).", {
+      extensions: { code: "BadUserInput" },
+    });
+  }
+  await ctx.db`update reserve set balance = ${amountUsdc6} where id = 1`;
   await runReconCycle(ctx.db, ctx.chain.publicClient, ctx.manifest as unknown as SnapshotManifest);
   return ctx.recon.read();
 }

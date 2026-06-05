@@ -68,3 +68,35 @@ export const INJECT_CASH_MUTATION = /* GraphQL */ `
     injectCash(loanId: $loanId) { state cycle haltReason }
   }
 `;
+
+// #38 the platform ops: submit a NAV reading through the gate (loanId + navBps). Returns the new recon
+// status so the UI can show the gate decision immediately — accepted marks update state, rejected
+// marks leave state unchanged but are stored in nav_readings with accepted=false.
+export const SUBMIT_NAV_MUTATION = /* GraphQL */ `
+  mutation SubmitNav($loanId: Int!, $navBps: Int!) {
+    submitNav(loanId: $loanId, navBps: $navBps) { state cycle haltReason }
+  }
+`;
+
+// #38 the platform ops: report collected servicing cash (loanId + USDC amount in base units as a string).
+// Returns the new recon status — a mismatch between reported cash and aggregate claimable trips HALT.
+export const REPORT_CASH_MUTATION = /* GraphQL */ `
+  mutation ReportCash($loanId: Int!, $amount: String!) {
+    reportCash(loanId: $loanId, amount: $amount) { state cycle haltReason }
+  }
+`;
+
+// #38 NAV readings for a loan (newest first, up to 10). Used by the ops card to display the
+// gate's accept/reject history — the source + rejectReason columns make the gate's logic visible.
+export const NAV_READINGS_QUERY = /* GraphQL */ `
+  query NavReadings($loanId: ID!) {
+    navReadings(loanId: $loanId) {
+      id
+      navBps
+      observedAt
+      source
+      accepted
+      rejectReason
+    }
+  }
+`;

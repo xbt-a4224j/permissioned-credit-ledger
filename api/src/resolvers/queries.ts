@@ -9,6 +9,7 @@ import type { LoanSource } from "../schema/types/loan.ts";
 import type { PositionSource } from "../schema/types/position.ts";
 import type { ReserveStateSource } from "../schema/types/reserve.ts";
 import type { ReconciliationStatusSource } from "../schema/types/reconciliation.ts";
+import type { NavReadingSource } from "../schema/types/navReading.ts";
 import { optimisticPositionsFor } from "../tx/reconcile.ts";
 
 // #21 read-model loan status -> the GraphQL LoanStatus enum. DEFAULT == Matured (no accrual);
@@ -128,4 +129,25 @@ export async function resolveReserve(ctx: ApiContext): Promise<ReserveStateSourc
 // #21 the marquee: the latest reconciliation cycle as the GraphQL status (#18 -> #20 shape).
 export async function resolveReconciliationStatus(ctx: ApiContext): Promise<ReconciliationStatusSource> {
   return ctx.recon.read();
+}
+
+// #38 the last 10 NAV readings for a loan, newest first. loanId is a parameterized string
+// from the query arg — never interpolated directly (tagged-template driver handles escaping).
+export async function resolveNavReadings(ctx: ApiContext, loanId: string): Promise<NavReadingSource[]> {
+  const rows = await ctx.db<{ id: string; loan_id: string; nav_bps: number; observed_at: bigint; source: string; accepted: boolean; reject_reason: string | null }[]>`
+    select id::text, loan_id, nav_bps, observed_at, source, accepted, reject_reason
+    from nav_readings
+    where loan_id = ${loanId}
+    order by observed_at desc
+    limit 10
+  `;
+  return rows.map((r) => ({
+    id: r.id,
+    loanId: r.loan_id,
+    navBps: r.nav_bps,
+    observedAt: new Date(Number(r.observed_at) * 1000),
+    source: r.source,
+    accepted: r.accepted,
+    rejectReason: r.reject_reason,
+  }));
 }
