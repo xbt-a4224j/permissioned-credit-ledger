@@ -6,6 +6,7 @@
 import { applyMigrations } from "@pcl/shared";
 import { createServer } from "./server.ts";
 import { createContext } from "./context.ts";
+import { startReconDriver } from "./recon/driver.ts";
 
 // #2 kept for the toolchain smoke test (the workspace's typed surface marker).
 export const API_NAME = "@pcl/api" as const;
@@ -24,7 +25,14 @@ if (import.meta.main) {
   const bunServer = Bun.serve({ port: API_PORT, fetch: server.fetch });
   console.log(`[api] graphql + sse on http://localhost:${bunServer.port}/graphql  (sse: /sse, health: /health)`);
 
+  // #32 drive reconciliation cycles in the running app (not just the test harness) so the engine
+  // is live: the Health panel populates, the HALT gate has a real cycle to read, and a demo NAV /
+  // cash trigger (#33) halts within one interval.
+  const stopReconDriver = startReconDriver(ctx);
+  console.log("[api] reconciliation driver running (cycle every 2s)");
+
   const shutdown = async (): Promise<void> => {
+    stopReconDriver();
     await server.dispose();
     bunServer.stop();
     process.exit(0);

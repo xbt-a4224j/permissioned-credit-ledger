@@ -5,8 +5,10 @@
 // single server signer, recording the PENDING tx + optimistic position (#23).
 import { builder } from "./builder.ts";
 import { TxReceiptRef } from "./types/tx.ts";
+import { ReconciliationStatus } from "./types/reconciliation.ts";
 import { InvestInput, TransferInput, ClaimInput } from "./inputs.ts";
 import { resolveInvest, resolveTransfer, resolveClaim } from "../resolvers/mutations.ts";
+import { resolvePushNav, resolveInjectCash } from "../resolvers/demo.ts";
 
 builder.mutationType({
   fields: (t) => ({
@@ -30,6 +32,21 @@ builder.mutationType({
       nullable: false,
       args: { input: t.arg({ type: ClaimInput, required: true }) },
       resolve: (_root, args, ctx) => resolveClaim(ctx, args.input),
+    }),
+    // #33 demo trigger — push a +40% NAV spike to halt the loan with NavAnomaly (matrix row 9).
+    // Local-node only; returns the resulting reconciliation status so the UI updates immediately.
+    pushNav: t.field({
+      type: ReconciliationStatus,
+      nullable: false,
+      args: { loanId: t.arg.int({ required: true }) },
+      resolve: (_root, args, ctx) => resolvePushNav(ctx, args.loanId),
+    }),
+    // #33 demo trigger — under-fund the reserve below claimable to halt with ReconMismatch (row 10).
+    injectCash: t.field({
+      type: ReconciliationStatus,
+      nullable: false,
+      args: { loanId: t.arg.int({ required: true }) },
+      resolve: (_root, args, ctx) => resolveInjectCash(ctx, args.loanId),
     }),
   }),
 });
