@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# The Money Layer · no-extension wrapper for the demo reset · #30
+# Lets `./scripts/demo_reset` work from a fresh shell (the live-demo recovery command in DEMO.md)
+# without the reader remembering the .ts entrypoint. Delegates straight to the Bun script, which
+# carries the Fuji-refusal guard + typed non-zero exit.
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec bun run "${SCRIPT_DIR}/demo_reset.ts" "$@"
