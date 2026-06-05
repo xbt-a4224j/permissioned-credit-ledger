@@ -9,6 +9,7 @@ import { InvariantGrid } from "../components/InvariantGrid.tsx";
 import { DeltaTable } from "../components/DeltaTable.tsx";
 import { DemoControls } from "../components/DemoControls.tsx";
 import { ChainActivity } from "../components/ChainActivity.tsx";
+import { ActionLog } from "../components/ActionLog.tsx";
 import { Card, LoadingState } from "../components/primitives.tsx";
 
 export function HealthView(): JSX.Element {
@@ -44,6 +45,7 @@ export function HealthView(): JSX.Element {
       </Card>
 
       <ChainActivity />
+      <ActionLog />
 
       <footer className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
         <span>

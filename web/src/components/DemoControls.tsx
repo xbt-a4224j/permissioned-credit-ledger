@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Button, Card } from "./primitives.tsx";
 import { gql, GraphqlCodeError } from "../lib/graphqlClient.ts";
 import { PUSH_NAV_MUTATION, INJECT_CASH_MUTATION } from "../lib/mutations.ts";
+import { logAction } from "../lib/actionLog.ts";
 
 // #33 the demo always targets the seeded loan series #1 (the position that exists on a fresh world).
 const DEMO_LOAN_ID = 1;
@@ -25,6 +26,7 @@ export function DemoControls(): JSX.Element {
       const field = kind === "nav" ? "pushNav" : "injectCash";
       const data = await gql<Record<string, { state: string; haltReason: string | null }>>(doc, { loanId: DEMO_LOAN_ID });
       const status = data[field];
+      logAction({ action: kind === "nav" ? "demo_push_nav" : "demo_inject_cash", loanId: DEMO_LOAN_ID, result: status?.state === "HALTED" ? "halted" : "ok", reason: status?.haltReason ?? undefined });
       setMessage(
         status?.state === "HALTED"
           ? `Engine HALTED — ${status.haltReason ?? "halt"} on loan #${DEMO_LOAN_ID}.`

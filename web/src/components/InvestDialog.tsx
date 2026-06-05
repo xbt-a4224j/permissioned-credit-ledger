@@ -9,6 +9,7 @@ import type { WalletApi } from "../lib/wallet.ts";
 import { useTxLifecycle } from "../lib/txStatus.ts";
 import { runMutation } from "../lib/runMutation.ts";
 import { INVEST_MUTATION } from "../lib/mutations.ts";
+import { logAction } from "../lib/actionLog.ts";
 import { parseUsd6 } from "../lib/format.ts";
 import { Button, Modal } from "./primitives.tsx";
 import { ReasonBadge } from "./ReasonBadge.tsx";
@@ -30,8 +31,10 @@ export function InvestDialog(props: { loan: Loan; wallet: WalletApi; onClose: ()
   const submit = async (): Promise<void> => {
     if (wallet.address === undefined || amountWei === null) return;
     await tx.run(async () => {
-      await wallet.ensureChain(); // MUST precede the broadcast (wrong-network divergence)
-      return runMutation(INVEST_MUTATION, { input: { loanId: props.loan.id, wallet: wallet.address, amount: amountWei!.toString() } }, "invest");
+      await wallet.ensureChain();
+      const result = await runMutation(INVEST_MUTATION, { input: { loanId: props.loan.id, wallet: wallet.address, amount: amountWei!.toString() } }, "invest");
+      logAction({ action: "invest", actor: wallet.address as string, loanId: props.loan.id, amount: amountWei!.toString(), result: result.ok ? "ok" : result.code === "NavAnomaly" || result.code === "ReconMismatch" ? "halted" : "rejected", reason: result.ok ? undefined : result.code });
+      return result;
     });
   };
 

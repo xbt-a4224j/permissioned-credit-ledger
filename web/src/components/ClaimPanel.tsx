@@ -8,6 +8,7 @@ import { useWallet } from "../lib/wallet.ts";
 import { useTxLifecycle } from "../lib/txStatus.ts";
 import { runMutation } from "../lib/runMutation.ts";
 import { CLAIM_MUTATION } from "../lib/mutations.ts";
+import { logAction } from "../lib/actionLog.ts";
 import { fmtUsd6 } from "../lib/format.ts";
 import { Button } from "./primitives.tsx";
 import { ReasonBadge } from "./ReasonBadge.tsx";
@@ -22,7 +23,9 @@ export function ClaimPanel(props: { position: Position; wallet?: WalletApi }): J
     if (wallet.address === undefined) return;
     await tx.run(async () => {
       await wallet.ensureChain();
-      return runMutation(CLAIM_MUTATION, { input: { loanId: props.position.loanId, wallet: wallet.address } }, "claim");
+      const result = await runMutation(CLAIM_MUTATION, { input: { loanId: props.position.loanId, wallet: wallet.address } }, "claim");
+      logAction({ action: "claim", actor: wallet.address as string, loanId: props.position.loanId, result: result.ok ? "ok" : result.code === "NavAnomaly" || result.code === "ReconMismatch" ? "halted" : "rejected", reason: result.ok ? undefined : result.code });
+      return result;
     });
   };
 
