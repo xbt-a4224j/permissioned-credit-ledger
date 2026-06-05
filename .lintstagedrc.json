@@ -1,0 +1,5 @@
+{
+  "// #4": "staged-file fixers — eslint on TS/TSX, forge fmt on Solidity.",
+  "*.{ts,tsx}": "eslint --fix",
+  "contracts/**/*.sol": "forge fmt"
+}

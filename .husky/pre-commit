@@ -1,0 +1,4 @@
+# #4 format gate before code hits the CI fmt check (#3): forge fmt on the
+# Solidity tree + eslint --fix on staged TS/TSX via lint-staged.
+forge fmt --check --root contracts
+bun x lint-staged

@@ -1,0 +1,32 @@
+{
+  "// #4": "conventional commits; type-enum = 9 types, scope-enum = 15 project scopes (must match the ticket map).",
+  "extends": ["@commitlint/config-conventional"],
+  "rules": {
+    "type-enum": [
+      2,
+      "always",
+      ["feat", "fix", "chore", "build", "ci", "test", "docs", "refactor", "perf"]
+    ],
+    "scope-enum": [
+      2,
+      "always",
+      [
+        "repo",
+        "deps",
+        "ci",
+        "release",
+        "contracts",
+        "deploy",
+        "types",
+        "db",
+        "indexer",
+        "nav",
+        "recon",
+        "api",
+        "ui",
+        "scripts",
+        "docs"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "// #2": "GraphQL API workspace — Pothos code-first + graphql-yoga + raw postgres + viem signer.",
+  "name": "@pcl/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "bun run src/index.ts"
+  },
+  "dependencies": {
+    "@pcl/shared": "workspace:*",
+    "@pothos/core": "^4.3.0",
+    "@pothos/plugin-simple-objects": "^4.1.0",
+    "graphql": "^16.10.0",
+    "graphql-yoga": "^5.10.4",
+    "postgres": "^3.4.5",
+    "viem": "^2.21.54",
+    "zod": "^3.24.1"
+  }
+}
