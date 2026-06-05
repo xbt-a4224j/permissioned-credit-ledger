@@ -4,29 +4,34 @@
 // machine-checkable code, never a stringly RPC message. #25 narrows `code` to the ReasonCode union
 // and renders a ReasonBadge; here it stays a string|null so #24 (read-only) has no #25 dependency.
 import { GraphQLClient } from "graphql-request";
+import type { ReasonCode } from "./reasonCodes.ts";
+import { isReasonCode } from "./reasonCodes.ts";
 
 // #24 the API origin. Vite injects import.meta.env at build; default to the fixed API port (41990).
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:41990/graphql";
 
 export const gqlClient = new GraphQLClient(API_URL);
 
-// #24 a typed GraphQL error: carries the machine-checkable extensions.code (raw string; #25 narrows
-// it to ReasonCode). `code` is null for an untyped (e.g. network) failure.
+// #24/#25 a typed GraphQL error: carries the machine-checkable extensions.code narrowed to the
+// ReasonCode union (#25) so the UI renders a ReasonBadge, never the raw message. `code` is null for
+// an untyped (e.g. network) failure.
 export class GraphqlCodeError extends Error {
   constructor(
     message: string,
-    readonly code: string | null,
+    readonly code: ReasonCode | null,
   ) {
     super(message);
     this.name = "GraphqlCodeError";
   }
 }
 
-// #24 extract the first extensions.code from a graphql-request error response, if any.
-export function extractCode(err: unknown): string | null {
+// #25 extract + narrow the first extensions.code from a graphql-request error response. Only a
+// known ReasonCode passes (an unknown code becomes null, never a rendered string).
+export function extractCode(err: unknown): ReasonCode | null {
   const response = (err as { response?: { errors?: { extensions?: { code?: unknown } }[] } }).response;
   const raw = response?.errors?.[0]?.extensions?.code;
-  return typeof raw === "string" ? raw : null;
+  if (typeof raw === "string" && isReasonCode(raw)) return raw;
+  return null;
 }
 
 // #24 run a query/mutation; on a typed-code error throw GraphqlCodeError so callers branch on the

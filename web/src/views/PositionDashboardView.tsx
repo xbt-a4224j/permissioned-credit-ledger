@@ -33,11 +33,11 @@ function mapPositions(raw: PositionsRaw): Position[] {
 }
 
 export function PositionDashboardView(props: {
-  holder?: IdentityAddr;
+  holder?: `0x${string}` | undefined;
   globalFrozen?: boolean;
   renderActions?: (position: Position) => ReactNode;
 } = {}): JSX.Element {
-  const holder = props.holder ?? DEMO_HOLDER;
+  const holder = (props.holder ?? DEMO_HOLDER) as IdentityAddr;
   const ticks = useAccrualStream();
   const { loading, error, data, reload } = useQuery<PositionsRaw, Position[], { holder: string }>(
     POSITIONS_QUERY,
