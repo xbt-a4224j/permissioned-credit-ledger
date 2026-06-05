@@ -1,4 +1,13 @@
-/* #2 Tailwind v3 entry — the three required directives. */
+/* #24 Tailwind v3 entry + enterprise base layer (Inter/system type, tabular figures for money). */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  /* #24 Inter/system stack from the design tokens; antialiased for crisp data-dense type. */
+  html {
+    font-family:
+      Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
