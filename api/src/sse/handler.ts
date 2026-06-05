@@ -86,6 +86,9 @@ export function sseHandler(req: Request, bus: EventBus): Response {
       "cache-control": "no-cache, no-transform",
       connection: "keep-alive",
       "x-accel-buffering": "no",
+      // #41 CORS: the web app (localhost:51730) connects to the API (localhost:41990); EventSource
+      // requires the response to carry Allow-Origin or the browser silently drops the connection.
+      "access-control-allow-origin": "*",
     },
   });
 }
