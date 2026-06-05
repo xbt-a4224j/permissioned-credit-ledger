@@ -3,7 +3,7 @@
 // switches/adds the target chain (Fuji 0xa869 or local anvil 0x7a69 from VITE_CHAIN_ID) and MUST be
 // called before every mutation — a user on the wrong network would broadcast an invest to a chain
 // the indexer never watches (silent divergence). No private keys touched here; the wallet signs.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Address } from "viem";
 
 // #25 the EIP-1193 provider surface we use (request only). window.ethereum, when present.
@@ -45,11 +45,16 @@ export function useWallet(): WalletApi {
   const [chainId, setChainId] = useState<number | undefined>(undefined);
   // #34 track whether the current actor came from the demo picker (no injected provider in play).
   const [isDemo, setIsDemo] = useState(false);
+  // #41 a ref mirror of isDemo so ensureChain (a stable useCallback) reads the CURRENT value, not a
+  // stale closure — critical when a wallet extension IS installed: without this, a demo invest still
+  // tries wallet_switchEthereumChain and hangs on the extension's popup.
+  const isDemoRef = useRef(false);
 
   // #34 pick a seeded identity as the actor — no provider required (the API server is the signer).
   const selectDemoIdentity = useCallback((a: Address): void => {
     setAddress(a);
     setIsDemo(true);
+    isDemoRef.current = true;
   }, []);
 
   // #25 connect: request accounts + read the current chain id. No-op (no throw) without a provider.
@@ -60,6 +65,7 @@ export function useWallet(): WalletApi {
     if (accounts[0] !== undefined) {
       setAddress(accounts[0].toLowerCase() as Address);
       setIsDemo(false);
+      isDemoRef.current = false;
     }
     const cid = (await eth.request({ method: "eth_chainId" })) as string;
     setChainId(Number(cid));
@@ -67,9 +73,12 @@ export function useWallet(): WalletApi {
 
   // #25 ensureChain: switch to the target; add it first if the wallet doesn't know it (4902).
   const ensureChain = useCallback(async (): Promise<void> => {
+    // #41 demo identity: skip the wallet entirely even if an extension is installed — the server
+    // signs, so touching window.ethereum here only risks hanging on an extension popup.
+    if (isDemoRef.current) return;
     const eth = provider();
-    // #34 demo actor (or no injected wallet): nothing to switch — the API server holds the signer
-    // and broadcasts on the configured chain, so we skip the wallet network dance entirely.
+    // #34 no injected wallet: nothing to switch — the API server holds the signer and broadcasts on
+    // the configured chain, so we skip the wallet network dance entirely.
     if (eth === undefined) return;
     try {
       await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: TARGET_CHAIN_ID }] });

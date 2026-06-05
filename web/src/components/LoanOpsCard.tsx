@@ -130,8 +130,8 @@ export function LoanOpsCard(props: { loan: Loan; reserve: ReserveState }): JSX.E
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatPill label="Principal" value={fmtUsd6(loan.principal)} tone="navy" />
         <StatPill label="APY" value={fmtApy(loan.ratePerSecond)} />
-        <StatPill label="LTV" value={fmtLtv(loan.ltvBps)} />
-        <StatPill label="DSCR" value={fmtDscr(loan.dscrBps)} />
+        <StatPill label={<abbr title="Loan-to-Value — loan amount as a % of the property's appraised value; lower is safer">LTV</abbr>} value={fmtLtv(loan.ltvBps)} />
+        <StatPill label={<abbr title="Debt-Service Coverage Ratio — net operating income ÷ annual debt payments; above 1.0x means the property covers its own payments">DSCR</abbr>} value={fmtDscr(loan.dscrBps)} />
       </div>
 
       {/* ---- Current NAV mark ---- */}
