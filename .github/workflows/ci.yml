@@ -1,6 +1,6 @@
-# #3 CI — two parallel jobs (forge, bun), green on the empty scaffold.
+# #3 CI — two parallel unit jobs (forge, bun), green on the empty scaffold.
 # These two job names are the required status checks the README badge (#30)
-# and branch protection reference. Later jobs (#13 deploy, #28 matrix) extend this.
+# and branch protection reference. #28 adds the verify-matrix e2e job (needs:[forge,bun]).
 name: CI
 
 on:
@@ -52,3 +52,77 @@ jobs:
         run: bun run typecheck
       - name: bun x vitest run
         run: bun x vitest run
+
+  # #28 verify-matrix — the 10-scenario end-to-end gate on a REAL local node + REAL Postgres.
+  # The marquee claim (eligibility gauntlet + both HALT states) is only credible if its proof runs
+  # on every change. This job spins anvil (a real local EVM node) + a real postgres:16-alpine
+  # service, deploys Deploy.s.sol (#12), and runs scripts/verify_matrix.ts (#27) — which migrates
+  # the read model, seeds the world, boots the API in-process, and drives all 10 rows through the
+  # GraphQL surface + the NAV/recon engine. The verifier's nonzero exit (any row mismatch) fails the
+  # build. Separate, heavier job gated behind the fast unit jobs. 0 mocked chain, 0 mocked DB.
+  verify-matrix:
+    runs-on: ubuntu-latest
+    needs: [forge, bun]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: ledger_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/ledger_test
+      LOCAL_RPC: http://127.0.0.1:8545
+      LOCAL_RPC_URL: http://127.0.0.1:8545
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive # forge-std + OpenZeppelin v5 (needed to build the contracts)
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable # provides forge + anvil
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+      - name: bun install --frozen-lockfile
+        run: bun install --frozen-lockfile
+      - name: forge build --sizes
+        working-directory: contracts
+        run: forge build --sizes
+      - name: Export ABIs (single source of truth)
+        run: bash scripts/copy_abis.sh
+      - name: Start local EVM node (anvil) + wait for readiness
+        run: |
+          # background the node, then a BOUNDED eth_blockNumber poll (no blind sleep as the gate).
+          anvil --host 0.0.0.0 --port 8545 --chain-id 31337 --silent &
+          for i in $(seq 1 30); do
+            if curl -fsS -X POST -H 'content-type: application/json' \
+              --data '{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber","params":[]}' \
+              http://127.0.0.1:8545 | grep -q '"result"'; then
+              echo "anvil ready after ${i}s"; exit 0
+            fi
+            sleep 1
+          done
+          echo "ERROR: anvil never answered eth_blockNumber in 30s" >&2
+          exit 1
+      - name: Deploy + seed (Deploy.s.sol -> deployments/31337.json)
+        working-directory: contracts
+        # anvil account 0 — the deterministic deploy/admin/issuer signer (stable seed addresses).
+        run: |
+          forge script script/Deploy.s.sol:Deploy \
+            --rpc-url http://127.0.0.1:8545 \
+            --broadcast \
+            --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+      - name: Run the 10-scenario matrix verifier
+        # migrates the service Postgres, boots the API in-process, drives all 10 rows; any row
+        # mismatch is a nonzero exit that fails this step (and therefore the merge gate).
+        run: bun run scripts/verify_matrix.ts
