@@ -1,4 +1,4 @@
-// Structuring module · the tranche waterfall visualizer — the money shot · #42
+// Structuring module · the tranche waterfall visualizer — the money shot · #38
 // Renders the seeded $1M pool as three stacked tranche bars (senior on top, junior at the bottom).
 // Two live sliders — annual income and annual losses — recompute the pure waterfall engine on every
 // drag. INCOME fills coupons top-down (a green fill rises through senior → mezz → junior); LOSSES

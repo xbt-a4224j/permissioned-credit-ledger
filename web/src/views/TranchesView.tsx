@@ -1,4 +1,4 @@
-// Structuring module · the Tranches view — the waterfall made visible · #42
+// Structuring module · the Tranches view — the waterfall made visible · #38
 // Frames the visualizer with the architecture story: this is the asset-specific cash-flow MODULE
 // that plugs into the same shared core (compliance, custody, reconciliation) the single-loan flow
 // uses. The platform's existing distribution is the one-tranche degenerate case; this generalizes it
@@ -38,8 +38,9 @@ export function TranchesView(): JSX.Element {
         <Card>
           <div className="text-sm font-semibold text-navy-900">How it plugs in</div>
           <p className="mt-1 text-sm text-slate-600">
-            This is an <b>asset-specific module</b> on the shared core. The single-loan flow is the one-tranche
-            case; tranching was scoped out of v1 on purpose and slots in here — pure, tested, reconciliation-gated.
+            On-chain multi-tranche securitization is <b>deliberately cut from the v1 core</b> (the token stays
+            single-class). The waterfall is <b>modeled off-chain as a pure, tested module</b> — this view shows the
+            logic and exactly where it becomes the next asset-module on the same shared core.
           </p>
         </Card>
       </div>

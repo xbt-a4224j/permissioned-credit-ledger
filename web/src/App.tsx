@@ -139,7 +139,7 @@ export function App(): JSX.Element {
           // #38 the platform operator view: NAV gate + servicing cash feed per loan.
           <LoansView />
         ) : view === "tranches" ? (
-          // #42 the structuring module: the tranche waterfall visualizer.
+          // #38 the structuring module: the tranche waterfall visualizer.
           <TranchesView />
         ) : (
           <HealthView status={recon} />

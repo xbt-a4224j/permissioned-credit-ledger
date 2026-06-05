@@ -1,4 +1,4 @@
-// Structuring module · the tranche waterfall engine — pure, deterministic, tested · #42
+// Structuring module · the tranche waterfall engine — pure, deterministic, tested · #38
 // The generalization of the platform's single-class distribution: instead of one pari-passu class,
 // a pool's cash flows are split into priority tranches. INCOME pays coupons top-down (senior first);
 // LOSSES write down principal bottom-up (junior/first-loss first). This is the same "priority of
@@ -49,7 +49,7 @@ export interface WaterfallResult {
   unpaidCoupon: number;
 }
 
-// #42 run one period: apply `loss` (bottom-up principal write-down) then distribute `income`
+// #38 run one period: apply `loss` (bottom-up principal write-down) then distribute `income`
 // (top-down coupons, equity keeps the residual). All amounts in whole USD.
 export function runWaterfall(pool: Pool, income: number, loss: number): WaterfallResult {
   const n = pool.tranches.length;
@@ -100,7 +100,7 @@ export function runWaterfall(pool: Pool, income: number, loss: number): Waterfal
   return { income: Math.max(0, income), loss: Math.max(0, loss), tranches, unpaidCoupon };
 }
 
-// #42 the seeded demo pool: a $1M CRE-credit pool sliced into three tranches. Mirrors the worked
+// #38 the seeded demo pool: a $1M CRE-credit pool sliced into three tranches. Mirrors the worked
 // example in the domain guide so the visualizer and the study material agree.
 export const DEMO_POOL: Pool = {
   name: "CRE credit pool — $1,000,000",
