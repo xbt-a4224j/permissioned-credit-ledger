@@ -112,7 +112,7 @@ describe("wallet gating", () => {
     render(<InvestAction loan={loan} wallet={noWallet} />);
     const btn = screen.getByRole("button", { name: "Invest" });
     expect(btn).toBeDisabled();
-    expect(btn).toHaveAttribute("title", "Connect a wallet to invest");
+    expect(btn).toHaveAttribute("title", "Select an identity to invest");
   });
 });
 

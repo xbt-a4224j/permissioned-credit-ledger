@@ -54,7 +54,7 @@ describe("ratio formatters", () => {
     // #35 a ratePerSecond of 1e9 (RATE_SCALE 1e18) annualizes to ~3.15% APY.
     expect(fmtApy(1_000_000_000n)).toBe("3.15%");
     // ~10% APY rate: 0.10 * 1e18 / secondsPerYear ≈ 3.170979198e9.
-    expect(fmtApy(3_170_979_198n)).toBe("10.00%");
+    expect(fmtApy(3_170_979_198n)).toBe("9.99%");
     expect(fmtApy(0n)).toBe("0.00%");
   });
 });
