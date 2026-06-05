@@ -16,7 +16,13 @@ const RATE_SCALE = 10n ** 18n;
 // #22 one accrual recompute pass: for each open position, claimable = accrued + principal *
 // ratePerSecond * elapsed / SCALE, where elapsed is wall-seconds since opened_at. Publishes one
 // `accrual` event per holder-position. Frozen loans contribute their accrued only (no advance).
-async function emitAccrualTicks(sql: Sql, manifest: Manifest, bus: EventBus, now: number): Promise<void> {
+// #41 per-position wall-clock anchor for the DISPLAY ticker. positions.opened_at is a block NUMBER
+// (the optimistic-reconcile gate in tx/reconcile.ts depends on that), so it CANNOT be used as a
+// unix timestamp here — doing so made `now - opened_at` ~56 years and inflated claimable to ~$178k,
+// burying the per-second tick. Instead the source anchors each position the first time it sees it
+// (live wall-clock); claimable then starts at the settled `accrued` (≈0) and counts up visibly. The
+// anchor lives only in memory, so a restart/reset cleanly restarts the ticker near zero.
+async function emitAccrualTicks(sql: Sql, manifest: Manifest, bus: EventBus, now: number, anchors: Map<string, number>): Promise<void> {
   // money is selected ::text so it arrives as a decimal string; BigInt it for the math (the
   // numeric parser only fires on the numeric OID, not on a ::text cast — #15 client note).
   const rows = await sql<{ loan_id: string; holder: string; principal: string; accrued: string; opened_at: bigint | null }[]>`
@@ -26,8 +32,13 @@ async function emitAccrualTicks(sql: Sql, manifest: Manifest, bus: EventBus, now
   for (const r of rows) {
     const ln = manifest.loans[r.loan_id];
     const ratePerSecond = ln !== undefined ? BigInt(ln.ratePerSecond) : 0n;
-    const openedAt = r.opened_at !== null ? Number(r.opened_at) : now;
-    const elapsed = BigInt(Math.max(0, now - openedAt));
+    const key = `${r.loan_id}:${r.holder}`;
+    let anchor = anchors.get(key);
+    if (anchor === undefined) {
+      anchor = now;
+      anchors.set(key, anchor);
+    }
+    const elapsed = BigInt(Math.max(0, now - anchor));
     const accrued = BigInt(r.accrued);
     const pending = (BigInt(r.principal) * ratePerSecond * elapsed) / RATE_SCALE;
     const claimable = accrued + pending;
@@ -53,10 +64,12 @@ export function startAccrualSource(
   nowFn: () => number = () => Math.floor(Date.now() / 1000),
 ): () => void {
   let stopped = false;
+  // #41 in-memory wall-clock anchors per position (see emitAccrualTicks); reset with the process.
+  const anchors = new Map<string, number>();
   const tick = async (): Promise<void> => {
     if (stopped) return;
     try {
-      await emitAccrualTicks(ctx.db, ctx.manifest, bus, nowFn());
+      await emitAccrualTicks(ctx.db, ctx.manifest, bus, nowFn(), anchors);
     } catch {
       // transient read error — the next tick retries.
     }
