@@ -63,7 +63,9 @@ export async function seedReference(sql: Sql, m: Manifest): Promise<void> {
     `;
   }
 
-  // reserve single-row: seed at 0 if absent (the on-chain reserve balance is read by recon
-  // via viem; this row tracks claim debits projected from InterestClaimed).
-  await sql`insert into reserve (id, balance, updated_at) values (1, 0, 0) on conflict (id) do nothing`;
+  // reserve single-row: seed to mirror the on-chain MockUSDC funding (Deploy.s.sol RESERVE_FUNDING
+  // = 1_000_000e6). The off-chain `collected cash` the recon I2 invariant (claimable <= collected)
+  // compares against must reflect the funded reserve — otherwise on-chain accrual outruns a 0 row and
+  // the engine HALTs on its own. InterestClaimed projections debit this; injectCash overrides it.
+  await sql`insert into reserve (id, balance, updated_at) values (1, 1000000000000, 0) on conflict (id) do update set balance = 1000000000000`;
 }
