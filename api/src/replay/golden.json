@@ -1,0 +1,22 @@
+{
+  "hash": "0xa161763b1a887cc68e31254e78d271f90eb1abf093e611828cb004de24f18998",
+  "canonical": {
+    "positions": [
+      {
+        "id": "1:0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+        "loan": "1",
+        "holder": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+        "principal": "100000000000",
+        "accrued": "0",
+        "openedAt": 0
+      }
+    ],
+    "reserve": {
+      "balance": "0",
+      "updatedAt": 0
+    },
+    "navByLoan": [],
+    "halted": null
+  },
+  "note": "matrix seed replay (#19): the anchor PositionOpened only, no NAV. Regenerate with scripts/src/gen_golden.ts."
+}

@@ -1,0 +1,66 @@
+# #13 deploy-to-Fuji — the LIVE-demo deploy of the on-chain layer to Avalanche Fuji.
+# Manually dispatched ONLY (never on push/PR): a testnet deploy must be deliberate. Runs
+# the exact Deploy.s.sol from #12 against $FUJI_RPC and uploads the 43113 broadcast manifest
+# so the deployed addresses are recoverable for env wiring. Fuji is the live-demo target,
+# never the correctness oracle (the 10-scenario matrix runs against a local node, #28).
+name: deploy-fuji
+
+# #13 workflow_dispatch ONLY — no push/pull_request triggers (acceptance 1).
+# `confirm` is a typed guard: the job no-ops unless the operator types "deploy".
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "deploy" to confirm a real Fuji testnet deploy'
+        required: true
+        default: ''
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      # #13 guard: abort early unless the dispatcher explicitly confirmed.
+      - name: Confirm guard
+        if: ${{ github.event.inputs.confirm != 'deploy' }}
+        run: |
+          echo "::error::input 'confirm' must equal 'deploy' to proceed; got '${{ github.event.inputs.confirm }}'"
+          exit 1
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive # forge-std + OZ submodules
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: forge build
+        run: forge build
+
+      # #13 the SAME Deploy.s.sol as the local node — only env differs (acceptance 2).
+      # --slow avoids nonce races on the latency-prone public Fuji RPC; secrets are read
+      # from the environment, never inlined.
+      - name: Deploy to Fuji
+        env:
+          FUJI_RPC: ${{ secrets.FUJI_RPC }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+        run: |
+          forge script script/Deploy.s.sol:Deploy \
+            --rpc-url "$FUJI_RPC" \
+            --private-key "$PRIVATE_KEY" \
+            --broadcast \
+            --slow
+
+      # #13 upload the Fuji (chainId 43113) broadcast manifest so the on-chain addresses
+      # are recoverable for env wiring. Path MUST be 43113 (testnet), never 43114 (mainnet).
+      - name: Upload broadcast manifest
+        if: ${{ always() && github.event.inputs.confirm == 'deploy' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuji-broadcast-43113
+          path: contracts/broadcast/Deploy.s.sol/43113/run-latest.json
+          if-no-files-found: warn

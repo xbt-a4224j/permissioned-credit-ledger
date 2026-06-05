@@ -1,0 +1,132 @@
+scalar Address
+
+scalar BigIntStr
+
+input ClaimInput {
+  loanId: ID!
+  wallet: Address!
+}
+
+scalar DateTime
+
+type Identity {
+  accredited: Boolean!
+  frozen: Boolean!
+  jurisdiction: Jurisdiction!
+  verified: Boolean!
+  wallet: Address!
+}
+
+type InvariantResult {
+  delta: BigIntStr
+  name: String!
+  offchain: BigIntStr
+  ok: Boolean!
+  onchain: BigIntStr
+}
+
+input InvestInput {
+  amount: BigIntStr!
+  loanId: ID!
+  wallet: Address!
+}
+
+enum Jurisdiction {
+  NonUS
+  US
+}
+
+type Loan {
+  dataRoomUri: String
+  dscrBps: Int!
+  id: ID!
+  ltvBps: Int!
+  principal: BigIntStr!
+  ratePerSecond: BigIntStr!
+  status: LoanStatus!
+}
+
+enum LoanStatus {
+  Active
+  Frozen
+  Matured
+}
+
+type Mutation {
+  claim(input: ClaimInput!): TxReceiptRef!
+  invest(input: InvestInput!): TxReceiptRef!
+  transfer(input: TransferInput!): TxReceiptRef!
+}
+
+type Position {
+  accrued: BigIntStr!
+  claimable: BigIntStr!
+  holder: Address!
+  id: ID!
+  lastAccrualAt: DateTime!
+  loanId: ID!
+  optimistic: Boolean!
+  principal: BigIntStr!
+}
+
+type Query {
+  loan(id: ID!): Loan
+  loans: [Loan!]!
+  position(holder: Address!, loanId: ID!): Position
+  positions(holder: Address!): [Position!]!
+  reconciliationStatus: ReconciliationStatus!
+  reserve: ReserveState!
+  txStatus(hash: String!): TxReceiptRef
+}
+
+"""
+The 5 on-chain custom errors + 2 off-chain engine HALT states, as one typed code.
+"""
+enum ReasonCode {
+  AccreditationRequired
+  InsufficientReserve
+  NavAnomaly
+  NotEligible
+  ReceiverFrozen
+  ReceiverNotVerified
+  ReconMismatch
+}
+
+enum ReconState {
+  HALTED
+  OK
+}
+
+type ReconciliationStatus {
+  checkedAt: DateTime!
+  cycle: Int!
+  haltReason: ReasonCode
+  invariants: [InvariantResult!]!
+  state: ReconState!
+}
+
+type ReserveState {
+  balance: BigIntStr!
+  totalClaimable: BigIntStr!
+}
+
+input TransferInput {
+  amount: BigIntStr!
+  from: Address!
+  loanId: ID!
+  to: Address!
+}
+
+type TxReceiptRef {
+  blockNumber: BigIntStr
+  hash: String!
+  position: Position
+  reasonCode: ReasonCode
+  state: TxState!
+}
+
+enum TxState {
+  CONFIRMED
+  PENDING
+  REVERTED
+}
