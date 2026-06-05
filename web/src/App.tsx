@@ -52,7 +52,7 @@ export function App(): JSX.Element {
   const navFrozen = halted && recon?.haltCode === "NavAnomaly";
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
@@ -124,7 +124,7 @@ export function App(): JSX.Element {
         </nav>
       </header>
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
         {view === "marketplace" ? (
           <MarketplaceView renderAction={(loan) => <InvestAction loan={loan} wallet={wallet} />} />
         ) : view === "positions" ? (
