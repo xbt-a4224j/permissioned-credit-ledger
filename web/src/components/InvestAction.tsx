@@ -16,7 +16,7 @@ export function InvestAction(props: { loan: Loan; wallet: WalletApi }): JSX.Elem
       <Button
         onClick={() => setOpen(true)}
         disabled={!connected}
-        title={connected ? undefined : "Connect a wallet to invest"}
+        title={connected ? undefined : "Select an identity to invest"}
       >
         Invest
       </Button>

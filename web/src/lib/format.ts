@@ -10,17 +10,18 @@ const USDC_SCALE = 10n ** USDC_DECIMALS;
 // #24 fmtUsd6: bigint base units -> "$1,234.560000". Splits whole/frac by integer division so no
 // float ever touches the amount; round-trips back to the same integer (asserted in the property
 // test). Negative amounts (deltas) keep their sign.
-// #24 fmtUsd6: bigint base units -> "$1,234.56". 2 decimal places for readability — the last 4
-// decimals of a 6-decimal USDC amount are sub-cent noise that makes the live ticker look frozen.
+// #24 fmtUsd6: bigint base units -> "$1,234.5678". 4 decimal places: 2 keep money readable,
+// the extra 2 make the per-second accrual ticker visibly count up every second.
+const DISPLAY_DECIMALS = 4n;
+const DISPLAY_SCALE = 10n ** DISPLAY_DECIMALS;
 export function fmtUsd6(wei: bigint): string {
   const neg = wei < 0n;
   const abs = neg ? -wei : wei;
   const whole = abs / USDC_SCALE;
   const frac = abs % USDC_SCALE;
-  // round to 2 decimal places (cents)
-  const cents = (frac * 100n) / USDC_SCALE;
+  const displayFrac = (frac * DISPLAY_SCALE) / USDC_SCALE;
   const wholeStr = whole.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return `${neg ? "-" : ""}$${wholeStr}.${cents.toString().padStart(2, "0")}`;
+  return `${neg ? "-" : ""}$${wholeStr}.${displayFrac.toString().padStart(Number(DISPLAY_DECIMALS), "0")}`;
 }
 
 // #24 the inverse used by the round-trip property test: parse a fmtUsd6 string back to bigint wei.
