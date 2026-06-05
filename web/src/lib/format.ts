@@ -35,6 +35,17 @@ export function fmtBps(bps: number): string {
   return `${(bps / 100).toFixed(2)}%`;
 }
 
+// #35 fmtApy: a per-second accrual rate (fixed-point scaled by 1e18, matching CreditToken.RATE_SCALE)
+// -> an annualized percentage. APY = ratePerSecond * secondsPerYear / 1e18. Computed in bigint basis
+// points (no float on the rate) then rendered as a percent — "Coupon / sec $1,000" was meaningless;
+// "APY 3.15%" is the number an investor actually reads.
+const SECONDS_PER_YEAR = 31_536_000n;
+const RATE_SCALE = 10n ** 18n;
+export function fmtApy(ratePerSecond: bigint): string {
+  const bpsApy = (ratePerSecond * SECONDS_PER_YEAR * 10_000n) / RATE_SCALE;
+  return fmtBps(Number(bpsApy));
+}
+
 // #24 fmtLtv: loan-to-value, stored as basis points (7500 bps = 75.0% LTV).
 export function fmtLtv(bps: number): string {
   return `${(bps / 100).toFixed(1)}%`;

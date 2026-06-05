@@ -7,8 +7,8 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import type { Loan } from "../types.ts";
 import { collateralTypeFor } from "../lib/collateral.ts";
-import { fmtDscr, fmtLtv, fmtUsd6 } from "../lib/format.ts";
-import { Badge, Card, StatPill } from "./primitives.tsx";
+import { fmtApy, fmtDscr, fmtLtv, fmtUsd6 } from "../lib/format.ts";
+import { Badge, Card, Modal, StatPill } from "./primitives.tsx";
 
 // #24 loan status -> badge tone. Frozen is the row-9 NavAnomaly surface (accrual stopped).
 const STATUS_TONE = { Active: "positive", Frozen: "halt", Matured: "neutral" } as const;
@@ -19,6 +19,8 @@ const DATA_ROOM_DOCS = ["Appraisal report", "Rent roll", "Term sheet"] as const;
 export function LoanCard(props: { loan: Loan; actionSlot?: ReactNode }): JSX.Element {
   const { loan } = props;
   const [open, setOpen] = useState(false);
+  // #37 the data-room doc the viewer clicked (opens a stub modal); null when none is open.
+  const [activeDoc, setActiveDoc] = useState<string | null>(null);
   const collateral = collateralTypeFor(loan.id);
 
   return (
@@ -38,7 +40,7 @@ export function LoanCard(props: { loan: Loan; actionSlot?: ReactNode }): JSX.Ele
 
       <div className="grid grid-cols-2 gap-4">
         <StatPill label="Principal" value={fmtUsd6(loan.principal)} tone="navy" />
-        <StatPill label="Coupon / sec" value={fmtUsd6(loan.ratePerSecond)} />
+        <StatPill label="APY" value={fmtApy(loan.ratePerSecond)} />
         <StatPill label="LTV" value={fmtLtv(loan.ltvBps)} />
         <StatPill label="DSCR" value={fmtDscr(loan.dscrBps)} />
       </div>
@@ -55,13 +57,33 @@ export function LoanCard(props: { loan: Loan; actionSlot?: ReactNode }): JSX.Ele
         {open ? (
           <ul className="mt-2 space-y-1 border-l-2 border-slate-200 pl-3 text-sm text-slate-600">
             {DATA_ROOM_DOCS.map((d) => (
-              <li key={d}>{d}</li>
+              <li key={d}>
+                <button
+                  type="button"
+                  onClick={() => setActiveDoc(d)}
+                  className="text-left text-navy-700 hover:underline"
+                >
+                  {d}
+                </button>
+              </li>
             ))}
           </ul>
         ) : null}
       </div>
 
       {props.actionSlot}
+
+      {/* #37 data-room docs are sample stubs (no file fetch in scope) — clicking opens an honest
+          explainer so the interaction completes instead of looking like a dead link. */}
+      {activeDoc !== null ? (
+        <Modal title={activeDoc} onClose={() => setActiveDoc(null)}>
+          <p className="text-sm text-slate-600">
+            Sample document for loan series #{loan.id}. In production the data room serves the gated{" "}
+            <span className="font-medium text-slate-800">{activeDoc.toLowerCase()}</span> to verified, eligible
+            investors only; here it is a stub to demonstrate the flow.
+          </p>
+        </Modal>
+      ) : null}
     </Card>
   );
 }

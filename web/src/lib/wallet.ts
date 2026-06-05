@@ -34,18 +34,33 @@ export interface WalletApi {
   chainId?: number;
   connect(): Promise<void>;
   ensureChain(): Promise<void>;
+  // #34 set the active actor to a seeded demo identity (no browser wallet needed; the server signs).
+  selectDemoIdentity(address: Address): void;
+  // #34 true when the active address came from the demo picker rather than an injected wallet.
+  isDemo: boolean;
 }
 
 export function useWallet(): WalletApi {
   const [address, setAddress] = useState<Address | undefined>(undefined);
   const [chainId, setChainId] = useState<number | undefined>(undefined);
+  // #34 track whether the current actor came from the demo picker (no injected provider in play).
+  const [isDemo, setIsDemo] = useState(false);
+
+  // #34 pick a seeded identity as the actor — no provider required (the API server is the signer).
+  const selectDemoIdentity = useCallback((a: Address): void => {
+    setAddress(a);
+    setIsDemo(true);
+  }, []);
 
   // #25 connect: request accounts + read the current chain id. No-op (no throw) without a provider.
   const connect = useCallback(async (): Promise<void> => {
     const eth = provider();
-    if (eth === undefined) throw new Error("No wallet found. Install a browser wallet to invest.");
+    if (eth === undefined) throw new Error("No browser wallet detected. Use the demo identity picker, or install Core/MetaMask.");
     const accounts = (await eth.request({ method: "eth_requestAccounts" })) as string[];
-    if (accounts[0] !== undefined) setAddress(accounts[0].toLowerCase() as Address);
+    if (accounts[0] !== undefined) {
+      setAddress(accounts[0].toLowerCase() as Address);
+      setIsDemo(false);
+    }
     const cid = (await eth.request({ method: "eth_chainId" })) as string;
     setChainId(Number(cid));
   }, []);
@@ -53,7 +68,9 @@ export function useWallet(): WalletApi {
   // #25 ensureChain: switch to the target; add it first if the wallet doesn't know it (4902).
   const ensureChain = useCallback(async (): Promise<void> => {
     const eth = provider();
-    if (eth === undefined) throw new Error("No wallet found.");
+    // #34 demo actor (or no injected wallet): nothing to switch — the API server holds the signer
+    // and broadcasts on the configured chain, so we skip the wallet network dance entirely.
+    if (eth === undefined) return;
     try {
       await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: TARGET_CHAIN_ID }] });
     } catch (err) {
@@ -84,7 +101,7 @@ export function useWallet(): WalletApi {
   }, []);
 
   // #25 build the api object omitting undefined keys (exactOptionalPropertyTypes).
-  const api: WalletApi = { connect, ensureChain };
+  const api: WalletApi = { connect, ensureChain, selectDemoIdentity, isDemo };
   if (address !== undefined) api.address = address;
   if (chainId !== undefined) api.chainId = chainId;
   return api;

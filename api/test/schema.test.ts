@@ -17,9 +17,9 @@ describe("#20 GraphQL schema contract", () => {
     expect(validateBuiltSchema()).toEqual([]);
   });
 
-  test("exactly the 3 mutation fields invest/transfer/claim", () => {
+  test("the write mutations (invest/transfer/claim) + #33 demo triggers (pushNav/injectCash)", () => {
     const mutation = schema.getMutationType() as GraphQLObjectType;
-    expect(Object.keys(mutation.getFields()).sort()).toEqual(["claim", "invest", "transfer"]);
+    expect(Object.keys(mutation.getFields()).sort()).toEqual(["claim", "injectCash", "invest", "pushNav", "transfer"]);
   });
 
   test("the 6 declared query fields (+ txStatus from #23) are present", () => {

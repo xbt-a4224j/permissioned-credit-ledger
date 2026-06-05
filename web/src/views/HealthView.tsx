@@ -7,14 +7,17 @@ import { useReconStream } from "../lib/reconStream.ts";
 import { HaltBanner } from "../components/HaltBanner.tsx";
 import { InvariantGrid } from "../components/InvariantGrid.tsx";
 import { DeltaTable } from "../components/DeltaTable.tsx";
+import { DemoControls } from "../components/DemoControls.tsx";
 import { Card, LoadingState } from "../components/primitives.tsx";
 
 export function HealthView(): JSX.Element {
   const status = useReconStream();
 
   if (status === undefined) {
+    // #36 the driver (#32) emits a cycle within ~2s of boot — this is a brief connecting state,
+    // not a permanent empty one, so it reads as "connecting" rather than a broken epoch-zero panel.
     return (
-      <Card><LoadingState label="Awaiting first reconciliation cycle…" /></Card>
+      <Card><LoadingState label="Connecting to the reconciliation engine…" /></Card>
     );
   }
 
@@ -26,6 +29,8 @@ export function HealthView(): JSX.Element {
       </div>
 
       {status.state === "HALTED" && status.haltCode !== undefined ? <HaltBanner code={status.haltCode} /> : null}
+
+      <DemoControls />
 
       <Card className="p-0">
         <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-navy-900">Invariants</div>
