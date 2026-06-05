@@ -2,10 +2,12 @@
 // The institutional frame the four views mount in. Header carries the project name + a network pill
 // (Fuji | Local from VITE_CHAIN_LABEL). The Nav switches the two #24 views (Marketplace, Positions);
 // #25 adds the invest/claim actions inside them and #26 adds the Health view + a global recon pill.
+// #38 adds the Loans ops view (4th and final view per the ≤4-view cap).
 import { useState, useEffect } from "react";
 import { MarketplaceView } from "./views/MarketplaceView.tsx";
 import { PositionDashboardView } from "./views/PositionDashboardView.tsx";
 import { HealthView } from "./views/HealthView.tsx";
+import { LoansView } from "./views/LoansView.tsx";
 import { Badge } from "./components/primitives.tsx";
 import { useWallet } from "./lib/wallet.ts";
 import { DEMO_IDENTITIES } from "./lib/identities.ts";
@@ -17,12 +19,16 @@ import { PositionActions } from "./components/PositionActions.tsx";
 // #24 the network label (Fuji testnet vs the local anvil node), read from Vite env at build.
 const CHAIN_LABEL = (import.meta.env.VITE_CHAIN_LABEL ?? "Local") as "Fuji" | "Local";
 
-// #26 the three views (Health is the 4th surface; <=4-view cap).
-type ViewKey = "marketplace" | "positions" | "health";
+// #38 four views: investor-facing (marketplace, positions) + platform-facing (loans, health).
+type ViewKey = "marketplace" | "positions" | "loans" | "health";
 
-const NAV: { key: ViewKey; label: string }[] = [
+// #38 investor tabs and platform tabs are kept separate so the separator renders between groups.
+const INVESTOR_NAV: { key: ViewKey; label: string }[] = [
   { key: "marketplace", label: "Marketplace" },
   { key: "positions", label: "My positions" },
+];
+const PLATFORM_NAV: { key: ViewKey; label: string }[] = [
+  { key: "loans", label: "Loans" },
   { key: "health", label: "Health" },
 ];
 
@@ -82,8 +88,25 @@ export function App(): JSX.Element {
             ) : null}
           </div>
         </div>
-        <nav className="mx-auto flex max-w-6xl gap-1 px-6" aria-label="Primary">
-          {NAV.map((n) => (
+        <nav className="mx-auto flex max-w-6xl items-center gap-1 px-6" aria-label="Primary">
+          {/* #38 investor tabs */}
+          {INVESTOR_NAV.map((n) => (
+            <button
+              key={n.key}
+              type="button"
+              onClick={() => setView(n.key)}
+              aria-current={view === n.key ? "page" : undefined}
+              className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
+                view === n.key ? "border-navy-700 text-navy-900" : "border-transparent text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              {n.label}
+            </button>
+          ))}
+          {/* #38 faint vertical divider between investor tabs and platform (operator) tabs */}
+          <span aria-hidden="true" className="mx-1 h-4 w-px self-center bg-slate-300" />
+          {/* #38 platform / operator tabs */}
+          {PLATFORM_NAV.map((n) => (
             <button
               key={n.key}
               type="button"
@@ -108,6 +131,9 @@ export function App(): JSX.Element {
             globalFrozen={navFrozen}
             renderActions={(position) => <PositionActions position={position} wallet={wallet} />}
           />
+        ) : view === "loans" ? (
+          // #38 the platform operator view: NAV gate + servicing cash feed per loan.
+          <LoansView />
         ) : (
           <HealthView />
         )}

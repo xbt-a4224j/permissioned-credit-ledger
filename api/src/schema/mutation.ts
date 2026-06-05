@@ -8,7 +8,7 @@ import { TxReceiptRef } from "./types/tx.ts";
 import { ReconciliationStatus } from "./types/reconciliation.ts";
 import { InvestInput, TransferInput, ClaimInput } from "./inputs.ts";
 import { resolveInvest, resolveTransfer, resolveClaim } from "../resolvers/mutations.ts";
-import { resolvePushNav, resolveInjectCash } from "../resolvers/demo.ts";
+import { resolvePushNav, resolveInjectCash, resolveSubmitNav, resolveReportCash } from "../resolvers/demo.ts";
 
 builder.mutationType({
   fields: (t) => ({
@@ -47,6 +47,26 @@ builder.mutationType({
       nullable: false,
       args: { loanId: t.arg.int({ required: true }) },
       resolve: (_root, args, ctx) => resolveInjectCash(ctx, args.loanId),
+    }),
+    // #38 Profitr ops: submit a NAV reading through the gate; gate decides accept/reject.
+    submitNav: t.field({
+      type: ReconciliationStatus,
+      nullable: false,
+      args: {
+        loanId: t.arg.int({ required: true }),
+        navBps: t.arg.int({ required: true }),
+      },
+      resolve: (_root, args, ctx) => resolveSubmitNav(ctx, args.loanId, args.navBps),
+    }),
+    // #38 Profitr ops: report collected servicing cash; sets reserve balance + runs recon.
+    reportCash: t.field({
+      type: ReconciliationStatus,
+      nullable: false,
+      args: {
+        loanId: t.arg.int({ required: true }),
+        amount: t.arg.string({ required: true }),
+      },
+      resolve: (_root, args, ctx) => resolveReportCash(ctx, args.loanId, args.amount),
     }),
   }),
 });

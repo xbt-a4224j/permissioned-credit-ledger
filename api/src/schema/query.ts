@@ -8,6 +8,7 @@ import { Position } from "./types/position.ts";
 import { ReserveState } from "./types/reserve.ts";
 import { ReconciliationStatus } from "./types/reconciliation.ts";
 import { TxReceiptRef } from "./types/tx.ts";
+import { NavReading } from "./types/navReading.ts";
 import {
   resolveLoan,
   resolveLoans,
@@ -15,6 +16,7 @@ import {
   resolvePositions,
   resolveReconciliationStatus,
   resolveReserve,
+  resolveNavReadings,
 } from "../resolvers/queries.ts";
 import { resolveTxStatus } from "../resolvers/tx-queries.ts";
 
@@ -68,6 +70,13 @@ builder.queryType({
       nullable: true,
       args: { hash: t.arg.string({ required: true }) },
       resolve: (_root, args, ctx) => resolveTxStatus(ctx, args.hash),
+    }),
+    // #38 the last 10 NAV readings for a loan (newest first), for the ops/Profitr feed panel.
+    navReadings: t.field({
+      type: [NavReading],
+      nullable: false,
+      args: { loanId: t.arg.id({ required: true }) },
+      resolve: (_root, args, ctx) => resolveNavReadings(ctx, String(args.loanId)),
     }),
   }),
 });
