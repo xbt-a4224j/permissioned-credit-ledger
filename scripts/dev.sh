@@ -49,17 +49,12 @@ mkdir -p "${DEV_DIR}"
 echo "[dev] STOP: freeing ports + clearing stale services…"
 "${SCRIPT_DIR}/stop.sh"
 
-# ── TEST (abort start on failure; --no-test skips) ─────────────────────────────
-if [ "${RUN_TESTS}" -eq 1 ]; then
-  echo "[dev] TEST: forge + bun (use --no-test to skip)…"
-  (cd "${REPO_ROOT}/contracts" && forge test -vv)
-  (cd "${REPO_ROOT}" && bun run test)
-else
-  echo "[dev] TEST: skipped (--no-test)."
-fi
-
-# ── START ──────────────────────────────────────────────────────────────────────
-echo "[dev] START: bringing up the stack on fixed ports ${PG_PORT}/${EVM_PORT}/${API_PORT}/${WEB_PORT}…"
+# ── INFRA ──────────────────────────────────────────────────────────────────────
+# #31 the off-chain test gate (bun run test) backfills the read model from the live anvil and runs
+# against the verify-gate Postgres (db.helper.ts / api/test/helpers.ts), so the chain + db + the
+# deploy/seed manifest (deployments/31337.json) must be UP *before* TEST — not after. Bring the
+# infra up first; TEST then has its dependencies; START layers the app services on top.
+echo "[dev] INFRA: postgres + anvil + deploy/seed (test + app dependencies)…"
 
 # 1. Postgres (compose project pcl, fixed host port 55432).
 echo "[dev]   postgres (docker compose -p ${COMPOSE_PROJECT})…"
@@ -81,6 +76,20 @@ wait_rpc "${LOCAL_RPC}" 60
 echo "[dev]   deploy + seed (Deploy.s.sol -> deployments/31337.json)…"
 (cd "${REPO_ROOT}/contracts" && forge script script/Deploy.s.sol:Deploy \
   --rpc-url "${LOCAL_RPC}" --broadcast --private-key "${ANVIL_KEY}" --silent)
+
+# ── TEST (abort start on failure; --no-test skips) ─────────────────────────────
+# #31 runs against the INFRA above: forge (contracts) + bun (off-chain Vitest, incl. the integration
+# suites that need the live anvil + verify-gate Postgres + the seeded manifest).
+if [ "${RUN_TESTS}" -eq 1 ]; then
+  echo "[dev] TEST: forge + bun (use --no-test to skip)…"
+  (cd "${REPO_ROOT}/contracts" && forge test -vv)
+  (cd "${REPO_ROOT}" && bun run test)
+else
+  echo "[dev] TEST: skipped (--no-test)."
+fi
+
+# ── START ──────────────────────────────────────────────────────────────────────
+echo "[dev] START: bringing up the app services on fixed ports ${API_PORT}/${WEB_PORT}…"
 
 # 4. indexer (migrates the read model on boot, backfills from the manifest, tails the live node).
 # `exec` so the recorded pid IS the bun process (kill_pidfile targets it directly, no orphan).
