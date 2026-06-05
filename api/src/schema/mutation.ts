@@ -6,9 +6,11 @@
 import { builder } from "./builder.ts";
 import { TxReceiptRef } from "./types/tx.ts";
 import { ReconciliationStatus } from "./types/reconciliation.ts";
-import { InvestInput, TransferInput, ClaimInput } from "./inputs.ts";
+import { KycResult } from "./types/kyc.ts";
+import { InvestInput, TransferInput, ClaimInput, KycInput } from "./inputs.ts";
 import { resolveInvest, resolveTransfer, resolveClaim } from "../resolvers/mutations.ts";
 import { resolvePushNav, resolveInjectCash, resolveSubmitNav, resolveReportCash } from "../resolvers/demo.ts";
+import { resolveSubmitKyc } from "../kyc/resolve.ts";
 
 builder.mutationType({
   fields: (t) => ({
@@ -67,6 +69,14 @@ builder.mutationType({
         amount: t.arg.string({ required: true }),
       },
       resolve: (_root, args, ctx) => resolveReportCash(ctx, args.loanId, args.amount),
+    }),
+    // #39 KYC onboarding: provider verdict → (on approve) issuer-signs IdentityRegistry.setClaims so
+    // the wallet's on-chain claims flip and the transfer gauntlet now passes. Metadata only, no PII.
+    submitKyc: t.field({
+      type: KycResult,
+      nullable: false,
+      args: { input: t.arg({ type: KycInput, required: true }) },
+      resolve: (_root, args, ctx) => resolveSubmitKyc(ctx, args.input),
     }),
   }),
 });

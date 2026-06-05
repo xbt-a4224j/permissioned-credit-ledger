@@ -31,3 +31,17 @@ export const ClaimInput = builder.inputType("ClaimInput", {
     wallet: t.field({ type: "Address", required: true }),
   }),
 });
+
+// #39 KYC submission — the document is METADATA ONLY (hashed client-side; bytes never leave the
+// browser). The provider verdict drives an on-chain setClaims; no PII is transmitted or stored.
+export const KycInput = builder.inputType("KycInput", {
+  fields: (t) => ({
+    wallet: t.field({ type: "Address", required: true }),
+    fullName: t.string({ required: true }),
+    jurisdiction: t.string({ required: true }), // "US" | "NonUS"
+    accredited: t.boolean({ required: true }),
+    docFilename: t.string({ required: true }),
+    docSize: t.int({ required: true }),
+    docSha256: t.string({ required: true }),
+  }),
+});

@@ -10,6 +10,8 @@ import { ReconciliationStatus } from "./types/reconciliation.ts";
 import { TxReceiptRef } from "./types/tx.ts";
 import { NavReading } from "./types/navReading.ts";
 import { ChainEvent } from "./types/chainEvent.ts";
+import { KycStatus } from "./types/kyc.ts";
+import { resolveKycStatus } from "../kyc/resolve.ts";
 import {
   resolveLoan,
   resolveLoans,
@@ -92,6 +94,13 @@ builder.queryType({
     currentBlock: t.int({
       nullable: false,
       resolve: (_root, _args, ctx) => resolveCurrentBlock(ctx),
+    }),
+    // #39 a wallet's current on-chain KYC claims (the gauntlet's source of truth) — UI badge.
+    kycStatus: t.field({
+      type: KycStatus,
+      nullable: false,
+      args: { wallet: t.arg({ type: "Address", required: true }) },
+      resolve: (_root, args, ctx) => resolveKycStatus(ctx, args.wallet),
     }),
   }),
 });

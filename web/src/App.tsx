@@ -18,6 +18,7 @@ import { useReconStream } from "./lib/reconStream.ts";
 import { InvestAction } from "./components/InvestAction.tsx";
 import { PositionActions } from "./components/PositionActions.tsx";
 import { Lifecycle } from "./components/Lifecycle.tsx";
+import { KycBadge } from "./components/KycBadge.tsx";
 
 // #24 the network label (Fuji testnet vs the local anvil node), read from Vite env at build.
 const CHAIN_LABEL = (import.meta.env.VITE_CHAIN_LABEL ?? "Local") as "Fuji" | "Local";
@@ -90,6 +91,8 @@ export function App(): JSX.Element {
             {wallet.address !== undefined ? (
               <Badge tone="positive" title="Acting wallet">{wallet.address.slice(0, 6)}…{wallet.address.slice(-4)}</Badge>
             ) : null}
+            {/* #39 KYC status + verify entry point for the acting wallet. */}
+            {wallet.address !== undefined ? <KycBadge key={wallet.address} wallet={wallet.address} /> : null}
           </div>
         </div>
         <nav className="mx-auto flex max-w-6xl items-center gap-1 px-6" aria-label="Primary">
