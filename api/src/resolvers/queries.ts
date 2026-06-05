@@ -169,11 +169,16 @@ export async function resolveChainEvents(ctx: ApiContext, limit: number): Promis
   }));
 }
 
-// #39 current block number from the indexer cursor (last fully-ingested block). Falls back to
-// 0 before the first block is processed.
+// #39 the live chain head (anvil mines a block every second with --block-time 1), so the Health
+// panel's block counter ticks in real time. Reads the node directly, not the indexer cursor (which
+// only advances on blocks that carry events). Falls back to the cursor if the RPC hiccups.
 export async function resolveCurrentBlock(ctx: ApiContext): Promise<number> {
-  const rows = await ctx.db<{ block_number: bigint }[]>`select block_number from indexer_cursor where id = 1`;
-  return Number(rows[0]?.block_number ?? 0n);
+  try {
+    return Number(await ctx.chain.publicClient.getBlockNumber());
+  } catch {
+    const rows = await ctx.db<{ block_number: bigint }[]>`select block_number from indexer_cursor where id = 1`;
+    return Number(rows[0]?.block_number ?? 0n);
+  }
 }
 
 // #38 the last 10 NAV readings for a loan, newest first. loanId is a parameterized string
