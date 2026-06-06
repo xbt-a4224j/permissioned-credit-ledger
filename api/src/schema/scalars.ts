@@ -1,15 +1,14 @@
 // Money Layer · custom GraphQL scalars (string money, address, datetime) · #20
 // The marquee landmine: a uint256 token amount over 2^53 silently corrupts as a JS number and
 // fabricates the very off-chain/on-chain drift the reconciliation engine exists to catch. So
-// BigIntStr carries every amount as a base-10 string, validated by zod on parse AND serialize —
+// BigIntStr carries every amount as a base-10 string, validated on parse AND serialize —
 // it round-trips uint256 max losslessly. Address is a 20-byte hex; DateTime is ISO-8601.
 import { GraphQLError } from "graphql";
-import { z } from "zod";
 import { builder } from "./builder.ts";
 
 // #20 a decimal-only, non-negative integer string (uint256-wide). No sign, no decimal point —
 // matches the numeric(78,0) read-model shape (#15) and the Usdc6 base unit (#14).
-const bigIntStr = z.string().regex(/^\d+$/, "BigIntStr must be a base-10 non-negative integer string");
+const bigIntStrRe = /^\d+$/;
 const UINT256_MAX = (1n << 256n) - 1n;
 
 // #20 coerce a string|number|bigint into the canonical decimal string, validating the range.
@@ -22,8 +21,7 @@ function toBigIntStr(value: unknown): string {
   } else if (typeof value === "string") s = value;
   else throw new GraphQLError("BigIntStr must be a string");
 
-  const parsed = bigIntStr.safeParse(s);
-  if (!parsed.success) throw new GraphQLError(parsed.error.issues[0]?.message ?? "invalid BigIntStr");
+  if (!bigIntStrRe.test(s)) throw new GraphQLError("BigIntStr must be a base-10 non-negative integer string");
   if (BigInt(s) > UINT256_MAX) throw new GraphQLError("BigIntStr exceeds uint256 max");
   return s;
 }
