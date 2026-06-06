@@ -6,7 +6,7 @@ import {IdentityRegistry} from "../src/IdentityRegistry.sol";
 import {ComplianceRegistry} from "../src/ComplianceRegistry.sol";
 import {IComplianceRegistry} from "../src/interfaces/IComplianceRegistry.sol";
 import {IIdentityRegistry} from "../src/interfaces/IIdentityRegistry.sol";
-import {NotEligible, ReceiverFrozen, ReceiverNotVerified, AccreditationRequired} from "../src/Errors.sol";
+import {SenderFrozen, NotEligible, ReceiverFrozen, ReceiverNotVerified, AccreditationRequired} from "../src/Errors.sol";
 
 // #7 unit coverage for the Reg-D / Reg-S gauntlet — one test per typed-revert
 // branch (rows 3-6), happy paths (rows 1,2), ordering precedence, and full
@@ -17,7 +17,7 @@ contract ComplianceRegistryTest is Test {
     ComplianceRegistry internal regS;
 
     address internal admin = address(0xA11CE);
-    address internal from = address(0x5E11E2); // generic sender (gauntlet gates on `to`)
+    address internal from = address(0x5E11E2); // generic non-frozen sender
 
     address internal accreditedUS = address(0x11);
     address internal regsNonUS = address(0x21);
@@ -59,13 +59,20 @@ contract ComplianceRegistryTest is Test {
 
     // --- typed-revert branches (exact selector with decoded arg) ---
 
-    // #7 matrix row 4: frozen receiver -> ReceiverFrozen.
+    // #7 matrix row 4: frozen SENDER -> SenderFrozen (step 0, before any receiver check).
+    // A frozen holder cannot initiate any outbound transfer.
+    function test_fromFrozen_revertsSenderFrozen() public {
+        vm.expectRevert(abi.encodeWithSelector(SenderFrozen.selector, frozen));
+        regD.checkTransfer(frozen, accreditedUS, 1e6);
+    }
+
+    // #7 frozen receiver -> ReceiverFrozen (step 1, when sender is not frozen).
     function test_toFrozen_revertsReceiverFrozen() public {
         vm.expectRevert(abi.encodeWithSelector(ReceiverFrozen.selector, frozen));
         regD.checkTransfer(from, frozen, 1e6);
     }
 
-    // #7 matrix row 5: unverified receiver -> ReceiverNotVerified.
+    // #7 matrix row 3: unverified receiver -> ReceiverNotVerified (step 2).
     function test_toUnverified_revertsReceiverNotVerified() public {
         vm.expectRevert(abi.encodeWithSelector(ReceiverNotVerified.selector, unverified));
         regD.checkTransfer(from, unverified, 1e6);
@@ -77,7 +84,7 @@ contract ComplianceRegistryTest is Test {
         regD.checkTransfer(from, usNonAccredited, 1e6);
     }
 
-    // #7 matrix row 3: a US holder under Reg-S is NotEligible (jurisdiction
+    // #7 matrix row 5: a US holder under Reg-S is NotEligible (jurisdiction
     // mismatch reuses NotEligible deliberately — not "un-accredited").
     function test_usHolder_regS_revertsNotEligible() public {
         vm.expectRevert(abi.encodeWithSelector(NotEligible.selector, accreditedUS));
@@ -86,14 +93,18 @@ contract ComplianceRegistryTest is Test {
 
     // --- ordering precedence ---
 
-    // #7 a receiver that is BOTH frozen AND (effectively) unverified-for-eligibility
-    // reverts ReceiverFrozen first — proves freeze precedes the later checks.
-    function test_ordering_frozenBeatsVerified() public {
-        // frozen account: frozen=true, verified=true. If freeze did NOT precede,
-        // it would pass verification. The frozen check must fire first.
+    // #7 sender-freeze fires before any receiver check: a frozen sender sending to
+    // a valid receiver reverts SenderFrozen (not ReceiverFrozen or anything else).
+    function test_ordering_senderFrozenBeatsReceiver() public {
+        vm.expectRevert(abi.encodeWithSelector(SenderFrozen.selector, frozen));
+        regD.checkTransfer(frozen, accreditedUS, 1e6);
+    }
+
+    // #7 receiver-freeze beats receiver-verification: a frozen+unverified receiver
+    // reverts ReceiverFrozen, not ReceiverNotVerified.
+    function test_ordering_receiverFrozenBeatsVerified() public {
         address frozenAndUnverified = address(0x61);
         vm.prank(admin);
-        // frozen=true, verified=false -> both checks would trip; freeze must win.
         id.setClaims(
             frozenAndUnverified, IIdentityRegistry.Claims(false, false, IIdentityRegistry.Jurisdiction.US, true)
         );
@@ -111,12 +122,15 @@ contract ComplianceRegistryTest is Test {
 
     // --- bool/revert parity ---
 
-    // #7 canTransfer returns false (never reverts) for every failing case, and
-    // true for the happy cases — parity asserted in a loop.
+    // #7 canTransfer returns false (never reverts) for every failing case — including
+    // a frozen sender — and true for the happy cases.
     function test_canTransfer_parityWithCheckTransfer() public view {
-        address[4] memory failing = [frozen, unverified, usNonAccredited, address(0x99)];
-        for (uint256 i = 0; i < failing.length; i++) {
-            assertFalse(regD.canTransfer(from, failing[i], 1e6));
+        // frozen as sender
+        assertFalse(regD.canTransfer(frozen, accreditedUS, 1e6));
+        // failing receivers
+        address[4] memory failingTo = [frozen, unverified, usNonAccredited, address(0x99)];
+        for (uint256 i = 0; i < failingTo.length; i++) {
+            assertFalse(regD.canTransfer(from, failingTo[i], 1e6));
         }
         // US holder fails under Reg-S.
         assertFalse(regS.canTransfer(from, accreditedUS, 1e6));

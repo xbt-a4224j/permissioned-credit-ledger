@@ -1,5 +1,5 @@
 // #25 reason-code taxonomy — exhaustive, tone-partitioned, and pinned to the #20 SDL enum.
-// Correctness is typed: REASON_META covers every ReasonCode (exhaustiveness), the 5 transfer/claim
+// Correctness is typed: REASON_META covers every ReasonCode (exhaustiveness), the 6 transfer/claim
 // codes are tone 'block' and the 2 engine HALTs are tone 'halt', isReasonCode rejects garbage, and
 // the union equals the committed GraphQL ReasonCode enum (api/schema.graphql) so a renamed code on
 // either side fails the build — the ABI/enum-drift landmine applied to the reason taxonomy.
@@ -15,13 +15,13 @@ describe("ReasonCode taxonomy", () => {
   it("REASON_META has an entry for every ReasonCode (exhaustiveness)", () => {
     for (const code of REASON_CODES) expect(REASON_META[code]).toBeDefined();
     expect(Object.keys(REASON_META).length).toBe(REASON_CODES.length);
-    expect(REASON_CODES.length).toBe(7);
+    expect(REASON_CODES.length).toBe(8);
   });
 
-  it("partitions tones: 5 block (on-chain reverts) + 2 halt (engine states)", () => {
+  it("partitions tones: 6 block (on-chain reverts) + 2 halt (engine states)", () => {
     const block = REASON_CODES.filter((c) => REASON_META[c].tone === "block");
     const halt = REASON_CODES.filter((c) => REASON_META[c].tone === "halt");
-    expect(block).toEqual(["NotEligible", "ReceiverFrozen", "ReceiverNotVerified", "AccreditationRequired", "InsufficientReserve"]);
+    expect(block).toEqual(["SenderFrozen", "NotEligible", "ReceiverFrozen", "ReceiverNotVerified", "AccreditationRequired", "InsufficientReserve"]);
     expect(halt).toEqual(["NavAnomaly", "ReconMismatch"]);
   });
 
@@ -38,7 +38,7 @@ describe("ReasonCode taxonomy", () => {
     const sdlValues = (enumType as GraphQLEnumType).getValues().map((v) => v.name).sort();
     expect(sdlValues).toEqual([...REASON_CODES].sort());
     // and the matrix reason codes are a subset (rows 3-6,8 + engine HALTs 9-10).
-    const matrix = ["NotEligible", "ReceiverFrozen", "ReceiverNotVerified", "AccreditationRequired", "InsufficientReserve", "NavAnomaly", "ReconMismatch"];
+    const matrix = ["SenderFrozen", "NotEligible", "ReceiverFrozen", "ReceiverNotVerified", "AccreditationRequired", "InsufficientReserve", "NavAnomaly", "ReconMismatch"];
     for (const m of matrix) expect(REASON_CODES).toContain(m);
   });
 });

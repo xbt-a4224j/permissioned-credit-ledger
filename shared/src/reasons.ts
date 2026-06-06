@@ -5,8 +5,9 @@
 // (#18) raise. An exhaustive switch over DomainError['kind'] with no `default` compiles,
 // proving union closure.
 
-// #14 the 5 reason codes == the 5 Solidity custom errors (matrix rows 3-6, 8).
+// #14 the 6 reason codes == the 6 Solidity custom errors (matrix rows 3-6, 8, + sender-freeze).
 export type ReasonCode =
+  | "SenderFrozen"
   | "NotEligible"
   | "ReceiverFrozen"
   | "ReceiverNotVerified"
@@ -31,6 +32,7 @@ export const SOLIDITY_ERROR_SELECTORS: Record<`0x${string}`, ReasonCode> = {};
 
 // #14 the full closed set, for exhaustiveness tests and the API error enum.
 export const REASON_CODES: readonly ReasonCode[] = [
+  "SenderFrozen",
   "NotEligible",
   "ReceiverFrozen",
   "ReceiverNotVerified",

@@ -1,23 +1,23 @@
 // Money Layer · typed GraphQL enums — reason codes + lifecycle states · #20
-// Correctness is typed, not stringly: ReasonCode is the 7-member closed set (the 5 Solidity
+// Correctness is typed, not stringly: ReasonCode is the 8-member closed set (the 6 Solidity
 // custom errors mirrored in #14 + the 2 off-chain engine HALTs, #17/#18) the API surfaces as
 // extensions.code rather than opaque RPC strings. ReconState/LoanStatus/Jurisdiction/TxState are
 // the small closed enums the read layer and tx tracker (#23) project the read models onto.
 import { REASON_CODES, ENGINE_STATES } from "@pcl/shared";
 import { builder } from "./builder.ts";
 
-// #20 the 7 reason codes (5 on-chain reverts + 2 engine HALTs). Built from the @pcl/shared
+// #20 the 8 reason codes (6 on-chain reverts + 2 engine HALTs). Built from the @pcl/shared
 // single source so a renamed code can't drift between the contract layer and the API.
 export const REASON_CODE_VALUES = [...REASON_CODES, ...ENGINE_STATES] as const;
 
-// #20 the TS union the GraphQL ReasonCode enum exposes (the 7 codes). Source types that carry a
+// #20 the TS union the GraphQL ReasonCode enum exposes (the 8 codes). Source types that carry a
 // reason code (TxReceiptRef.reasonCode, ReconciliationStatus.haltReason) use this so the resolver
 // return shape matches the enum exactly under strict typing.
 export type ReasonCodeValue = (typeof REASON_CODE_VALUES)[number];
 
 export const ReasonCode = builder.enumType("ReasonCode", {
   values: REASON_CODE_VALUES,
-  description: "The 5 on-chain custom errors + 2 off-chain engine HALT states, as one typed code.",
+  description: "The 6 on-chain custom errors + 2 off-chain engine HALT states, as one typed code.",
 });
 
 // #20 reconciliation verdict: OK keeps distribution open, HALTED blocks it (the marquee gate).

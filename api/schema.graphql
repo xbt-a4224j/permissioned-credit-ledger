@@ -80,7 +80,7 @@ type Query {
 }
 
 """
-The 5 on-chain custom errors + 2 off-chain engine HALT states, as one typed code.
+The 6 on-chain custom errors + 2 off-chain engine HALT states, as one typed code.
 """
 enum ReasonCode {
   AccreditationRequired
@@ -90,6 +90,7 @@ enum ReasonCode {
   ReceiverFrozen
   ReceiverNotVerified
   ReconMismatch
+  SenderFrozen
 }
 
 enum ReconState {
