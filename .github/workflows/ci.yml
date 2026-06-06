@@ -50,8 +50,8 @@ jobs:
         run: bun run lint
       - name: bun run typecheck
         run: bun run typecheck
-      - name: bun x vitest run
-        run: bun x vitest run
+      - name: bun run test (off-chain suites + web)
+        run: bun run test
 
   # #28 verify-matrix — the 10-scenario end-to-end gate on a REAL local node + REAL Postgres.
   # The marquee claim (eligibility gauntlet + both HALT states) is only credible if its proof runs
