@@ -1,6 +1,7 @@
 // Asset Layer · #14 schema round-trip + rejection coverage, brand nominality, union closure.
+// (#44: zod -> ArkType.) ArkType Types are called, not `.parse`d; `.assert(data)` is the
+// throw-on-invalid analogue of zod's `.parse` — it returns the morphed (branded) value or throws.
 import { describe, expect, test } from "vitest";
-import { z } from "zod";
 import {
   ChainEventSchema,
   IdentitySchema,
@@ -14,15 +15,15 @@ import { usdc6, usdc6FromString, usdc6ToString, type Usdc6 } from "../src/brand.
 import { assertNever, type DomainError } from "../src/reasons.ts";
 
 // #14 each schema round-trips a valid fixture (>=8 assertions across schemas).
-describe("zod schemas round-trip valid fixtures", () => {
+describe("arktype schemas round-trip valid fixtures", () => {
   test("Property", () => {
-    const p = PropertySchema.parse({ id: "1", addressLabel: "100 Market St", appraisedValue: "7700000000000", lienPosition: 1 });
+    const p = PropertySchema.assert({ id: "1", addressLabel: "100 Market St", appraisedValue: "7700000000000", lienPosition: 1 });
     expect(p.id).toBe("1");
     expect(p.appraisedValue).toBe(7_700_000_000_000n);
   });
 
   test("Loan (mortgage-general)", () => {
-    const l = LoanSchema.parse({
+    const l = LoanSchema.assert({
       id: 1,
       principal: "5000000000000",
       rateBps: 850,
@@ -39,7 +40,7 @@ describe("zod schemas round-trip valid fixtures", () => {
   });
 
   test("Loan accepts RESIDENTIAL (the seam)", () => {
-    const l = LoanSchema.parse({
+    const l = LoanSchema.assert({
       id: 6, principal: "850000000000", rateBps: 500, status: "PERFORMING", startedAt: 1,
       collateralType: "RESIDENTIAL", propertyId: 6, ltvBps: 8500, dscrBps: 13000,
     });
@@ -47,17 +48,17 @@ describe("zod schemas round-trip valid fixtures", () => {
   });
 
   test("Identity", () => {
-    const i = IdentitySchema.parse({ addr: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", verified: true, accredited: true, jurisdiction: "US", frozen: false });
+    const i = IdentitySchema.assert({ addr: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", verified: true, accredited: true, jurisdiction: "US", frozen: false });
     expect(i.addr).toBe("0x70997970c51812dc3a010c7d01b50e0d17dc79c8"); // lowercased
   });
 
   test("Position", () => {
-    const p = PositionSchema.parse({ id: "1:0xabc", loan: 1, holder: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", principal: "100000000000", accrued: "0", openedAt: 1 });
+    const p = PositionSchema.assert({ id: "1:0xabc", loan: 1, holder: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", principal: "100000000000", accrued: "0", openedAt: 1 });
     expect(p.accrued).toBe(0n);
   });
 
   test("ChainEvent PositionOpened", () => {
-    const e = ChainEventSchema.parse({
+    const e = ChainEventSchema.assert({
       id: { txHash: "0x" + "a".repeat(64), logIndex: 0 },
       name: "PositionOpened", blockNumber: 5n, logIndex: 0,
       token: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
@@ -68,7 +69,7 @@ describe("zod schemas round-trip valid fixtures", () => {
   });
 
   test("ChainEvent LoanStatusChanged", () => {
-    const e = ChainEventSchema.parse({
+    const e = ChainEventSchema.assert({
       id: { txHash: "0x" + "b".repeat(64), logIndex: 2 },
       name: "LoanStatusChanged", blockNumber: 3n, logIndex: 2,
       token: "0x9A676e781A523b5d0C0e43731313A708CB607508", loan: 5, status: "DEFAULT",
@@ -77,32 +78,32 @@ describe("zod schemas round-trip valid fixtures", () => {
   });
 
   test("NavReading + ReserveState", () => {
-    const n = NavReadingSchema.parse({ loan: 1, navBps: 10000, observedAt: 1_700_000_000, source: "servicer" });
+    const n = NavReadingSchema.assert({ loan: 1, navBps: 10000, observedAt: 1_700_000_000, source: "servicer" });
     expect(n.navBps).toBe(10000);
-    const r = ReserveStateSchema.parse({ balance: "1000000000000", updatedAt: 1 });
+    const r = ReserveStateSchema.assert({ balance: "1000000000000", updatedAt: 1 });
     expect(r.balance).toBe(1_000_000_000_000n);
   });
 });
 
-// #14 each schema rejects >=1 malformed fixture with a ZodError.
-describe("zod schemas reject malformed fixtures", () => {
+// #14 each schema rejects >=1 malformed fixture.
+describe("arktype schemas reject malformed fixtures", () => {
   test("Loan rejects unknown status", () => {
-    expect(() => LoanSchema.parse({ id: 1, principal: "1", rateBps: 1, status: "Active", startedAt: 1, collateralType: "CRE", propertyId: 1, ltvBps: 1, dscrBps: 1 })).toThrow(z.ZodError);
+    expect(() => LoanSchema.assert({ id: 1, principal: "1", rateBps: 1, status: "Active", startedAt: 1, collateralType: "CRE", propertyId: 1, ltvBps: 1, dscrBps: 1 })).toThrow();
   });
   test("Loan rejects unknown collateralType", () => {
-    expect(() => LoanSchema.parse({ id: 1, principal: "1", rateBps: 1, status: "PERFORMING", startedAt: 1, collateralType: "AUTO", propertyId: 1, ltvBps: 1, dscrBps: 1 })).toThrow(z.ZodError);
+    expect(() => LoanSchema.assert({ id: 1, principal: "1", rateBps: 1, status: "PERFORMING", startedAt: 1, collateralType: "AUTO", propertyId: 1, ltvBps: 1, dscrBps: 1 })).toThrow();
   });
   test("Identity rejects bad address", () => {
-    expect(() => IdentitySchema.parse({ addr: "0xnothex", verified: true, accredited: true, jurisdiction: "US", frozen: false })).toThrow();
+    expect(() => IdentitySchema.assert({ addr: "0xnothex", verified: true, accredited: true, jurisdiction: "US", frozen: false })).toThrow();
   });
   test("Usdc6 rejects a decimal string (the dollars-vs-base-units landmine)", () => {
-    expect(() => ReserveStateSchema.parse({ balance: "1000.50", updatedAt: 1 })).toThrow(z.ZodError);
+    expect(() => ReserveStateSchema.assert({ balance: "1000.50", updatedAt: 1 })).toThrow();
   });
   test("NavReading rejects out-of-range bps", () => {
-    expect(() => NavReadingSchema.parse({ loan: 1, navBps: 2_000_000, observedAt: 1, source: "x" })).toThrow(z.ZodError);
+    expect(() => NavReadingSchema.assert({ loan: 1, navBps: 2_000_000, observedAt: 1, source: "x" })).toThrow();
   });
   test("ChainEvent rejects unknown event name", () => {
-    expect(() => ChainEventSchema.parse({ id: { txHash: "0x" + "a".repeat(64), logIndex: 0 }, name: "Frobnicate", blockNumber: 1n, logIndex: 0, token: "0x" + "1".repeat(40) })).toThrow(z.ZodError);
+    expect(() => ChainEventSchema.assert({ id: { txHash: "0x" + "a".repeat(64), logIndex: 0 }, name: "Frobnicate", blockNumber: 1n, logIndex: 0, token: "0x" + "1".repeat(40) })).toThrow();
   });
 });
 
