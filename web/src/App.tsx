@@ -96,6 +96,8 @@ export function App(): JSX.Element {
           </div>
         </div>
         <nav className="mx-auto flex max-w-6xl items-center gap-1 px-6" aria-label="Primary">
+          {/* #42 group label — make the two-sided platform (investor ↔ operator) split legible. */}
+          <span className="mr-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Investor</span>
           {/* #38 investor tabs */}
           {INVESTOR_NAV.map((n) => (
             <button
@@ -111,7 +113,9 @@ export function App(): JSX.Element {
             </button>
           ))}
           {/* #38 faint vertical divider between investor tabs and platform (operator) tabs */}
-          <span aria-hidden="true" className="mx-1 h-4 w-px self-center bg-slate-300" />
+          <span aria-hidden="true" className="mx-2 h-4 w-px self-center bg-slate-300" />
+          {/* #42 group label for the platform/operator side. */}
+          <span className="mr-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Platform</span>
           {/* #38 platform / operator tabs */}
           {PLATFORM_NAV.map((n) => (
             <button
