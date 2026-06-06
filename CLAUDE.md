@@ -18,19 +18,19 @@ The hard, interesting part of tokenized credit is **not** minting a token. It's 
 An **ERC-3643-lite** permissioned security token on the Avalanche **Fuji C-Chain** testnet (local anvil/avalanche node for deterministic tests + CI).
 - `IdentityRegistry` — who is verified, their jurisdiction (US-accredited / Reg-S non-US), frozen flag.
 - `ComplianceRegistry` — transfer-eligibility rules (accreditation, Reg-D/Reg-S gating, freeze).
-- `CreditToken` — the security token itself; every transfer routes through compliance via the OpenZeppelin v5 **`_update`** hook. Transfers that fail compliance revert with a **typed custom error** (`NotEligible`, `ReceiverFrozen`, `ReceiverNotVerified`, `AccreditationRequired`).
+- `CreditToken` — the security token itself; every transfer routes through compliance via the OpenZeppelin v5 **`_update`** hook. Transfers that fail compliance revert with a **typed custom error** (`SenderFrozen`, `ReceiverFrozen`, `ReceiverNotVerified`, `NotEligible`, `AccreditationRequired`). Freeze = complete lockout: a frozen holder cannot send or receive tokens.
 - Single loan per token (no tranching).
 
 ### L2 — Accrual + NAV feed
 On-chain interest **accrual** against each position plus a **NAV feed** that marks the loan.
 - Accrual accumulates claimable interest per holder over time; `claim()` pays from a **mock reserve**, debits the reserve, and resets accrued. Underfunded reserve reverts `InsufficientReserve`.
-- The NAV feed pushes marks **bounded** by an acceptance gate. An out-of-bounds mark (e.g. a +40% jump) does **not** silently update — it trips `NavAnomaly` and **freezes accrual**. The bound is the validation gate, on-chain and replayable.
+- The NAV feed pushes marks **bounded** by an acceptance gate (off-chain, in the L3 engine). An out-of-bounds mark (e.g. a +40% jump) does **not** silently update — it trips `NavAnomaly`, calls `freezeAccrual()` on-chain, and halts distribution. The bound constant is shared between the on-chain freeze hook and the off-chain gate so both sides always agree.
 
 ### L3 — Reconciliation engine + replay (the marquee)
 Off-chain TypeScript (Bun). A **viem indexer** reads `CreditToken` events from Fuji (and the local node) into Postgres read models. The **reconciliation engine** then:
 1. **NAV validation gate** — independently re-checks every NAV mark against bounds before it's allowed to drive distribution.
 2. **Deterministic event-replay** — folds the ordered event log (`chainEvents` + `nav`) into expected per-holder claimable balances and a single `stateHash`.
-3. **Reconciliation invariants** (4) — recomputed claimable must equal on-chain claimable; injected servicing cash must equal aggregate claimable; accrual must be frozen whenever NAV is anomalous; reserve debits must conservation-match claims.
+3. **Reconciliation invariants** (4) — I1 `SupplyBacked`: on-chain total supply equals off-chain backed principal; I2 `ClaimableCovered`: aggregate claimable ≤ off-chain collected cash (solvency gate); I3 `NavInBounds`: no active loan is under a `NavAnomaly` halt; I4 `IdentityValid`: every current holder is verified and not frozen.
 4. **Halt** — any violation emits a typed `ReconMismatch` / `NavAnomaly` and stops distribution. No best-effort, no partial pay.
 
 The replay is **pure and order-independent over interleavings**: the canonical ordering is derived from `(blockNumber, logIndex)`, so any arrival order of the same events reduces to the same `stateHash`. That equality is the headline property test.
@@ -41,7 +41,7 @@ The replay is **pure and order-independent over interleavings**: the canonical o
 |---|---|
 | Loans | 6 |
 | Identities | 6 — 2 US-accredited, 2 Reg-S non-US, 1 unverified, 1 frozen |
-| Reason codes | 5 (`NotEligible`, `ReceiverFrozen`, `ReceiverNotVerified`, `AccreditationRequired`, `InsufficientReserve`) + 2 engine states (`NavAnomaly`, `ReconMismatch`) |
+| Reason codes | 6 (`SenderFrozen`, `NotEligible`, `ReceiverFrozen`, `ReceiverNotVerified`, `AccreditationRequired`, `InsufficientReserve`) + 2 engine states (`NavAnomaly`, `ReconMismatch`) |
 | Reconciliation invariants | 4 |
 | React app | 1 app, ≤ 4 views |
 | Scenario matrix | 10 scenarios + 1 replay property |
@@ -54,14 +54,14 @@ The integration suite (`scripts/verify_matrix.ts`) runs every row against the **
 |---|---|---|
 | 1 | Accredited-US invest | OK — `PositionOpened`, accrual starts |
 | 2 | Reg-S non-US invest | OK |
-| 3 | Unverified invest | revert `NotEligible` |
-| 4 | Transfer to frozen receiver | revert `ReceiverFrozen` |
+| 3 | Unverified invest | revert `ReceiverNotVerified` |
+| 4 | Frozen holder initiates transfer | revert `SenderFrozen` |
 | 5 | Transfer to unverified receiver | revert `ReceiverNotVerified` |
 | 6 | US non-accredited holds Reg-D token | revert `AccreditationRequired` |
 | 7 | Claim, reserve funded | OK — `InterestClaimed`, reserve debited, accrued reset |
 | 8 | Claim, reserve underfunded | revert `InsufficientReserve` |
 | 9 | NAV feed pushes +40% out-of-bounds | HALT `NavAnomaly`, accrual frozen |
-| 10 | Inject cash ≠ claimable | HALT distribution `ReconMismatch` |
+| 10 | Inject servicing cash below claimable | HALT distribution `ReconMismatch` |
 | P | Property: `replay(chainEvents + nav)` over any interleaving | identical `stateHash` |
 
 ## Stack
@@ -105,7 +105,7 @@ Each block ships its own tests **inside the ticket**. Interfaces/ABIs land befor
 3. **CreditToken + permissioned transfers.** Security token wiring compliance through the `_update` hook; mint/invest path. *Delivers:* scenarios 1–6 green at the contract level; `PositionOpened` emitted.
 4. **Accrual + claim + reserve.** Per-position accrual, `claim()` against the mock reserve, accrued reset, `InsufficientReserve`. *Delivers:* scenarios 7–8; forge **invariant** test on reserve/claim conservation.
 5. **NAV feed + bounds gate.** On-chain NAV marks with the acceptance bound; out-of-bounds trips `NavAnomaly` and freezes accrual. *Delivers:* scenario 9; bound fuzz test.
-6. **Indexer + read models.** viem reader → Postgres, **idempotent** by `(blockNumber, logIndex)`, reorg-safe, resumable from a stored cursor. *Delivers:* event tables populated deterministically from the local node; idempotency test (double-ingest is a no-op).
+6. **Indexer + read models.** viem reader → Postgres, **idempotent** by `EventId = txHash:logIndex`, reorg-safe, resumable from a stored cursor. *Delivers:* event tables populated deterministically from the local node; idempotency test (double-ingest is a no-op).
 7. **Reconciliation engine + replay.** Pure folder over ordered events → per-holder claimable + `stateHash`; the 4 invariants; halt on violation. *Delivers:* scenario 10 (`ReconMismatch`) and the **fast-check property**: any interleaving → identical `stateHash`.
 8. **API + Web + matrix.** Pothos/yoga GraphQL + SSE; React app (≤ 4 views) with wallet connect and invest/claim against Fuji; `scripts/verify_matrix.ts` runs all 10 scenarios + property against the local node. *Delivers:* full 10-scenario matrix green end to end; UI surfaces halts with typed reason codes.
 
@@ -132,7 +132,7 @@ Documented in `docs/architecture/DESIGN.md` so the boundary is explicit, not acc
 
 - **Fuji RPC flakiness.** Public Fuji RPCs rate-limit, time out, and lag. *Never* assert correctness against Fuji — the 10-scenario matrix and all property/invariant tests run against the **local node**. Treat Fuji as the live-demo target only: retry with backoff, pin a confirmations depth, and make the indexer resumable so a dropped connection is recoverable, not corrupting.
 - **ABI drift.** The indexer, API, and web all decode `CreditToken` events; if the ABI diverges from the deployed bytecode, decoding silently mis-parses. Generate types from a **single source-of-truth ABI** emitted by the Foundry build, and fail CI on any ABI/typing mismatch. Custom-error selectors must stay in sync too — a stale selector turns a typed revert into an opaque one.
-- **Indexer idempotency.** Re-ingesting the same block (reorg, restart, replay) must be a **no-op**. Key every event row by `(blockNumber, logIndex)`; upsert, don't insert. A non-idempotent indexer double-counts accrual and silently breaks reconciliation — the bug then *looks* like a `ReconMismatch` in the engine, masking its true cause.
+- **Indexer idempotency.** Re-ingesting the same block (reorg, restart, replay) must be a **no-op**. Key every event row by `EventId = txHash:logIndex`; upsert, don't insert. (Replay ordering uses `(blockNumber, logIndex)` — a separate concern from the dedup key.) A non-idempotent indexer double-counts accrual and silently breaks reconciliation — the bug then *looks* like a `ReconMismatch` in the engine, masking its true cause.
 - **Reentrancy on `claim`.** `claim()` moves reserve value and resets accrued — classic reentrancy surface. Apply **checks-effects-interactions**: reset accrued and debit the reserve **before** any external transfer, and add an invariant test asserting total claimed never exceeds total accrued-minus-reserve, even under adversarial call ordering.
 - **NAV bounds.** The bound is load-bearing — too loose and a bad mark slips through to drive distribution; too tight and legitimate marks trip a false `NavAnomaly`. The bound must be enforced **identically** on-chain (L2 gate) and off-chain (L3 validation gate); if they disagree, the chain and the engine reconcile to different claimable and you get a spurious halt. Pin the bound as a single shared constant and test both sides against the same fixtures.
 

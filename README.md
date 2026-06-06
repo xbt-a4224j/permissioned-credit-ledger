@@ -86,14 +86,14 @@ bun run scripts/verify_matrix.ts     # expect: 10/10 scenarios passed.
 |---|---|---|
 | 1 | accredited-US invest | OK — `PositionOpened` |
 | 2 | Reg-S non-US invest | OK |
-| 3 | unverified invest | revert `NotEligible` |
-| 4 | transfer to frozen receiver | revert `ReceiverFrozen` |
+| 3 | unverified invest | revert `ReceiverNotVerified` |
+| 4 | frozen holder initiates transfer | revert `SenderFrozen` |
 | 5 | transfer to unverified receiver | revert `ReceiverNotVerified` |
 | 6 | US non-accredited holds Reg-D token | revert `AccreditationRequired` |
 | 7 | claim, reserve funded | OK — `InterestClaimed`, reserve debited |
 | 8 | claim, reserve underfunded | revert `InsufficientReserve` |
 | 9 | NAV feed +40% out-of-bounds | HALT `NavAnomaly`, accrual frozen |
-| 10 | inject cash ≠ claimable | HALT distribution `ReconMismatch` |
+| 10 | inject servicing cash below claimable | HALT distribution `ReconMismatch` |
 
 Beyond the matrix, the app also demonstrates **KYC onboarding** (an unverified wallet → upload + verdict → on-chain claim → invest now succeeds) and a **tranche-waterfall** structuring module. The click-by-click walkthrough is in [`docs/DEMO.md`](docs/DEMO.md); the platform-first narration is in [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md).
 

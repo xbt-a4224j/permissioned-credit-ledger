@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IComplianceRegistry} from "./interfaces/IComplianceRegistry.sol";
 import {IIdentityRegistry} from "./interfaces/IIdentityRegistry.sol";
-import {NotEligible, ReceiverFrozen, ReceiverNotVerified, AccreditationRequired} from "./Errors.sol";
+import {SenderFrozen, NotEligible, ReceiverFrozen, ReceiverNotVerified, AccreditationRequired} from "./Errors.sol";
 
 // #7 ComplianceRegistry — the modular Reg-D / Reg-S rule engine that turns raw
 // identity claims into a transfer decision and produces the typed revert per
@@ -27,22 +27,24 @@ contract ComplianceRegistry is AccessControl, IComplianceRegistry {
     }
 
     // #7 the reverting gauntlet — fixed order, reverts the FIRST failing typed
-    // error. Order is observable (matrix rows 3-6): freeze beats verification
-    // beats eligibility beats the offering-specific rule.
-    // `from`/`amount` are named for module extensibility; the seeded ruleset
-    // only gates on `to`.
+    // error. Order is observable (matrix rows 3-6): sender-freeze beats
+    // receiver-freeze beats verification beats eligibility beats the
+    // offering-specific rule. A frozen holder cannot send OR receive tokens.
     function checkTransfer(address from, address to, uint256 amount) public view {
-        // #7 gauntlet step 1: frozen receiver — matrix row 4.
+        // #7 gauntlet step 0: frozen sender — matrix row 4. A frozen holder
+        // cannot initiate any outbound transfer regardless of the receiver.
+        if (identity.isFrozen(from)) revert SenderFrozen(from);
+        // #7 gauntlet step 1: frozen receiver.
         if (identity.isFrozen(to)) revert ReceiverFrozen(to);
-        // #7 gauntlet step 2: unverified receiver — matrix row 5.
+        // #7 gauntlet step 2: unverified receiver — matrix row 3.
         if (!identity.isVerified(to)) revert ReceiverNotVerified(to);
-        // #7 gauntlet step 3: not eligible (verified && !frozen) — matrix row 3.
+        // #7 gauntlet step 3: not eligible (verified && !frozen) — Reg-S catch-all.
         if (!identity.isEligible(to)) revert NotEligible(to);
         // #7 gauntlet step 4a: Reg-D requires accreditation — matrix row 6.
         if (offering == Offering.RegD && !identity.isAccredited(to)) {
             revert AccreditationRequired(to);
         }
-        // #7 gauntlet step 4b: Reg-S requires non-US jurisdiction — matrix row 2.
+        // #7 gauntlet step 4b: Reg-S requires non-US jurisdiction — matrix row 5.
         // A US holder under Reg-S is "not eligible", not "un-accredited".
         if (offering == Offering.RegS && identity.jurisdictionOf(to) != IIdentityRegistry.Jurisdiction.NonUS) {
             revert NotEligible(to);
@@ -52,6 +54,7 @@ contract ComplianceRegistry is AccessControl, IComplianceRegistry {
     // #7 non-reverting parity wrapper for read-model / preflight (#21). Mirrors
     // the same predicates without reverting so the API can show eligibility.
     function canTransfer(address from, address to, uint256 amount) external view returns (bool) {
+        if (identity.isFrozen(from)) return false;
         if (identity.isFrozen(to)) return false;
         if (!identity.isVerified(to)) return false;
         if (!identity.isEligible(to)) return false;

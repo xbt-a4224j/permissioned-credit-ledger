@@ -66,22 +66,21 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     row: 3,
-    name: "Unverified invest reverts ReceiverNotVerified (ineligible to invest)",
+    name: "Unverified invest reverts ReceiverNotVerified",
     actor: "UNVERIFIED",
-    // CLAUDE.md row 3 labels this "NotEligible". The deployed gauntlet (ComplianceRegistry, #7)
-    // runs freeze -> VERIFIED -> eligible in fixed order, so an UNREGISTERED (unverified) receiver
-    // trips the verified check FIRST and reverts the more-specific ReceiverNotVerified — the true,
-    // typed on-chain outcome (the committed resolver test asserts exactly this). The canonical
-    // NotEligible code is asserted by row 5 (the offering-mismatch branch).
+    // Gauntlet order: sender-freeze (step 0) -> receiver-freeze (step 1) -> VERIFIED (step 2)
+    // -> eligible -> offering-rule. An unregistered (unverified) receiver trips step 2 first.
     expect: { kind: "revert", reason: "ReceiverNotVerified" },
     run: (ctx) => ctx.invest("1", ACTORS.UNVERIFIED, "1000"),
   },
   {
     row: 4,
-    name: "Transfer to a frozen receiver reverts ReceiverFrozen",
+    name: "Frozen holder initiates transfer reverts SenderFrozen",
     actor: "FROZEN",
-    expect: { kind: "revert", reason: "ReceiverFrozen" },
-    run: (ctx) => ctx.transfer("1", ACTORS.ACCREDITED_US_1, ACTORS.FROZEN, "1000"),
+    // Gauntlet step 0: a frozen SENDER cannot initiate any outbound transfer regardless of
+    // the receiver. Freeze = complete lockout (can't send AND can't receive).
+    expect: { kind: "revert", reason: "SenderFrozen" },
+    run: (ctx) => ctx.transfer("1", ACTORS.FROZEN, ACTORS.ACCREDITED_US_1, "1000"),
   },
   {
     row: 5,
