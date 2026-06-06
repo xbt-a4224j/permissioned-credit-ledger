@@ -1,0 +1,62 @@
+<svg viewBox="0 0 980 430" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#333"/></marker>
+    <marker id="ag" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#15803d"/></marker>
+    <marker id="ar" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#c0392b"/></marker>
+  </defs>
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="32" y="38" font-size="20" font-weight="700" fill="#1a1d24">KYC onboarding — verdict becomes an on-chain claim the gauntlet enforces</text>
+  <text x="32" y="58" font-size="12.5" fill="#5a6472">Build-vs-buy: the provider is mocked behind an interface (swap for Persona / Parallel Markets). The part worth building is the claim → gauntlet.</text>
+
+  <!-- applicant -->
+  <rect x="32" y="86" width="180" height="70" rx="9" fill="#eef4ff" stroke="#2563eb" stroke-width="1.6"/>
+  <text x="122" y="112" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1a1d24">Applicant</text>
+  <text x="122" y="131" text-anchor="middle" font-size="10.5" fill="#5a6472">name · jurisdiction ·</text>
+  <text x="122" y="145" text-anchor="middle" font-size="10.5" fill="#5a6472">accredited · document</text>
+
+  <!-- browser hash -->
+  <line x1="212" y1="121" x2="262" y2="121" stroke="#333" stroke-width="1.6" marker-end="url(#a)"/>
+  <rect x="262" y="86" width="190" height="70" rx="9" fill="#eef4ff" stroke="#2563eb" stroke-width="1.6"/>
+  <text x="357" y="110" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1a1d24">Browser hashes the doc</text>
+  <text x="357" y="128" text-anchor="middle" font-size="10" fill="#5a6472">SHA-256, client-side</text>
+  <text x="357" y="143" text-anchor="middle" font-size="10" font-weight="600" fill="#15803d">only {filename, size, sha256} sent</text>
+
+  <!-- provider -->
+  <line x1="452" y1="121" x2="502" y2="121" stroke="#333" stroke-width="1.6" marker-end="url(#a)"/>
+  <rect x="502" y="80" width="220" height="82" rx="10" fill="#ecf7ef" stroke="#15803d" stroke-width="2.4"/>
+  <text x="612" y="104" text-anchor="middle" font-size="13" font-weight="700" fill="#1a1d24">KycProvider (interface)</text>
+  <text x="612" y="122" text-anchor="middle" font-size="10.5" fill="#5a6472">MockKycProvider — the demo impl</text>
+  <text x="612" y="138" text-anchor="middle" font-size="10" fill="#5a6472">prod: Persona / Parallel Markets</text>
+  <text x="612" y="153" text-anchor="middle" font-size="10" font-weight="600" fill="#15803d">→ APPROVED / REJECTED verdict</text>
+
+  <!-- no PII note -->
+  <text x="357" y="186" text-anchor="middle" font-size="10.5" font-weight="600" fill="#15803d">no PII or document bytes ever stored — the provider holds them; we keep the attestation hash</text>
+
+  <!-- approve -> setClaims -->
+  <line x1="612" y1="162" x2="612" y2="232" stroke="#15803d" stroke-width="2" marker-end="url(#ag)"/>
+  <text x="700" y="200" text-anchor="middle" font-size="10.5" fill="#15803d">on APPROVE, issuer signs ↓</text>
+
+  <!-- on-chain band -->
+  <rect x="32" y="244" width="916" height="150" rx="12" fill="#fdf5f4" stroke="#c0392b" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <text x="48" y="268" font-size="11" font-weight="700" fill="#c0392b" letter-spacing="0.06em">ON-CHAIN — Avalanche (local node / Fuji)</text>
+
+  <rect x="512" y="282" width="220" height="64" rx="8" fill="#fbe9e7" stroke="#c0392b" stroke-width="2"/>
+  <text x="622" y="306" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1a1d24">IdentityRegistry.setClaims</text>
+  <text x="622" y="324" text-anchor="middle" font-size="10" fill="#5a6472">verified · accredited ·</text>
+  <text x="622" y="338" text-anchor="middle" font-size="10" fill="#5a6472">jurisdiction · frozen</text>
+
+  <!-- claims -> gauntlet -->
+  <line x1="512" y1="314" x2="468" y2="314" stroke="#333" stroke-width="1.6" marker-end="url(#a)"/>
+  <rect x="280" y="282" width="188" height="64" rx="8" fill="#fbe9e7" stroke="#c0392b" stroke-width="2"/>
+  <text x="374" y="306" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1a1d24">ComplianceRegistry</text>
+  <text x="374" y="324" text-anchor="middle" font-size="10" fill="#5a6472">the transfer gauntlet</text>
+  <text x="374" y="338" text-anchor="middle" font-size="10" fill="#5a6472">reads the claims</text>
+
+  <!-- gauntlet -> invest ok -->
+  <line x1="280" y1="314" x2="236" y2="314" stroke="#15803d" stroke-width="1.8" marker-end="url(#ag)"/>
+  <rect x="48" y="282" width="170" height="64" rx="8" fill="#ecf7ef" stroke="#15803d" stroke-width="2"/>
+  <text x="133" y="308" text-anchor="middle" font-size="12.5" font-weight="700" fill="#15803d">Invest succeeds ✓</text>
+  <text x="133" y="327" text-anchor="middle" font-size="10" fill="#5a6472">was NotEligible before KYC</text>
+
+  <text x="490" y="416" text-anchor="middle" font-size="11.5" fill="#5a6472">Compliance-as-code: a non-compliant holder is impossible by construction, not merely disallowed by policy.</text>
+</svg>

@@ -10,13 +10,31 @@ A deterministic, permissioned tokenized-credit ledger whose marquee is an off-ch
 
 A first-lien mortgage (CRE-first, residential-ready) is tokenized as an **ERC-3643-lite permissioned security token** on Avalanche: an `IdentityRegistry` + `ComplianceRegistry` gate every transfer through an on-chain gauntlet, and interest accrues per holder with a claim path backed by a reserve. A **viem indexer** streams `CreditToken` events into **Postgres** read models that feed a **Pothos** code-first GraphQL API (with SSE live feeds) and a **React + Vite** app. The keystone is the **reconciliation engine**: a deterministic event-replay recomputes ledger state and four invariants compare off-chain servicing cash against on-chain claimable — any mismatch raises a typed `NavAnomaly` / `ReconMismatch` and **fails closed**, stopping distribution rather than paying out value that isn't there. Determinism is the property that makes the halt trustworthy: the same events in any interleaving produce an identical `stateHash`.
 
-See [`docs/architecture/DESIGN.md`](docs/architecture/DESIGN.md) for the decisions, the recon-HALT philosophy, and what was deliberately cut.
+Read as a **platform**: a *shared compliant-securities core* (KYC/identity · compliance · custody · indexer · distribution · reconciliation) with *pluggable asset modules* on top (CRE single-loan, residential, a tranche-waterfall module, a borrow-against keystone). Onboarding runs through a **KYC** flow whose provider is mocked behind an interface — the verdict becomes an on-chain claim the gauntlet enforces. See [`docs/architecture/INTEGRATION.md`](docs/architecture/INTEGRATION.md) for the shared-core-vs-module map and the build-vs-buy decisions, and [`docs/architecture/DESIGN.md`](docs/architecture/DESIGN.md) for the recon-HALT philosophy and what was deliberately cut.
 
 ## Architecture
 
 Who does what in the business, and which component serves it — a borrower's loan flows through an off-chain servicer into a permissioned token, reconciled against the servicer's books before any payout reaches investors:
 
 ![business architecture — actors mapped to system components](docs/architecture/05-business-architecture.svg)
+
+The runtime topology — a permissioned token on Avalanche, a viem indexer, the reconciliation engine, and a typed GraphQL API behind the app:
+
+![component topology](docs/architecture/01-topology.svg)
+
+## Compliance & onboarding
+
+Compliance is the moat, and it's enforced **by construction**. A new investor onboards through **KYC**: the document is hashed in the browser (only `{filename, size, sha256}` is sent — no PII or bytes are stored), a provider — *mocked behind an interface; swap it for Persona / Parallel Markets* — returns a verdict, and on approval the issuer signs `IdentityRegistry.setClaims`. From that point the wallet's claims drive every transfer.
+
+![KYC onboarding — verdict becomes an on-chain claim](docs/architecture/06-kyc-onboarding.svg)
+
+Every transfer then routes through the on-chain **gauntlet** — frozen → verified → eligible → offering gate (Reg D accreditation / Reg S jurisdiction) — reverting the *first* failing typed error. These are machine-checkable reason codes, never stringly-typed failures:
+
+![transfer lifecycle — the gauntlet](docs/architecture/03-transfer-lifecycle.svg)
+
+The trust boundaries that make it hold — who may hold what, and where each check lives:
+
+![eligibility & trust boundaries](docs/architecture/02-eligibility-boundaries.svg)
 
 ## Quick start
 
@@ -77,7 +95,7 @@ bun run scripts/verify_matrix.ts     # expect: 10/10 scenarios passed.
 | 9 | NAV feed +40% out-of-bounds | HALT `NavAnomaly`, accrual frozen |
 | 10 | inject cash ≠ claimable | HALT distribution `ReconMismatch` |
 
-The click-by-click live walkthrough — every feature reachable from the running app — is in [`docs/DEMO.md`](docs/DEMO.md).
+Beyond the matrix, the app also demonstrates **KYC onboarding** (an unverified wallet → upload + verdict → on-chain claim → invest now succeeds) and a **tranche-waterfall** structuring module. The click-by-click walkthrough is in [`docs/DEMO.md`](docs/DEMO.md); the product walkthrough is in [`docs/DEMO.md`](docs/DEMO.md).
 
 ## Layout
 
@@ -94,8 +112,10 @@ permissioned-credit-ledger/
 │   └── migrations/         # raw SQL migrations (no ORM)
 ├── scripts/                # verify_matrix.ts, dev.sh, demo_reset.ts
 └── docs/
-    ├── DEMO.md             # the live walkthrough
-    └── architecture/       # DESIGN.md + the 4 architecture SVGs
+    ├── DEMO.md             # the click-by-click live walkthrough
+    ├── DEMO.md      # the product walkthrough (the story)
+    ├── phase-2-plan.md     # round-2 demo modules (KYC, tranches, borrow-against)
+    └── architecture/       # DESIGN.md · INTEGRATION.md · 6 architecture SVGs (01–06)
 ```
 
 ## Test suite
