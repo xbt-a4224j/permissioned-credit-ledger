@@ -113,9 +113,9 @@ Each block ships its own tests **inside the ticket**. Interfaces/ABIs land befor
 
 Documented in `docs/architecture/DESIGN.md` so the boundary is explicit, not accidental:
 - **Real fiat ramp + real USDC** — reserve is mocked.
-- **Account-abstraction onboarding** — identities are seeded, not self-registered.
+- **Account-abstraction onboarding** — identities are seeded; a **KYC onboarding flow** (mock provider → on-chain claim) is added in Phase 2 (#39).
 - **Secondary market / ATS matching** — no order book.
-- **Multi-tranche securitization** — single-loan, single-class only.
+- **On-chain multi-tranche securitization** — the token stays single-class; the waterfall is **modeled off-chain** (pure + tested) and visualized as the documented next module (Phase 2 #38), not enforced on-chain.
 - **Auth / login** — out of scope entirely; no auth layer anywhere.
 
 ## Senior signals to hit
@@ -160,3 +160,15 @@ A position is a first-lien **mortgage** on a `Property`, not an abstract credit 
 | Web (Vite) | 51730 |
 
 Chosen to avoid common dev ports (3000 / 5173 / 5432 / 8545 / 8080). `scripts/dev.sh` frees these before starting.
+
+## Phase 2 — round-2 demo modules
+
+Round-2 extends the shared core with *pluggable asset/feature modules*, framed as the build-vs-buy /
+integration thesis. The v1 **≤4-view cap is deliberately relaxed** (the app now adds *Loans*, *Tranches*).
+See [`docs/phase-2-plan.md`](docs/phase-2-plan.md), [`docs/architecture/INTEGRATION.md`](docs/architecture/INTEGRATION.md)
+(the shared-core-vs-module map + keep-vs-cut log), and [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) (the platform-first walkthrough).
+
+- **#38 — Tranche waterfall visualizer** (done): a pure, tested off-chain waterfall engine + animated visualizer. On-chain multi-class stays cut; this *models* the structuring module.
+- **#39 — KYC onboarding** (done): a mock `KycProvider` behind an interface → verdict issuer-signs `IdentityRegistry.setClaims`. Build-vs-buy made literal; no PII stored (client-side hash, metadata only).
+- **#42 — Platform-architecture panel** (done): one artifact showing the shared core + pluggable modules + the ranked take-rate stack, so the infrastructure thesis is *visible*.
+- **#40/#41 — Borrow-against** (deferred, deliberately): the keystone money-market (pledge token → borrow USDC → LTV/liquidation). Depends on NAV/reconciliation integrity being proven first — building it on an unproven core would be the over-build trap, so it stays Phase 2.

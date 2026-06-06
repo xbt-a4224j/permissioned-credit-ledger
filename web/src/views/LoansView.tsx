@@ -8,6 +8,7 @@ import { useQuery } from "../lib/useQuery.ts";
 import { gql } from "../lib/graphqlClient.ts";
 import { useEffect, useState } from "react";
 import { LoanOpsCard } from "../components/LoanOpsCard.tsx";
+import { PlatformArchitecture } from "../components/PlatformArchitecture.tsx";
 import { Card, EmptyState, ErrorState, LoadingState } from "../components/primitives.tsx";
 
 // #38 the reserve coverage shape (mirrors api/schema.graphql ReserveState).
@@ -91,6 +92,11 @@ export function LoansView(): JSX.Element {
         <p className="text-sm text-slate-500">
           iBorrow&rsquo;s servicing feed &rarr; Profitr&rsquo;s validation gate &rarr; on-chain distribution
         </p>
+      </div>
+
+      {/* #42 the platform thesis up top: shared core + pluggable modules + take-rate economics. */}
+      <div className="mb-6">
+        <PlatformArchitecture />
       </div>
 
       {/* ---- Reserve error (soft — does not block the loan cards) ---- */}
