@@ -1,4 +1,5 @@
-// Money Layer (presentation) · invest/transfer/claim mutation docs + the typed result · #25
+// GraphQL mutation/query docs + the typed result · #25/#38 — investor writes (invest/transfer/
+// claim), operator ops (submitNav/reportCash), and the NAV-readings query.
 // Operation names + inputs MUST match the Pothos mutations (#20/#21): invest(InvestInput),
 // transfer(TransferInput), claim(ClaimInput), each returning a TxReceiptRef. MutationResult is a
 // discriminated union: { ok:true, txHash } on a clean broadcast, { ok:false, code } on a typed
@@ -55,21 +56,7 @@ export const CLAIM_MUTATION = /* GraphQL */ `
   }
 `;
 
-// #33 demo trigger: push a +40% NAV spike -> NavAnomaly HALT (row 9). Returns the recon status.
-export const PUSH_NAV_MUTATION = /* GraphQL */ `
-  mutation PushNav($loanId: Int!) {
-    pushNav(loanId: $loanId) { state cycle haltReason }
-  }
-`;
-
-// #33 demo trigger: under-fund the reserve -> ReconMismatch HALT (row 10). Returns the recon status.
-export const INJECT_CASH_MUTATION = /* GraphQL */ `
-  mutation InjectCash($loanId: Int!) {
-    injectCash(loanId: $loanId) { state cycle haltReason }
-  }
-`;
-
-// #38 Profitr ops: submit a NAV reading through the gate (loanId + navBps). Returns the new recon
+// #38 operator ops: submit a NAV reading through the gate (loanId + navBps). Returns the new recon
 // status so the UI can show the gate decision immediately — accepted marks update state, rejected
 // marks leave state unchanged but are stored in nav_readings with accepted=false.
 export const SUBMIT_NAV_MUTATION = /* GraphQL */ `
@@ -78,7 +65,7 @@ export const SUBMIT_NAV_MUTATION = /* GraphQL */ `
   }
 `;
 
-// #38 Profitr ops: report collected servicing cash (loanId + USDC amount in base units as a string).
+// #38 operator ops: report collected servicing cash (loanId + USDC amount in base units as a string).
 // Returns the new recon status — a mismatch between reported cash and aggregate claimable trips HALT.
 export const REPORT_CASH_MUTATION = /* GraphQL */ `
   mutation ReportCash($loanId: Int!, $amount: String!) {

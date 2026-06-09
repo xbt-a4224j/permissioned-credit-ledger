@@ -1,7 +1,8 @@
-// Money Layer · the assembled GraphQL schema · #20
+// The assembled GraphQL schema · #20
 // Imports every scalar/enum/type/input/root module for side-effect registration on the shared
 // builder, then freezes the SDL with builder.toSchema(). The print-schema script (#20) snapshots
-// this to api/schema.graphql and CI diffs it, so an accidental rename fails the build.
+// this to api/schema.graphql; CI regenerates and diffs that snapshot on every push, so an
+// accidental rename (or a forgotten snapshot refresh) fails the build.
 import { printSchema, validateSchema } from "graphql";
 import { builder } from "./builder.ts";
 

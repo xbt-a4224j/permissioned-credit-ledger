@@ -1,8 +1,8 @@
-// Money Layer · #20 schema assertions — the frozen GraphQL contract.
+// #20 schema assertions — the frozen GraphQL contract.
 // The schema is the surface the UI (#24-26) and the matrix verifier (#27) build against, so its
-// shape is pinned here: exactly 3 mutations + 7 query fields, the 7-member ReasonCode enum, the
-// 4 named invariants, no schema-validation errors, and the BigIntStr scalar round-tripping
-// uint256 max with zero precision loss (a fast-check property over 256 runs — the IEEE-754 guard).
+// shape is pinned here: exactly 6 mutations (3 writes + 2 ops + KYC), the core query fields, the
+// 8-member ReasonCode enum, the 4 named invariants, no schema-validation errors, and the BigIntStr
+// scalar round-tripping uint256 max with zero precision loss (a fast-check property — the IEEE-754 guard).
 import { describe, expect, test } from "vitest";
 import fc from "fast-check";
 import type { GraphQLEnumType, GraphQLObjectType, GraphQLScalarType } from "graphql";
@@ -17,12 +17,12 @@ describe("#20 GraphQL schema contract", () => {
     expect(validateBuiltSchema()).toEqual([]);
   });
 
-  test("the write mutations (invest/transfer/claim) + #33 demo triggers (pushNav/injectCash) + #38 ops (submitNav/reportCash)", () => {
+  test("the write mutations (invest/transfer/claim) + #38 ops (submitNav/reportCash) + #39 KYC (submitKyc)", () => {
     const mutation = schema.getMutationType() as GraphQLObjectType;
-    expect(Object.keys(mutation.getFields()).sort()).toEqual(["claim", "injectCash", "invest", "pushNav", "reportCash", "submitKyc", "submitNav", "transfer"]);
+    expect(Object.keys(mutation.getFields()).sort()).toEqual(["claim", "invest", "reportCash", "submitKyc", "submitNav", "transfer"]);
   });
 
-  test("the 6 declared query fields (+ txStatus from #23) are present", () => {
+  test("the core query fields (+ txStatus from #23) are present", () => {
     const query = schema.getQueryType() as GraphQLObjectType;
     const fields = Object.keys(query.getFields());
     for (const f of ["loans", "loan", "position", "positions", "reserve", "reconciliationStatus"]) {
