@@ -2,6 +2,15 @@ scalar Address
 
 scalar BigIntStr
 
+type ChainEvent {
+  blockNumber: Int!
+  id: ID!
+  ingestedAt: DateTime!
+  logIndex: Int!
+  name: String!
+  summary: String!
+}
+
 input ClaimInput {
   loanId: ID!
   wallet: Address!
@@ -36,6 +45,30 @@ enum Jurisdiction {
   US
 }
 
+input KycInput {
+  accredited: Boolean!
+  docFilename: String!
+  docSha256: String!
+  docSize: Int!
+  fullName: String!
+  jurisdiction: String!
+  wallet: Address!
+}
+
+type KycResult {
+  claims: KycStatus
+  decision: String!
+  reason: String
+  txHash: String
+}
+
+type KycStatus {
+  accredited: Boolean!
+  frozen: Boolean!
+  jurisdiction: String!
+  verified: Boolean!
+}
+
 type Loan {
   dataRoomUri: String
   dscrBps: Int!
@@ -55,7 +88,20 @@ enum LoanStatus {
 type Mutation {
   claim(input: ClaimInput!): TxReceiptRef!
   invest(input: InvestInput!): TxReceiptRef!
+  reportCash(amount: String!, loanId: Int!): ReconciliationStatus!
+  submitKyc(input: KycInput!): KycResult!
+  submitNav(loanId: Int!, navBps: Int!): ReconciliationStatus!
   transfer(input: TransferInput!): TxReceiptRef!
+}
+
+type NavReading {
+  accepted: Boolean!
+  id: ID!
+  loanId: String!
+  navBps: Int!
+  observedAt: DateTime!
+  rejectReason: String
+  source: String!
 }
 
 type Position {
@@ -70,8 +116,12 @@ type Position {
 }
 
 type Query {
+  chainEvents(limit: Int = 20): [ChainEvent!]!
+  currentBlock: Int!
+  kycStatus(wallet: Address!): KycStatus!
   loan(id: ID!): Loan
   loans: [Loan!]!
+  navReadings(loanId: ID!): [NavReading!]!
   position(holder: Address!, loanId: ID!): Position
   positions(holder: Address!): [Position!]!
   reconciliationStatus: ReconciliationStatus!

@@ -1,16 +1,30 @@
-// The Seam (presentation) · demo controls — trigger the marquee HALTs from the UI · #33 (bug)
-// Bug #33: NavAnomaly / ReconMismatch (the marquee) had no live trigger — only verify_matrix.ts
-// exercised them. These two buttons call the demo-only pushNav / injectCash mutations (#33), which
-// halt loan series #1 the same way the matrix does. The HALT banner + invariant grid then update
-// over SSE within one driver interval (#32). Local-node only; a non-local API refuses server-side.
+// Demo controls — trigger both HALT states through the real operator mutations · #33
+// No demo-only backdoors: these buttons call the same submitNav / reportCash mutations the
+// Servicing view uses. NavAnomaly: submit a 14000 bps (+40%) mark — the NAV gate rejects it as
+// OutOfBounds and halts, the row-9 mechanism. ReconMismatch: read aggregate claimable from the
+// reserve query and report collected cash one base unit below it — I2 ClaimableCovered breaks,
+// the row-10 mechanism. If nothing is claimable yet (fresh world, no accrual), the cash trigger
+// says so instead of faking a shortfall. The HALT banner + invariant grid update over SSE within
+// one driver interval (#32). Reset with `bun run scripts/demo_reset.ts`.
 import { useState } from "react";
 import { Button, Card } from "./primitives.tsx";
 import { gql, GraphqlCodeError } from "../lib/graphqlClient.ts";
-import { PUSH_NAV_MUTATION, INJECT_CASH_MUTATION } from "../lib/mutations.ts";
+import { SUBMIT_NAV_MUTATION, REPORT_CASH_MUTATION } from "../lib/mutations.ts";
 import { logAction } from "../lib/actionLog.ts";
 
 // #33 the demo always targets the seeded loan series #1 (the position that exists on a fresh world).
 const DEMO_LOAN_ID = 1;
+// #33 a +40% mark in bps of par — past the ±20% bound, so the gate rejects it (NavAnomaly).
+const SPIKE_NAV_BPS = 14000;
+
+// the reserve totals needed to compute a below-claimable cash report.
+const RESERVE_TOTALS_QUERY = /* GraphQL */ `
+  query ReserveTotals {
+    reserve { totalClaimable }
+  }
+`;
+
+type OpsStatus = { state: string; haltReason: string | null };
 
 export function DemoControls(): JSX.Element {
   const [busy, setBusy] = useState<"nav" | "cash" | null>(null);
@@ -22,11 +36,28 @@ export function DemoControls(): JSX.Element {
     setMessage(null);
     setError(null);
     try {
-      const doc = kind === "nav" ? PUSH_NAV_MUTATION : INJECT_CASH_MUTATION;
-      const field = kind === "nav" ? "pushNav" : "injectCash";
-      const data = await gql<Record<string, { state: string; haltReason: string | null }>>(doc, { loanId: DEMO_LOAN_ID });
-      const status = data[field];
-      logAction({ action: kind === "nav" ? "demo_push_nav" : "demo_inject_cash", loanId: DEMO_LOAN_ID, result: status?.state === "HALTED" ? "halted" : "ok", reason: status?.haltReason ?? undefined });
+      let status: OpsStatus | undefined;
+      if (kind === "nav") {
+        const data = await gql<{ submitNav: OpsStatus }>(SUBMIT_NAV_MUTATION, { loanId: DEMO_LOAN_ID, navBps: SPIKE_NAV_BPS });
+        status = data.submitNav;
+      } else {
+        // compute a shortfall from live aggregate claimable; refuse honestly when there is none.
+        const totals = await gql<{ reserve: { totalClaimable: string } }>(RESERVE_TOTALS_QUERY);
+        const claimable = BigInt(totals.reserve.totalClaimable);
+        if (claimable === 0n) {
+          setError("Nothing claimable yet — invest first so interest accrues, then retry.");
+          return;
+        }
+        const shortfall = (claimable - 1n).toString();
+        const data = await gql<{ reportCash: OpsStatus }>(REPORT_CASH_MUTATION, { loanId: DEMO_LOAN_ID, amount: shortfall });
+        status = data.reportCash;
+      }
+      logAction({
+        action: kind === "nav" ? "demo_nav_spike" : "demo_cash_shortfall",
+        loanId: DEMO_LOAN_ID,
+        result: status?.state === "HALTED" ? "halted" : "ok",
+        reason: status?.haltReason ?? undefined,
+      });
       setMessage(
         status?.state === "HALTED"
           ? `Engine HALTED — ${status.haltReason ?? "halt"} on loan #${DEMO_LOAN_ID}.`
@@ -45,16 +76,16 @@ export function DemoControls(): JSX.Element {
         <div>
           <div className="text-sm font-semibold text-navy-900">Demo controls</div>
           <p className="text-xs text-slate-500">
-            Trigger the marquee on loan series #{DEMO_LOAN_ID}. Reset afterwards with{" "}
+            Trigger each HALT on loan series #{DEMO_LOAN_ID} via the real operator mutations. Reset afterwards with{" "}
             <code className="rounded bg-slate-100 px-1">bun run scripts/demo_reset.ts</code>.
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" disabled={busy !== null} onClick={() => void fire("nav")}>
-            {busy === "nav" ? "Pushing…" : "Push +40% NAV"}
+            {busy === "nav" ? "Submitting…" : "Submit +40% NAV mark"}
           </Button>
           <Button variant="secondary" disabled={busy !== null} onClick={() => void fire("cash")}>
-            {busy === "cash" ? "Injecting…" : "Inject cash shortfall"}
+            {busy === "cash" ? "Reporting…" : "Report cash below claimable"}
           </Button>
         </div>
       </div>

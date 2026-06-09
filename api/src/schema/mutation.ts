@@ -1,7 +1,8 @@
-// Money Layer · GraphQL Mutation root — drive the chain through the HALT gate · #20/#21
-// The three write paths. Field signatures frozen here (#20); the resolver bodies (#21) gate on
+// GraphQL Mutation root — drive the chain through the HALT gate · #20/#21
+// Six mutations: 3 chain writes (invest/transfer/claim) + 2 operator ops (submitNav/reportCash)
+// + KYC (submitKyc). Field signatures frozen here (#20); the resolver bodies (#21) gate on
 // the reconciliation status FIRST (a HALTED engine refuses to broadcast — matrix rows 9-10),
-// then simulate (surfacing typed custom-error reverts for free — rows 3-6, 8) and write via the
+// then simulate (surfacing typed custom-error reverts for free — rows 3, 5-6, 8) and write via the
 // single server signer, recording the PENDING tx + optimistic position (#23).
 import { builder } from "./builder.ts";
 import { TxReceiptRef } from "./types/tx.ts";
@@ -9,7 +10,7 @@ import { ReconciliationStatus } from "./types/reconciliation.ts";
 import { KycResult } from "./types/kyc.ts";
 import { InvestInput, TransferInput, ClaimInput, KycInput } from "./inputs.ts";
 import { resolveInvest, resolveTransfer, resolveClaim } from "../resolvers/mutations.ts";
-import { resolvePushNav, resolveInjectCash, resolveSubmitNav, resolveReportCash } from "../resolvers/demo.ts";
+import { resolveSubmitNav, resolveReportCash } from "../resolvers/ops.ts";
 import { resolveSubmitKyc } from "../kyc/resolve.ts";
 
 builder.mutationType({
@@ -35,22 +36,8 @@ builder.mutationType({
       args: { input: t.arg({ type: ClaimInput, required: true }) },
       resolve: (_root, args, ctx) => resolveClaim(ctx, args.input),
     }),
-    // #33 demo trigger — push a +40% NAV spike to halt the loan with NavAnomaly (matrix row 9).
-    // Local-node only; returns the resulting reconciliation status so the UI updates immediately.
-    pushNav: t.field({
-      type: ReconciliationStatus,
-      nullable: false,
-      args: { loanId: t.arg.int({ required: true }) },
-      resolve: (_root, args, ctx) => resolvePushNav(ctx, args.loanId),
-    }),
-    // #33 demo trigger — under-fund the reserve below claimable to halt with ReconMismatch (row 10).
-    injectCash: t.field({
-      type: ReconciliationStatus,
-      nullable: false,
-      args: { loanId: t.arg.int({ required: true }) },
-      resolve: (_root, args, ctx) => resolveInjectCash(ctx, args.loanId),
-    }),
-    // #38 the platform ops: submit a NAV reading through the gate; gate decides accept/reject.
+    // #38 operator ops: submit a NAV reading through the gate; gate decides accept/reject.
+    // An out-of-bounds mark (e.g. 14000 bps = +40%) is how matrix row 9's NavAnomaly is triggered live.
     submitNav: t.field({
       type: ReconciliationStatus,
       nullable: false,
@@ -60,7 +47,7 @@ builder.mutationType({
       },
       resolve: (_root, args, ctx) => resolveSubmitNav(ctx, args.loanId, args.navBps),
     }),
-    // #38 the platform ops: report collected servicing cash; sets reserve balance + runs recon.
+    // #38 operator ops: report collected servicing cash; sets reserve balance + runs recon.
     reportCash: t.field({
       type: ReconciliationStatus,
       nullable: false,
