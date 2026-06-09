@@ -1,6 +1,6 @@
 # permissioned-credit-ledger
 
-A deterministic, permissioned tokenized-credit ledger whose marquee is an off-chain↔on-chain **reconciliation engine** that proves servicing cash and on-chain claimable balances always agree — and **halts distribution** the moment they don't.
+A deterministic, permissioned tokenized-credit ledger built around an off-chain↔on-chain **reconciliation engine** that proves servicing cash and on-chain claimable balances always agree — and **halts distribution** the moment they don't.
 
 [![CI](https://github.com/xbt-a4224j/permissioned-credit-ledger/actions/workflows/ci.yml/badge.svg)](https://github.com/xbt-a4224j/permissioned-credit-ledger/actions/workflows/ci.yml)
 
@@ -8,9 +8,9 @@ A deterministic, permissioned tokenized-credit ledger whose marquee is an off-ch
 
 ## What it is
 
-A first-lien mortgage (CRE-first, residential-ready) is tokenized as an **ERC-3643-lite permissioned security token** on Avalanche: an `IdentityRegistry` + `ComplianceRegistry` gate every transfer through an on-chain gauntlet, and interest accrues per holder with a claim path backed by a reserve. A **viem indexer** streams `CreditToken` events into **Postgres** read models that feed a **Pothos** code-first GraphQL API (with SSE live feeds) and a **React + Vite** app. The keystone is the **reconciliation engine**: a deterministic event-replay recomputes ledger state and four invariants compare off-chain servicing cash against on-chain claimable — any mismatch raises a typed `NavAnomaly` / `ReconMismatch` and **fails closed**, stopping distribution rather than paying out value that isn't there. Determinism is the property that makes the halt trustworthy: the same events in any interleaving produce an identical `stateHash`.
+A first-lien mortgage (CRE-first, residential-ready) is tokenized as an **ERC-3643-lite permissioned security token** on Avalanche: an `IdentityRegistry` + `ComplianceRegistry` gate every transfer through an on-chain gauntlet, and interest accrues per holder with a claim path backed by a reserve. A **viem indexer** streams `CreditToken` events into **Postgres** read models that feed a **Pothos** code-first GraphQL API (with SSE live feeds) and a **React + Vite** app. The core is the **reconciliation engine**: a deterministic event-replay recomputes ledger state and four invariants compare off-chain servicing cash against on-chain claimable — any mismatch raises a typed `NavAnomaly` / `ReconMismatch` and **fails closed**, stopping distribution rather than paying out value that isn't there. Determinism is the property that makes the halt trustworthy: the same events in any interleaving produce an identical `stateHash`.
 
-Read as a **platform**: a *shared compliant-securities core* (KYC/identity · compliance · custody · indexer · distribution · reconciliation) with *pluggable asset modules* on top (CRE single-loan, residential, a tranche-waterfall module, a borrow-against keystone). Onboarding runs through a **KYC** flow whose provider is mocked behind an interface — the verdict becomes an on-chain claim the gauntlet enforces. See [`docs/architecture/INTEGRATION.md`](docs/architecture/INTEGRATION.md) for the shared-core-vs-module map and the build-vs-buy decisions, and [`docs/architecture/DESIGN.md`](docs/architecture/DESIGN.md) for the recon-HALT philosophy and what was deliberately cut.
+Read as a **platform**: a *shared compliant-securities core* (KYC/identity · compliance · custody · indexer · distribution · reconciliation) with *pluggable asset modules* on top (CRE single-loan, residential, and a deferred borrow-against money-market module). Onboarding runs through a **KYC** flow whose provider is mocked behind an interface — the verdict becomes an on-chain claim the gauntlet enforces. See [`docs/architecture/DESIGN.md`](docs/architecture/DESIGN.md) for the shared-core-vs-module map, the build-vs-buy decisions, the recon-HALT philosophy, and what was deliberately cut.
 
 ## Architecture
 
@@ -24,7 +24,7 @@ The runtime topology — a permissioned token on Avalanche, a viem indexer, the 
 
 ## Compliance & onboarding
 
-Compliance is the moat, and it's enforced **by construction**. A new investor onboards through **KYC**: the document is hashed in the browser (only `{filename, size, sha256}` is sent — no PII or bytes are stored), a provider — *mocked behind an interface; swap it for Persona / Parallel Markets* — returns a verdict, and on approval the issuer signs `IdentityRegistry.setClaims`. From that point the wallet's claims drive every transfer.
+Compliance is enforced **by construction**. A new investor onboards through **KYC**: the document is hashed in the browser (only `{filename, size, sha256}` is sent — no PII or bytes are stored), a provider — *mocked behind an interface; swap it for Persona / Parallel Markets* — returns a verdict, and on approval the issuer signs `IdentityRegistry.setClaims`. From that point the wallet's claims drive every transfer.
 
 ![KYC onboarding — verdict becomes an on-chain claim](docs/architecture/06-kyc-onboarding.svg)
 
@@ -88,14 +88,14 @@ bun run scripts/verify_matrix.ts     # expect: 10/10 scenarios passed.
 | 2 | Reg-S non-US invest | OK |
 | 3 | unverified invest | revert `ReceiverNotVerified` |
 | 4 | frozen holder initiates transfer | revert `SenderFrozen` |
-| 5 | transfer to unverified receiver | revert `ReceiverNotVerified` |
+| 5 | US holder on a Reg-S offering | revert `NotEligible` |
 | 6 | US non-accredited holds Reg-D token | revert `AccreditationRequired` |
 | 7 | claim, reserve funded | OK — `InterestClaimed`, reserve debited |
 | 8 | claim, reserve underfunded | revert `InsufficientReserve` |
 | 9 | NAV feed +40% out-of-bounds | HALT `NavAnomaly`, accrual frozen |
 | 10 | inject servicing cash below claimable | HALT distribution `ReconMismatch` |
 
-Beyond the matrix, the app also demonstrates **KYC onboarding** (an unverified wallet → upload + verdict → on-chain claim → invest now succeeds) and a **tranche-waterfall** structuring module. The click-by-click walkthrough is in [`docs/DEMO.md`](docs/DEMO.md); the platform-first narration is in [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md).
+Beyond the matrix, the app also demonstrates **KYC onboarding** (an unverified wallet → upload + verdict → on-chain claim → invest now succeeds). The click-by-click walkthrough is in [`docs/DEMO.md`](docs/DEMO.md).
 
 ## Layout
 
@@ -113,9 +113,7 @@ permissioned-credit-ledger/
 ├── scripts/                # verify_matrix.ts, dev.sh, demo_reset.ts
 └── docs/
     ├── DEMO.md             # the click-by-click live walkthrough
-    ├── DEMO_SCRIPT.md      # the platform-first narration (the story)
-    ├── phase-2-plan.md     # round-2 demo modules (KYC, tranches, borrow-against)
-    └── architecture/       # DESIGN.md · INTEGRATION.md · 6 architecture SVGs (01–06)
+    └── architecture/       # DESIGN.md · MAP.md · 6 architecture SVGs (01–06)
 ```
 
 ## Test suite
