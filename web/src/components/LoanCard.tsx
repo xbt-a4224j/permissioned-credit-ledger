@@ -1,8 +1,8 @@
-// Asset Layer (presentation) · the marketplace loan card — a first-lien mortgage at a glance · #24
+// The marketplace loan card — a first-lien mortgage at a glance · #24
 // Shows principal, the per-second coupon, the mortgage ratios (LTV/DSCR), the loan status, the
 // collateralType badge (the CRE/RESIDENTIAL seam), and a collapsible data room (static labels — no
 // file fetch, per scope). The `actionSlot` is the mount point #25 fills with the Invest button so
-// this component's structure is unchanged across tickets. Single loan per series; no tranche picker.
+// this component's structure is unchanged across tickets. Single loan per series, single class.
 import { useState } from "react";
 import type { ReactNode } from "react";
 import type { Loan } from "../types.ts";
