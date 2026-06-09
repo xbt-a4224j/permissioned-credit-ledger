@@ -1,7 +1,7 @@
-// The Seam · the 10-row scenario-matrix verifier (end-to-end, local node) · #27
+// The 10-row scenario-matrix verifier (end-to-end, local node) · #27
 // The falsifiable proof the whole system behaves as specified. Against a REAL local anvil node +
 // REAL Postgres (brought up by ./scripts/dev.sh #31 / CI #28), it drives all 10 CLAUDE.md scenario
-// rows through the REAL GraphQL surface (rows 1-8) and the marquee NAV feed / reconciliation engine
+// rows through the REAL GraphQL surface (rows 1-3, 5-8; row 4 via a holder-simulated eth_call) and the NAV feed / reconciliation engine
 // (rows 9-10), asserting each row's typed outcome — OK event / typed-revert ReasonCode / typed-HALT
 // EngineState — with deepEqual(actual, expect). Every row is run against its OWN fresh fixture so
 // outcomes are isolated and order-independent (the property below). Exit 0 iff all 10 pass, else 1.

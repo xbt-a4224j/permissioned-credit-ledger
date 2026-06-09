@@ -1,19 +1,23 @@
-// The Seam · end-to-end bring-up/teardown for the matrix verifier · #27
+// End-to-end bring-up/teardown for the matrix verifier · #27
 // The verifier targets a REAL local node + REAL Postgres (never a mock chain): dev.sh (#31) /
 // CI (#28) bring up anvil (18545) + Postgres (55432) and deploy the seed world; this harness then
 // (a) provisions a FRESH throwaway DB per run (deterministic fixture — the property test needs a
 // clean read model each pass), applies migrations (#15) + seeds reference rows (#16) + backfills
 // CreditToken logs from the live node, (b) boots the real graphql-yoga API server (#21) in-process
 // over that DB and a wallet client, and (c) exposes a MatrixContext whose row drivers go THROUGH
-// the GraphQL HTTP surface (rows 1-8) and the NAV feed / reconciliation engine (rows 9-10). All
+// the GraphQL HTTP surface (rows 1-3, 5-8), a holder-simulated eth_call (row 4), and the NAV
+// feed / reconciliation engine (rows 9-10). All
 // correctness is asserted against the local node only (the Fuji-flakiness landmine).
 import postgres from "postgres";
 import {
+  BaseError,
+  ContractFunctionRevertedError,
   createPublicClient,
   createTestClient,
   createWalletClient,
   http,
   publicActions,
+  type Abi,
   type Account,
   type PublicClient,
   type WalletClient,
@@ -33,7 +37,7 @@ import {
 import { createYoga } from "graphql-yoga";
 import { schema } from "../../api/src/schema/index.ts";
 import { formatError } from "../../api/src/errors.ts";
-import { IDENTITY_ABI } from "../../api/src/chain/abi.ts";
+import { COMBINED_ERROR_ABI, CREDIT_TOKEN_ABI, IDENTITY_ABI } from "../../api/src/chain/abi.ts";
 import type { ApiContext } from "../../api/src/context.ts";
 import { readReconStatus } from "../../api/src/recon-reader.ts";
 import { simulateFeed } from "../../api/src/nav/index.ts";
@@ -59,7 +63,7 @@ const ANCHOR_HOLDER_KEY = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f
 const RESERVE_FUNDING = 1_000_000_000_000n; // 1,000,000 USDC (6dp)
 
 // #27 the driver surface each scenario row calls. invest/transfer/claim* go through the live
-// GraphQL server; nav*/cashMismatch drive the marquee feed + engine then read the HALT back
+// GraphQL server; transferAs simulates on-chain as the holder; nav*/cashMismatch drive the NAV feed + engine then read the HALT back
 // through GraphQL — proving the seam, not poking internals to fake a verdict.
 export interface MatrixContext {
   apiUrl: string;
@@ -67,6 +71,7 @@ export interface MatrixContext {
   manifest: Manifest;
   invest: (loanId: string, wallet: `0x${string}`, amount: string) => Promise<Actual>;
   transfer: (loanId: string, from: `0x${string}`, to: `0x${string}`, amount: string) => Promise<Actual>;
+  transferAs: (loanId: string, from: `0x${string}`, to: `0x${string}`, amount: string) => Promise<Actual>;
   transferToNonAccredited: (loanId: string) => Promise<Actual>;
   claimFunded: (loanId: string, wallet: `0x${string}`) => Promise<Actual>;
   claimUnderfunded: (loanId: string, wallet: `0x${string}`) => Promise<Actual>;
@@ -141,7 +146,7 @@ const INVEST = `mutation($input: InvestInput!) { invest(input: $input) { hash st
 const TRANSFER = `mutation($input: TransferInput!) { transfer(input: $input) { hash state } }`;
 const CLAIM = `mutation($input: ClaimInput!) { claim(input: $input) { hash state } }`;
 
-// #27 read the marquee reconciliation status through GraphQL (rows 9-10 assert the HALT here).
+// #27 read the reconciliation status through GraphQL (rows 9-10 assert the HALT here).
 const RECON = `query { reconciliationStatus { state haltReason } }`;
 
 // #27 turn a GraphQL response into a typed Actual. An error with a known engine-state code is a
@@ -153,6 +158,7 @@ function actualFromGql(
   const code = resp.errors?.[0]?.extensions?.code;
   if (code === "NavAnomaly" || code === "ReconMismatch") return { kind: "halt", state: code };
   if (
+    code === "SenderFrozen" ||
     code === "NotEligible" ||
     code === "ReceiverFrozen" ||
     code === "ReceiverNotVerified" ||
@@ -167,6 +173,11 @@ function actualFromGql(
   }
   return { kind: "ok", event: okEvent };
 }
+
+// #27 the CreditToken ABI with the union error set: a sender-side gauntlet revert is raised
+// inside ComplianceRegistry, so decoding it needs the combined error fragments from all three
+// contracts (the ABI-drift landmine — CreditToken's own artifact only carries its own errors).
+const GAUNTLET_ABI: Abi = [...CREDIT_TOKEN_ABI.filter((i) => i.type !== "error"), ...COMBINED_ERROR_ABI];
 
 // #27 a viem test client for time warps (rows 7/8/10 need on-chain accrual to accumulate).
 type TestClient = ReturnType<typeof createTestClient> & PublicClient;
@@ -267,10 +278,45 @@ export async function setupFixture(): Promise<Fixture> {
       }
       return actual;
     },
-    // rows 4-5: transfer through GraphQL — simulateContract surfaces the typed gauntlet revert.
+    // row 5: transfer through GraphQL — simulateContract surfaces the typed gauntlet revert.
+    // (`from` is advisory on this path: the single server signer originates the broadcast, so
+    // only RECEIVER-side gauntlet failures are reachable here.)
     transfer: async (ln, _from, to, amount) => {
       const resp = await gqlFetch(issuerUrl, TRANSFER, { input: { loanId: ln, from: _from, to, amount } });
       return actualFromGql(resp, "PositionOpened");
+    },
+    // row 4: a holder-ORIGINATED transfer. Every GraphQL write is signed by the single server
+    // signer, so a SENDER-side gauntlet failure (SenderFrozen) cannot be produced through HTTP —
+    // the on-chain sender would be the issuer, not the holder. Simulate the transfer AS the
+    // holder via eth_call instead (no key needed) and decode the typed revert: this proves the
+    // contract gauntlet's step 0 directly — the same drive-the-mechanism pattern rows 9-10 use.
+    transferAs: async (ln, from, to, amount) => {
+      const token = manifest.loans[ln]?.token as `0x${string}` | undefined;
+      if (token === undefined) throw new Error(`transferAs: unknown loanId ${ln}`);
+      try {
+        await publicClient.simulateContract({
+          address: token,
+          abi: GAUNTLET_ABI,
+          functionName: "transfer",
+          args: [to, BigInt(amount)],
+          account: from,
+        });
+      } catch (err) {
+        const revert = err instanceof BaseError ? err.walk((e) => e instanceof ContractFunctionRevertedError) : null;
+        const name = revert instanceof ContractFunctionRevertedError ? revert.data?.errorName : undefined;
+        if (
+          name === "SenderFrozen" ||
+          name === "ReceiverFrozen" ||
+          name === "ReceiverNotVerified" ||
+          name === "NotEligible" ||
+          name === "AccreditationRequired" ||
+          name === "InsufficientReserve"
+        ) {
+          return { kind: "revert", reason: name };
+        }
+        throw new Error(`transferAs: expected a typed gauntlet revert, got ${String(err)}`);
+      }
+      throw new Error("transferAs: simulation unexpectedly succeeded (expected a gauntlet revert)");
     },
     // row 6: seed an ephemeral verified, NON-accredited, US identity ON-CHAIN via the issuer
     // (the server signer holds ISSUER_ROLE on the IdentityRegistry), then transfer a Reg-D token
