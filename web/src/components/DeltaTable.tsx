@@ -1,4 +1,4 @@
-// The Seam (presentation) · on-chain vs off-chain balance deltas, per holder · #26
+// On-chain vs off-chain balance deltas, per holder · #26
 // Columns: holder, on-chain claimable, off-chain collected, delta. The delta is rendered as the
 // engine DELIVERED it (deltaWei), never a client-recomputed subtraction in number space — a
 // recompute-in-JS risks showing a different delta than the one that triggered the halt. Any row

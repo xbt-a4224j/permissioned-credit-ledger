@@ -1,4 +1,4 @@
-// Money Layer · API entrypoint — migrate, then serve GraphQL + SSE on the fixed port · #21/#22/#23
+// API entrypoint — migrate, then serve GraphQL + SSE on the fixed port · #21/#22/#23
 // Boots the whole API: apply migrations (idempotent, #15), build the server (Pothos schema #20,
 // resolvers #21, SSE #22, tx watcher #23), and listen on API_PORT (41990, the CLAUDE.md fixed
 // port). The reconciliation HALT gate (#21) blocks distribution on a recon break; one server
@@ -26,8 +26,8 @@ if (import.meta.main) {
   console.log(`[api] graphql + sse on http://localhost:${bunServer.port}/graphql  (sse: /sse, health: /health)`);
 
   // #32 drive reconciliation cycles in the running app (not just the test harness) so the engine
-  // is live: the Health panel populates, the HALT gate has a real cycle to read, and a demo NAV /
-  // cash trigger (#33) halts within one interval.
+  // is live: the Health panel populates, the HALT gate has a real cycle to read, and an ops submitNav /
+  // reportCash (#38) halts within one interval.
   const stopReconDriver = startReconDriver(ctx);
   console.log("[api] reconciliation driver running (cycle every 2s)");
 

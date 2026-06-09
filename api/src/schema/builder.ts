@@ -1,4 +1,4 @@
-// Money Layer · the Pothos code-first SchemaBuilder · #20
+// The Pothos code-first SchemaBuilder · #20
 // One builder instance wires the custom scalars (uint256 money as a string — never a JS number,
 // the IEEE-754 landmine — addresses, timestamps) and the ApiContext (#20/#21) into every type
 // and resolver. SimpleObjects plugin: the read-model DTOs (Loan/Position/Reconciliation...) are

@@ -1,4 +1,4 @@
-// On-Chain Layer · the #12 deploy manifest as the off-chain genesis input · #16
+// The #12 deploy manifest as the off-chain genesis input · #16
 // loadManifest reads deployments/<chainId>.json (written by Deploy.s.sol) and exposes the
 // registry/reserve addresses + the per-loan token map. The token->loan map is what lets the
 // decoder (#16) resolve a loan from any emitting CreditToken (one token == one loan series).

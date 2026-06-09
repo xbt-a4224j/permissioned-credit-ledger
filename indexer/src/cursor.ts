@@ -1,4 +1,4 @@
-// On-Chain Layer · indexer resume cursor · #16
+// Indexer resume cursor · #16
 // getCursor/setCursor persist the last fully-processed block so a restart resumes from there
 // (the Fuji-flakiness landmine: a dropped connection must be recoverable, not corrupting).
 // Stored in the single-row indexer_cursor table (0005). Defaults to block 0 (full backfill).

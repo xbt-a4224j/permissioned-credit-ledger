@@ -1,4 +1,4 @@
-// The Seam · canonical state serialization + keccak fingerprint · #19
+// Canonical state serialization + keccak fingerprint · #19
 // stateHash fingerprints a ReplayState so "are we still solvent?" has a single, reproducible,
 // byte-exact answer. Determinism dies on three things (the #19 landmine): JSON key order (we
 // sort every object key + map entry), bigint serialization (every Usdc6 routes through

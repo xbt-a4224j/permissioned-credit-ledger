@@ -1,4 +1,4 @@
-// Money Layer · #21 mutation resolvers — the seam: HALT gate, typed reverts, real broadcasts.
+// #21 mutation resolvers — the seam: HALT gate, typed reverts, real broadcasts.
 // The verify gate's core. Against the local anvil + seeded read model:
 //  • invest (accredited-US) broadcasts and returns a PENDING ref + an optimistic position (row 1).
 //  • claim (anchor holder) broadcasts (row 7).

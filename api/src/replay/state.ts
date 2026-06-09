@@ -1,4 +1,4 @@
-// The Seam · empty replay state · #19
+// Empty replay state · #19
 import { unixSeconds, usdc6 } from "@pcl/shared";
 import type { ReplayState } from "./types.ts";
 

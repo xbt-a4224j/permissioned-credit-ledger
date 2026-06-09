@@ -1,4 +1,4 @@
-// Money Layer · #22 SSE sources — the accrual ticker + recon push off the read models.
+// #22 SSE sources — the accrual ticker + recon push off the read models.
 // startAccrualSource emits a per-holder `accrual` tick on a fixed interval (a display projection,
 // never written back); startReconSource emits a `recon` frame on every new cycle. The verify-gate
 // SSE smoke asserts >= 3 accrual frames arrive within 3.5s at a 1000ms tick through the real

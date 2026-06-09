@@ -1,4 +1,4 @@
-// Compliance front-door (presentation) · the "Verify identity" modal · #39
+// The "Verify identity" modal · #39
 // The onboarding front-door: upload a document (hashed client-side), name, jurisdiction, accredited
 // → submit. The mock provider returns a verdict; on APPROVE the API issuer-signs an on-chain claim
 // so the wallet flips to Verified and the transfer gauntlet now passes. No document bytes or PII ever

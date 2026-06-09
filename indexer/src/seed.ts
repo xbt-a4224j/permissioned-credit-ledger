@@ -1,4 +1,4 @@
-// Asset Layer · seed the off-chain reference tables from the deploy manifest · #16
+// Seed the off-chain reference tables from the deploy manifest · #16
 // The indexer mirrors chain EVENTS into positions/reserve, but the loan-tape reference rows
 // (properties, loans, identities) are genesis facts the recon engine (#18) reads to check
 // I1 (supply backed by loan principal) and I4 (holder identity valid). seedReference upserts
@@ -66,6 +66,6 @@ export async function seedReference(sql: Sql, m: Manifest): Promise<void> {
   // reserve single-row: seed to mirror the on-chain MockUSDC funding (Deploy.s.sol RESERVE_FUNDING
   // = 1_000_000e6). The off-chain `collected cash` the recon I2 invariant (claimable <= collected)
   // compares against must reflect the funded reserve — otherwise on-chain accrual outruns a 0 row and
-  // the engine HALTs on its own. InterestClaimed projections debit this; injectCash overrides it.
+  // the engine HALTs on its own. InterestClaimed projections debit this; reportCash overrides it.
   await sql`insert into reserve (id, balance, updated_at) values (1, 1000000000000, 0) on conflict (id) do update set balance = 1000000000000`;
 }

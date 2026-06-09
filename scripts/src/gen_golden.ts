@@ -1,4 +1,4 @@
-// The Seam · regenerate the replay golden fixture · #19
+// Regenerate the replay golden fixture · #19
 // Backfills the seeded local chain into a throwaway DB, runs the deterministic replay, and
 // writes api/src/replay/golden.json (canonical state + stateHash). Run after an intentional
 // change to the seed or fold math: `bun run scripts/src/gen_golden.ts`. A logic change that

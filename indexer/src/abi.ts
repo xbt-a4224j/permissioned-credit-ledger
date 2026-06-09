@@ -1,4 +1,4 @@
-// On-Chain Layer · CreditToken ABI for typed log decoding · #16
+// CreditToken ABI for typed log decoding · #16
 // The indexer decodes CreditToken events off this single source-of-truth ABI. The full
 // compiled artifact is copied by scripts/copy_abis.sh (#13) into ./abi/CreditToken.json —
 // importing that gives us the bytecode too, but a JSON import erases the `as const` literal

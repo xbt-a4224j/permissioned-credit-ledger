@@ -1,4 +1,4 @@
-// The Seam · the reconciliation cycle — assert invariants, HALT on break · #18
+// The reconciliation cycle — assert invariants, HALT on break · #18
 // runReconCycle is the gate in front of every value-moving action. It loads the snapshot,
 // evaluates the 4 invariants in fixed order, and persists a recon_status row. All-pass ->
 // {ok:true, state_hash} and distribution stays open. First failure -> {ok:false} with the typed

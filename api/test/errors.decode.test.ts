@@ -1,4 +1,4 @@
-// On-Chain Layer · #21 decodeReason — typed custom-error mapping + totality.
+// #21 decodeReason — typed custom-error mapping + totality.
 // The matrix asserts a specific typed failure per branch; decodeReason is where an opaque revert
 // becomes one of the 5 on-chain ReasonCodes. Encode each custom error's revert data with viem and
 // assert it maps to the right code; assert an unknown selector returns null; and prove (fast-check)

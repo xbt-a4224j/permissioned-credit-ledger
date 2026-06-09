@@ -1,4 +1,4 @@
-// Compliance front-door · KYC resolver — verdict → on-chain claim · #39
+// KYC resolver — verdict → on-chain claim · #39
 // resolveSubmitKyc validates the (metadata-only) submission, asks the provider (#39) for a verdict,
 // and — when APPROVED — issuer-signs IdentityRegistry.setClaims so the wallet's on-chain claims flip
 // and the transfer gauntlet now passes. resolveKycStatus reads claimsOf back. No PII or document

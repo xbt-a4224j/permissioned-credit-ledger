@@ -1,4 +1,4 @@
-// Asset Layer · #14 fast-check property: eventId is deterministic + injective.
+// #14 fast-check property: eventId is deterministic + injective.
 // The indexer (#16) dedupes on EventId and replay (#19) orders by it, so a collision or
 // non-determinism here would silently double-count or reorder — the worst failure mode.
 import { test } from "vitest";

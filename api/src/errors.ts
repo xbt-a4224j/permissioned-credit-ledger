@@ -1,6 +1,6 @@
-// Money Layer · typed GraphQL error classes + formatError guard · #21
+// Typed GraphQL error classes + formatError guard · #21
 // Failures are typed, not stringly: every error the API surfaces carries an extensions.code that
-// is one of the 7 ReasonCodes or INTERNAL. ReconHaltError is the marquee gate's refusal (the
+// is one of the 8 typed codes (6 reverts + 2 engine states) or INTERNAL. ReconHaltError is the HALT gate's refusal (the
 // engine is HALTED, distribution blocked — matrix rows 9-10); ChainRevertError carries a decoded
 // on-chain custom-error ReasonCode (rows 3-6, 8). formatError clamps any leaked error to this
 // contract so a client always sees a machine-checkable code, never a raw RPC string or stack.

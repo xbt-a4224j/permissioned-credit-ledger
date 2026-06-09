@@ -1,5 +1,5 @@
-// The Seam · reconciliation read model for the API · #21
-// The marquee is a first-class query. readReconStatus folds the latest recon cycle (#18) +
+// Reconciliation read model for the API · #21
+// The reconciliation status is a first-class query. readReconStatus folds the latest recon cycle (#18) +
 // its four named invariants into the GraphQL ReconciliationStatus shape (#20). It also exposes
 // the halt verdict the mutation gate (#21) reads BEFORE touching the chain, so a HALTED engine
 // refuses to distribute (matrix rows 9-10) rather than just lighting a UI banner. Read-only:
@@ -7,7 +7,7 @@
 import type { EngineState, ReasonCode, Sql } from "@pcl/shared";
 
 // #21 the typed halt reason: an off-chain engine state (the recon_status.state column). Kept as
-// a named alias so the GraphQL ReasonCode enum (7 values) and this read model line up.
+// a named alias so the GraphQL ReasonCode enum (8 values) and this read model line up.
 type HaltReason = ReasonCode | EngineState;
 
 // #21 the GraphQL InvariantResult source (one per #18 invariant). All money is a decimal string.

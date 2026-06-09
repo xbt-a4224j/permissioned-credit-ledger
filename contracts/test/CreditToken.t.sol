@@ -10,7 +10,7 @@ import {IIdentityRegistry} from "../src/interfaces/IIdentityRegistry.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {ReceiverFrozen, ReceiverNotVerified, AccreditationRequired, InsufficientReserve} from "../src/Errors.sol";
 
-// #10 transfer-gauntlet reason-code coverage — the contract half of the thesis:
+// #10 transfer-gauntlet reason-code coverage — the contract half of the design:
 // every gauntlet branch terminates in the EXACT typed custom error the matrix
 // expects (rows 3,4,5,6,8) and the happy paths (rows 1,2,7) produce the right
 // events/state. Every typed-revert test asserts the selector WITH decoded args

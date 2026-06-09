@@ -1,4 +1,4 @@
-// Seam · numbered raw-SQL migration runner (no ORM) · #15
+// Numbered raw-SQL migration runner (no ORM) · #15
 // applyMigrations reads db/migrations/*.sql in lexicographic order, applies each unseen file
 // inside its own transaction, and records filename + sha256 in applied_migrations. Re-running
 // is a no-op (0 files applied). If a PREVIOUSLY-applied file's bytes changed, it throws

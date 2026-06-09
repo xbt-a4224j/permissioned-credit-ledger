@@ -1,4 +1,4 @@
-// Money Layer (presentation) · the marketplace Invest action — button + dialog · #25
+// The marketplace Invest action — button + dialog · #25
 // Mounted into LoanCard via the actionSlot (MarketplaceView's renderAction). The Invest button is
 // disabled with a tooltip until a wallet is connected; clicking opens the InvestDialog. Kept as its
 // own component so LoanCard (#24) stays structurally unchanged and wallet-free.

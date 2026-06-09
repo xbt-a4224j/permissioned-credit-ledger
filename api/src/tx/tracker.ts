@@ -1,4 +1,4 @@
-// Money Layer · tx-status tracking — PENDING -> CONFIRMED|REVERTED + optimistic write · #23
+// Tx-status tracking — PENDING -> CONFIRMED|REVERTED + optimistic write · #23
 // recordPending stamps a PENDING tx the instant invest/transfer/claim broadcasts (#21) and, for
 // an invest, writes the optimistic position the dashboard shows before the indexer catches up.
 // startConfirmationWatcher waits for each receipt: success -> CONFIRMED (+ block); reverted ->

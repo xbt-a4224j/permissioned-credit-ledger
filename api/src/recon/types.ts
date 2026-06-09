@@ -1,4 +1,4 @@
-// The Seam · reconciliation engine types · #18
+// Reconciliation engine types · #18
 // One machine, three layers: the snapshot pulls the on-chain layer (supply/claimable/reserve)
 // and the asset+money read models (positions/identities/nav) into a single typed value the 4
 // pure invariants verdict over. All money is Usdc6 in identical 6-decimal base units (the I2

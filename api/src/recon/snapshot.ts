@@ -1,4 +1,4 @@
-// The Seam · build the ReconSnapshot from chain + read models · #18
+// Build the ReconSnapshot from chain + read models · #18
 // loadSnapshot is the only I/O in the engine: it reads the off-chain read models (positions,
 // reserve, identities, anomalous NAV) and the on-chain layer (per-token totalSupply +
 // per-holder claimable) via viem, normalizing every money value to Usdc6 base units. The pure

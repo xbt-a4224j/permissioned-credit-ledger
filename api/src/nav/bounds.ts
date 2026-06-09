@@ -1,4 +1,4 @@
-// Money Layer · NAV validation gate — the pure bounds predicate · #17
+// NAV validation gate — the pure bounds predicate · #17
 // NAV is the off-chain truth on-chain accrual is meant to track. This is the FIRST of the two
 // HALT mechanisms (the recon engine, #18, is the second): a stale, out-of-bounds, or
 // non-monotonic mark is refused — it never enters the accepted feed — and trips NavAnomaly,

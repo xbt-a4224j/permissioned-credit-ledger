@@ -1,4 +1,4 @@
-// Asset Layer · GraphQL Loan type — a first-lien mortgage on a Property · #20
+// GraphQL Loan type — a first-lien mortgage on a Property · #20
 // The loan-tape read shape the marketplace (#24) renders: principal + ratePerSecond drive
 // on-chain accrual; ltvBps/dscrBps/dataRoomUri are the mortgage modeling (CRE-first, the
 // residential seam). Money fields are BigIntStr — never a JS number. SimpleObject: resolved

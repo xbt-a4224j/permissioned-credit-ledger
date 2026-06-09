@@ -1,5 +1,5 @@
 {
-  "// #14": "Asset Layer · shared domain vocabulary (branded types + arktype + reason taxonomy) every off-chain module speaks so on-chain claimable and off-chain collected compare as the same branded Usdc6.",
+  "// #14": "Shared domain vocabulary (branded types + arktype + reason taxonomy) every off-chain module speaks so on-chain claimable and off-chain collected compare as the same branded Usdc6.",
   "name": "@pcl/shared",
   "version": "0.0.0",
   "private": true,

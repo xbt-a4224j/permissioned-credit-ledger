@@ -1,4 +1,4 @@
-// Asset Layer · @pcl/shared barrel — the one off-chain domain vocabulary · #14
+// @pcl/shared barrel — the one off-chain domain vocabulary · #14
 // Re-exports branded scalars + constructors, the typed reason taxonomy, and every arktype
 // schema + inferred type. The indexer (#16), NAV gate (#17), recon engine (#18), replay
 // (#19), GraphQL (#20) and UI all import from here so nothing drifts.

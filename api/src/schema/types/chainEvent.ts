@@ -1,4 +1,4 @@
-// On-Chain Layer · GraphQL ChainEvent type — the canonical event log surfaced live · #39
+// GraphQL ChainEvent type — the canonical event log surfaced live · #39
 // chain_events is the append-only input deterministic replay folds. Exposing recent events
 // lets the Health view show a live feed of on-chain activity (PositionOpened, Transfer,
 // InterestClaimed) — the contract layer made visible in real time.

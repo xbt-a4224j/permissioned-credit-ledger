@@ -1,4 +1,4 @@
-// Money Layer · SSE sources — turn read-model changes into pushed bus events · #22
+// SSE sources — turn read-model changes into pushed bus events · #22
 // The client never polls; these sources do the watching server-side. startAccrualSource recomputes
 // a per-holder accrual tick off positions.principal * ratePerSecond * elapsed on a fixed interval
 // and publishes `accrual` (a DISPLAY projection only — never written back; the on-chain accrued

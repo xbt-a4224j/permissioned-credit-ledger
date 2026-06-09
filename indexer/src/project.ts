@@ -1,4 +1,4 @@
-// On-Chain Layer · pure-ish projectors: ChainEvent -> read-model rows · #16
+// Pure-ish projectors: ChainEvent -> read-model rows · #16
 // Each projector applies one decoded event to the Postgres read model INSIDE the same
 // transaction that inserts the chain_events row (ingest.ts), so projection and event-record
 // commit atomically — a crash can never leave the read model ahead of or behind the event

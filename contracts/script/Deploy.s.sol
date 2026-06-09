@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-// On-Chain Layer · deterministic genesis: deploy the permissioned stack + seed manifest · #12
+// Deterministic genesis: deploy the permissioned stack + seed manifest · #12
 // One command stands up the KNOWN world every downstream block consumes: the shared
 // IdentityRegistry + ComplianceRegistry (Reg-D and Reg-S) + MockUSDC reserve, plus 6
 // CreditToken loans (Single loan per token). Seeds the 6 canonical identities and the 6
@@ -98,7 +98,7 @@ contract Deploy is Script {
         _writeManifest(address(identity), address(complianceRegD), address(complianceRegS), address(reserve), tokens);
     }
 
-    // The Seam · the manifest is the off-chain layer's genesis input · #12
+    // The manifest is the off-chain layer's genesis input · #12
     // Writes deployments/<chainId>.json with the registry+reserve addresses and, per loan,
     // { loanId, token, collateralType, label, principal, ltvBps, dscrBps, ratePerSecond,
     // offering, status }. chainId comes from block.chainid so local (31337) and Fuji (43113)

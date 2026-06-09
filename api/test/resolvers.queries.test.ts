@@ -1,4 +1,4 @@
-// Money Layer · #21 query resolvers read the seeded read models (no chain).
+// #21 query resolvers read the seeded read models (no chain).
 // Against a migrated + manifest-seeded + backfilled db: loans returns the 6 mortgages,
 // reconciliationStatus exposes the 4 named invariants, the anchor holder's position is present,
 // and every BigIntStr field is a string (the IEEE-754 landmine guard from #20).

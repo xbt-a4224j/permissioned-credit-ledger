@@ -1,5 +1,5 @@
-// Asset Layer · typed reason taxonomy — Solidity custom errors mirrored as a TS union · #14
-// Correctness is typed, not stringly: the 5 reason codes mirror the 5 on-chain custom
+// Typed reason taxonomy — Solidity custom errors mirrored as a TS union · #14
+// Correctness is typed, not stringly: the 6 reason codes mirror the 6 on-chain custom
 // errors (ComplianceRegistry gauntlet + CreditToken reserve), and the 2 engine states have
 // no on-chain analog — they are the off-chain HALTs the NAV gate (#17) and recon engine
 // (#18) raise. An exhaustive switch over DomainError['kind'] with no `default` compiles,

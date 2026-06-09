@@ -1,4 +1,4 @@
-// The Seam (presentation) · the full-width HALT banner — accrual/distribution frozen · #26
+// The full-width HALT banner — accrual/distribution frozen · #26
 // Raised when the recon engine HALTs (NavAnomaly row 9 / ReconMismatch row 10). Copy is keyed off
 // REASON_META[code] (from #25) so wording is single-sourced; the banner explicitly states that
 // accrual/distribution is frozen. Red, role=alert — impossible to miss from any view.

@@ -1,4 +1,4 @@
-// The Money Layer · idempotent demo reset (wipe + redeploy + reseed the local world) · #30
+// Idempotent demo reset (wipe + redeploy + reseed the local world) · #30
 // `bun run scripts/demo_reset.ts` puts the demo back to a known-good cold state in seconds: it
 // tears the stack down, wipes the Postgres volume, restarts the local EVM node, redeploys
 // Deploy.s.sol and reseeds the 6 identities + 6 loans, then re-applies the read-model migrations.

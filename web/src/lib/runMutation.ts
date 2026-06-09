@@ -1,4 +1,4 @@
-// Money Layer (presentation) · the mutation runner — gql call -> typed MutationResult · #25
+// The mutation runner — gql call -> typed MutationResult · #25
 // Bridges the gql() boundary (which throws GraphqlCodeError carrying extensions.code) into the
 // discriminated MutationResult the tx lifecycle consumes: a clean broadcast returns { ok, txHash };
 // a typed revert/HALT returns { ok:false, code } so the UI renders a ReasonBadge, never a string.

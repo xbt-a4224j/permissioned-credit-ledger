@@ -1,6 +1,6 @@
-// Money Layer · optimistic-position reconciliation — converge to the indexer's truth · #23
+// Optimistic-position reconciliation — converge to the indexer's truth · #23
 // The optimistic invest row is a projection that MUST converge to on-chain reality (a micro-
-// instance of the project thesis). reconcileOptimistic deletes an optimistic row once the indexer
+// instance of the system-wide convergence requirement). reconcileOptimistic deletes an optimistic row once the indexer
 // (#16) has projected the canonical positions row at/after the tx's settling block — matched
 // strictly by (holder, loan) AND block_number (never a bare heuristic), so two rapid invests on
 // one loan reconcile independently. Idempotent: a second run deletes 0. optimisticPositionsFor

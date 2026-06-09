@@ -1,4 +1,4 @@
-// Money Layer · GraphQL ReserveState type — the mock-USDC reserve · #20
+// GraphQL ReserveState type — the mock-USDC reserve · #20
 // The off-chain collected-cash mirror claims pay from. recon I2 (#18) requires
 // totalClaimable <= balance; surfacing both lets the health panel (#26) show the coverage
 // margin. Money fields BigIntStr.

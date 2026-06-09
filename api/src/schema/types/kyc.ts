@@ -1,4 +1,4 @@
-// Compliance front-door · GraphQL KYC types — status + verdict · #39
+// GraphQL KYC types — status + verdict · #39
 import { builder } from "../builder.ts";
 import type { KycStatusView, KycResultView } from "../../kyc/resolve.ts";
 

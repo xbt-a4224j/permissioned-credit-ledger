@@ -1,4 +1,4 @@
-// On-Chain Layer · typed revert decoding — custom error -> ReasonCode · #21
+// Typed revert decoding — custom error -> ReasonCode · #21
 // The whole matrix asserts a specific typed failure per branch; this is where an opaque RPC
 // revert becomes one of the 6 on-chain ReasonCodes. decodeReason walks a viem error chain (or
 // takes raw revert `data`) and decodes the custom error name against the COMBINED error ABI

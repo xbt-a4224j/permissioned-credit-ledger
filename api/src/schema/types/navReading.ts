@@ -1,5 +1,5 @@
-// Money Layer · GraphQL NavReading type — a single NAV mark as ingested by the gate · #38
-// Exposes the nav_readings table rows to the GraphQL surface so the UI (and the platform ops)
+// GraphQL NavReading type — a single NAV mark as ingested by the gate · #38
+// Exposes the nav_readings table rows to the GraphQL surface so the UI (and the operator ops view)
 // can inspect which marks were accepted vs rejected and why. observedAt is a DateTime
 // scalar (ISO-8601, already registered in scalars.ts) so callers get a real timestamp.
 import { builder } from "../builder.ts";

@@ -1,4 +1,4 @@
-// Asset Layer (presentation) · UI view-model types over the GraphQL read shape · #24
+// UI view-model types over the GraphQL read shape · #24
 // The UI speaks the same branded money/identifier vocabulary as the off-chain layers (#14): money
 // is a bigint base unit (decoded from the BigIntStr wire scalar), ids are branded strings. These
 // view models mirror the committed GraphQL SDL (#20) exactly — `LoanStatus` is the on-chain

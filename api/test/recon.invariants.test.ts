@@ -1,4 +1,4 @@
-// The Seam · #18 each invariant fails independently with its own InvariantId; all-green passes.
+// #18 each invariant fails independently with its own InvariantId; all-green passes.
 // Pure snapshot-in/verdict-out — no DB, no chain. Proves the 4 invariants are isolable and the
 // fixed evaluation order yields a deterministic failed_invariant.
 import { describe, expect, test } from "vitest";

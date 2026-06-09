@@ -1,4 +1,4 @@
-// On-Chain Layer · indexer barrel · #16
+// Indexer barrel · #16
 // The viem CreditToken indexer: decode -> idempotent ingest -> read-model projection. Public
 // surface for tests, the verify gate, and the dev script (#31).
 export { makeChainClient, anvilLocal, avalancheFuji } from "./client.ts";

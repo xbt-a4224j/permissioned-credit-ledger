@@ -1,4 +1,4 @@
-// Money Layer (presentation) · the single GraphQL client + typed error boundary · #24
+// The single GraphQL client + typed error boundary · #24
 // One graphql-request client pointed at VITE_API_URL. The typed-revert contract (#21) lives in
 // extensions.code; gql() surfaces that raw code on a GraphqlCodeError so the UI can branch on a
 // machine-checkable code, never a stringly RPC message. #25 narrows `code` to the ReasonCode union

@@ -1,4 +1,4 @@
-// Asset Layer (presentation) · the loan marketplace — the seeded mortgage tape, CRE-first · #24
+// The loan marketplace — the seeded mortgage tape, CRE-first · #24
 // Runs LOANS_QUERY and renders a grid of LoanCards (>=6: 5 CRE + 1 RESIDENTIAL per the seed). Each
 // card shows the mortgage modeling (LTV/DSCR/collateral) + the data room. Clean loading/error/empty
 // states. The Invest action is mounted by #25 via LoanCard's actionSlot — this view stays read-only.

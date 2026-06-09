@@ -1,4 +1,4 @@
-// On-Chain Layer mirror (presentation) · the typed reason-code badge · #25
+// The typed reason-code badge · #25
 // Renders a ReasonCode as a pill colored by REASON_META[code].tone (block = compliance/reserve
 // revert; halt = engine HALT), with the blurb as a tooltip. The single place a failure reason
 // reaches the screen — always typed, never a raw error string.

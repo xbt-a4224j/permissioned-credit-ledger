@@ -1,5 +1,5 @@
-// Seam · #15 migration runner coverage against a throwaway Postgres.
-// Proves: exactly 8 tables created, idempotent re-run, checksum immutability, numeric(78,0)
+// #15 migration runner coverage against a throwaway Postgres.
+// Proves: exactly 12 tables created, idempotent re-run, checksum immutability, numeric(78,0)
 // precision round-trip > 2^53, and chain_events (block_number, log_index) uniqueness — the
 // DB-level guarantees the indexer (#16) and recon engine (#18) build on.
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
@@ -25,7 +25,7 @@ describe("applyMigrations against a fresh database", () => {
     await dropThrowawayDb(dbName);
   });
 
-  test("creates the read-model tables (7 read models + properties + applied_migrations + cursor)", async () => {
+  test("creates all 12 tables (read models + properties + applied_migrations + cursor + tx overlay)", async () => {
     const first = await applyMigrations(sql);
     expect(first.applied.length).toBeGreaterThanOrEqual(4); // >=4 migration files
 

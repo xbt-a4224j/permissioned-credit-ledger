@@ -1,4 +1,4 @@
-// Money Layer · NAV/servicing feed ingestion gate · #17
+// NAV/servicing feed ingestion gate · #17
 // ingestNav is the stateful wrapper around the pure bounds predicate: it loads the last
 // ACCEPTED mark for the loan (never the last received — the cascade landmine), runs
 // withinBounds, and persists the outcome. Accepted -> nav_readings(accepted=true). Rejected ->

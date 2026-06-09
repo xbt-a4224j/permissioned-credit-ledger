@@ -1,4 +1,4 @@
-// Money Layer · typed GraphQL enums — reason codes + lifecycle states · #20
+// Typed GraphQL enums — reason codes + lifecycle states · #20
 // Correctness is typed, not stringly: ReasonCode is the 8-member closed set (the 6 Solidity
 // custom errors mirrored in #14 + the 2 off-chain engine HALTs, #17/#18) the API surfaces as
 // extensions.code rather than opaque RPC strings. ReconState/LoanStatus/Jurisdiction/TxState are
@@ -20,7 +20,7 @@ export const ReasonCode = builder.enumType("ReasonCode", {
   description: "The 6 on-chain custom errors + 2 off-chain engine HALT states, as one typed code.",
 });
 
-// #20 reconciliation verdict: OK keeps distribution open, HALTED blocks it (the marquee gate).
+// #20 reconciliation verdict: OK keeps distribution open, HALTED blocks it (the distribution gate).
 export const ReconState = builder.enumType("ReconState", {
   values: ["OK", "HALTED"] as const,
 });

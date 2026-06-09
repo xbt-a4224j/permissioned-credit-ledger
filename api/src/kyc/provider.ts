@@ -1,4 +1,4 @@
-// Compliance front-door · the KYC provider seam — build-vs-buy made explicit · #39
+// The KYC provider seam — build-vs-buy made explicit · #39
 // KYC/KYB document verification is a regulated, commodity capability: in production you integrate a
 // vendor (Persona, Parallel Markets, iComply, Jumio) — you do NOT build OCR + liveness + sanctions
 // screening yourself. So this is an INTERFACE with a mock implementation: the anti-corruption layer.

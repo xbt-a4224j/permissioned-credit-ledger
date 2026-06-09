@@ -11,7 +11,7 @@ import {IComplianceRegistry} from "../src/interfaces/IComplianceRegistry.sol";
 import {IIdentityRegistry} from "../src/interfaces/IIdentityRegistry.sol";
 import {ClaimHandler} from "./handlers/ClaimHandler.sol";
 
-// #11 stateful invariant — the on-chain half of the marquee guarantee: aggregate
+// #11 stateful invariant — the on-chain half of the solvency guarantee: aggregate
 // holder claimable never exceeds the reserve balance (recon invariant 2), and
 // total paid out never exceeds total funded (conservation under adversarial call
 // ordering). Runs >=256 invariant runs at depth 64 (foundry.toml).

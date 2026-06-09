@@ -1,4 +1,4 @@
-// On-Chain Layer · #16 headline property: ingestion is idempotent + order-stable.
+// #16 headline property: ingestion is idempotent + order-stable.
 // For an arbitrary delivery sequence of decoded events — containing arbitrary DUPLICATES and
 // REORDERINGS — replaying through ingestEvent yields byte-identical final positions + reserve
 // rows as replaying the deduped, canonical-(blockNumber, logIndex)-ordered sequence. This is

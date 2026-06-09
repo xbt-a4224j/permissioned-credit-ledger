@@ -1,4 +1,4 @@
-// On-Chain Layer · idempotent event ingestion · #16
+// Idempotent event ingestion · #16
 // ingestEvent inserts the chain_events row with ON CONFLICT (id) DO NOTHING and, ONLY when the
 // row was newly inserted, runs the projection — all in ONE transaction. A re-delivered log
 // (reorg, WebSocket reconnect, getLogs/watch overlap) is therefore a no-op: 0 balance

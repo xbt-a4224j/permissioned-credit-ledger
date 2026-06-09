@@ -1,4 +1,4 @@
-// Money Layer · off-chain accrual freeze gate · #17
+// Off-chain accrual freeze gate · #17
 // The NAV gate's HALT must actually stop the off-chain engine from advancing accrued for a
 // loan (matrix row 9 "accrual frozen"). isAccrualFrozen reports whether a loan currently sits
 // under a NavAnomaly halt; accrualMultiplier turns that into the 0/1 the engine + UI use to

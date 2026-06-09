@@ -1,4 +1,4 @@
-// Money Layer (presentation) · the tx lifecycle hook — signing -> pending -> confirmed|reverted · #25
+// The tx lifecycle hook — signing -> pending -> confirmed|reverted · #25
 // Drives a mutation through its phases and surfaces the typed outcome. `run(send)` calls the given
 // mutation (which returns a typed MutationResult): on ok it goes signing -> pending and then polls
 // txStatus(hash) (the #23 tracker) until the indexer settles it CONFIRMED/REVERTED; on a typed

@@ -1,4 +1,4 @@
-// Money Layer · query resolvers — read the off-chain read models (no ORM, no chain) · #21
+// Query resolvers — read the off-chain read models (no ORM, no chain) · #21
 // The six read fields (#20) resolved as raw parameterized SQL against the loans/positions/
 // reserve/recon_status/identities read models the indexer (#16) and reconciliation engine (#18)
 // populate. Every money column is numeric(78,0) -> a bigint (the #15 client parser) -> a decimal
@@ -127,7 +127,7 @@ export async function resolveReserve(ctx: ApiContext): Promise<ReserveStateSourc
   };
 }
 
-// #21 the marquee: the latest reconciliation cycle as the GraphQL status (#18 -> #20 shape).
+// #21 the latest reconciliation cycle as the GraphQL status (#18 -> #20 shape).
 export async function resolveReconciliationStatus(ctx: ApiContext): Promise<ReconciliationStatusSource> {
   return ctx.recon.read();
 }

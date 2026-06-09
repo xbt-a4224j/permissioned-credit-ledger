@@ -1,4 +1,4 @@
-// Money Layer · scripted NAV feed driver (demo/matrix) · #17
+// Scripted NAV feed driver (demo/matrix) · #17
 // simulateFeed pushes a deterministic NAV series through ingestNav so the matrix verifier
 // (#27) and the demo can trigger the row-9 HALT reproducibly. The 'row9Spike' scenario seeds a
 // baseline mark then a +40% (4000 bps) jump that the gate must reject as OutOfBounds, flipping

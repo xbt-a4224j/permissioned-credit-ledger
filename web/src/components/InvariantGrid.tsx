@@ -1,4 +1,4 @@
-// The Seam (presentation) · the four reconciliation invariants, pass/fail · #26
+// The four reconciliation invariants, pass/fail · #26
 // Renders exactly the 4 engine invariants (#18 I1-I4): SupplyBacked, ClaimableLeCollected,
 // NavInBounds, IdentityValid. A failing row is highlighted (halt tone) and shows its detail so a
 // reviewer reads WHY the engine halted. The name set is guarded against drift by HealthView's test.

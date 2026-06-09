@@ -1,5 +1,5 @@
-// The Seam · the 4 reconciliation invariants (pure predicates) · #18
-// The marquee: continuously proving the token is still backed and refusing to distribute when
+// The 4 reconciliation invariants (pure predicates) · #18
+// The core of the system: continuously proving the token is still backed and refusing to distribute when
 // it can't be. Each invariant is snapshot-in/verdict-out (no I/O) so the same functions run in
 // the live engine and inside deterministic replay (#19). All money compares Usdc6 to Usdc6 in
 // identical base units. Evaluated in a FIXED order so the recorded failed_invariant is

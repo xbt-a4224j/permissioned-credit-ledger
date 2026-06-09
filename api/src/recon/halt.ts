@@ -1,4 +1,4 @@
-// The Seam · distribution halt gate · #18
+// Distribution halt gate · #18
 // The HALT must block payouts, not merely report. isDistributionHalted reports whether the most
 // recent reconciliation cycle failed; assertCanDistribute throws a typed DistributionHalted the
 // claim mutation (ticket 21) calls before paying, so a ReconMismatch / NavAnomaly actually

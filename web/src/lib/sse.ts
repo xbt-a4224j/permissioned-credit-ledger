@@ -1,9 +1,9 @@
-// Money Layer (presentation) · the live accrual stream — one EventSource, no polling · #24
+// The live accrual stream — one EventSource, no polling · #24
 // Subscribes to the #22 SSE feed (GET ${VITE_API_URL}/sse) and parses `event: accrual` frames into
 // a per-position tick map. The count-up the dashboard shows derives from the engine's pushed
 // `accruedWei`/`claimableWei` (a DISPLAY projection of the authoritative on-chain accrued, #9) —
 // never a client setInterval guessing, which would drift from the deterministic state and silently
-// contradict the reconciliation thesis. Money stays bigint (BigIntStr -> bigint here), never a
+// contradict the reconciliation verdict. Money stays bigint (BigIntStr -> bigint here), never a
 // number. The EventSource reconnects with capped backoff so a paused API in CI never wedges a test.
 import { useEffect, useRef, useState } from "react";
 import type { IdentityAddr, LoanId, PositionId } from "../types.ts";

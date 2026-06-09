@@ -1,8 +1,8 @@
-// The Seam · #19 THE headline property: replay is interleaving-invariant.
+// #19 THE headline property: replay is interleaving-invariant.
 // For an arbitrary input set and any permutation of it, stateHash(replay(permA)) ===
 // stateHash(replay(permB)). The canonical (blockNumber, logIndex) / (observedAt, source) order
 // collapses every arrival interleaving to one fold order -> one stateHash. This is the formal
-// backbone of the thesis: the book is reproducible from its inputs, byte-for-byte. Pure (no DB,
+// backbone of the design: the book is reproducible from its inputs, byte-for-byte. Pure (no DB,
 // no chain, no clock) so it runs at >=256 runs fast and can't flake on a V8/engine difference.
 import { test } from "vitest";
 import fc from "fast-check";

@@ -1,4 +1,4 @@
-// Money Layer (presentation) · a tiny async-query hook with typed loading/error/empty states · #24
+// A tiny async-query hook with typed loading/error/empty states · #24
 // No data-fetching library (scope): one hook that runs a gql() call, decodes BigIntStr money fields
 // to bigint via a caller-supplied mapper, and exposes the {loading, error, data} the views render
 // clean empty/loading/error states from. Re-runs when `vars` (serialized) changes.

@@ -1,4 +1,4 @@
-// The Seam · deterministic replay types · #19
+// Deterministic replay types · #19
 // A reconciliation gate is only trustworthy if the state it reconciles is itself deterministic.
 // ReplayState is the in-memory fold of the append-only inputs (chain_events + nav_readings);
 // ReplayInput is one such input. The fold is PURE and order-independent over interleavings — the

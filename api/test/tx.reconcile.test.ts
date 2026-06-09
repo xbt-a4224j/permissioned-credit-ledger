@@ -1,4 +1,4 @@
-// Money Layer · #23 optimistic-position reconciliation — converge to the indexer's truth.
+// #23 optimistic-position reconciliation — converge to the indexer's truth.
 // Before catch-up, positions(holder) includes the optimistic row (optimistic=true). After the
 // canonical positions row at >= the tx block exists and reconcileOptimistic runs, the optimistic
 // row is gone (no double count) and a second run deletes 0 (idempotent). A fast-check property
