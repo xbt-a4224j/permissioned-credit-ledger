@@ -1,8 +1,8 @@
-// The Seam · the 10-row scenario-matrix table (typed outcomes, not strings) · #27
+// The 10-row scenario-matrix table (typed outcomes, not strings) · #27
 // The CLAUDE.md scenario matrix made executable: each row carries a precise, typed Expected
 // outcome — an OK event, a typed on-chain ReasonCode revert, or a typed off-chain EngineState
-// HALT — and a `run` that drives the system END TO END through the real GraphQL surface (rows
-// 1-8) or the NAV feed / reconciliation engine (rows 9-10), never by poking contracts directly.
+// HALT — and a `run` that drives the system END TO END: the real GraphQL surface (rows 1-3, 5-8),
+// a holder-simulated eth_call against the contract (row 4), or the NAV feed / engine (rows 9-10).
 // The verifier asserts deepEqual(actual, expect) per row; a single divergence fails the build.
 import type { EngineState, ReasonCode } from "@pcl/shared";
 import type { MatrixContext } from "./harness.ts";
@@ -48,7 +48,7 @@ export interface Scenario {
 }
 
 // #27 the 10 scenarios. Each `run` returns a typed Actual the verifier deepEquals against `expect`.
-// Rows 1-2 (OK invest) also round-trip through the indexer (the harness waits for the read model).
+// Rows 1-2 (OK invest) also wait for the broadcast tx to mine on-chain before passing.
 export const SCENARIOS: Scenario[] = [
   {
     row: 1,
@@ -78,9 +78,12 @@ export const SCENARIOS: Scenario[] = [
     name: "Frozen holder initiates transfer reverts SenderFrozen",
     actor: "FROZEN",
     // Gauntlet step 0: a frozen SENDER cannot initiate any outbound transfer regardless of
-    // the receiver. Freeze = complete lockout (can't send AND can't receive).
+    // the receiver. Freeze = complete lockout (can't send AND can't receive). Driven via
+    // transferAs (eth_call simulated AS the frozen holder): the API's single server signer
+    // can only originate issuer-sent transfers, so the sender-side branch is proven directly
+    // against the contract — the same drive-the-mechanism pattern rows 9-10 use.
     expect: { kind: "revert", reason: "SenderFrozen" },
-    run: (ctx) => ctx.transfer("1", ACTORS.FROZEN, ACTORS.ACCREDITED_US_1, "1000"),
+    run: (ctx) => ctx.transferAs("1", ACTORS.FROZEN, ACTORS.ACCREDITED_US_1, "1000"),
   },
   {
     row: 5,

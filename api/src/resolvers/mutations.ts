@@ -1,8 +1,8 @@
-// Money Layer · mutation resolvers — drive the chain through the HALT gate · #21/#23
+// Mutation resolvers — drive the chain through the HALT gate · #21/#23
 // The seam where the hybrid stack closes: each mutation (a) checks the reconciliation status
 // FIRST and refuses to broadcast when HALTED (a ReconHaltError, distribution blocked — matrix
 // rows 9-10), then (b) simulateContract (which surfaces a typed custom-error revert for free,
-// no gas, no broadcast — rows 3-6, 8) and (c) writeContract via the single server signer. A
+// no gas, no broadcast — rows 3, 5-6, 8) and (c) writeContract via the single server signer. A
 // caught revert is decoded to a typed ReasonCode and thrown as a ChainRevertError. On a clean
 // broadcast it records the PENDING tx + optimistic position (#23) and returns a PENDING ref.
 import { GraphQLError } from "graphql";
@@ -41,7 +41,7 @@ type ContractRequest =
   | ReturnType<typeof claimRequest>;
 
 // #21 THE gate. Read the recon status FIRST; if HALTED, throw ReconHaltError WITHOUT touching the
-// chain (the marquee — gating after broadcast would let a mismatched distribution through). Else
+// chain (the point of the system — gating after broadcast would let a mismatched distribution through). Else
 // simulate (typed revert surfaces here, decoded -> ChainRevertError), then write via the signer.
 // Returns the broadcast tx hash for the tracker (#23). simulate/write are taken off ctx so a test
 // can inject a mock chain client.
@@ -96,7 +96,11 @@ export async function resolveInvest(ctx: ApiContext, input: InvestArgs): Promise
   return pendingRef(ctx, hash, "invest", wallet);
 }
 
-// #21/#23 transfer: a gauntleted holder-to-holder transfer (rows 4-6).
+// #21/#23 transfer: a gauntleted transfer (rows 5-6). Single-signer caveat: the broadcast
+// originates from the server signer, so `from` is recorded for the read model but is NOT the
+// on-chain sender — only RECEIVER-side gauntlet failures are reachable through this path.
+// (Sender-side checks like SenderFrozen are enforced on-chain and proven by the matrix via a
+// holder-simulated eth_call; holder-signed transfers are the wallet UI's job on Fuji.)
 export async function resolveTransfer(ctx: ApiContext, input: TransferArgs): Promise<TxReceiptRefSource> {
   const to = input.to.toLowerCase() as Address;
   const amount = BigInt(input.amount);
