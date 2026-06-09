@@ -14,7 +14,7 @@ This system tokenizes a first-lien mortgage loan as a permissioned security toke
 
 A mortgage loan exists in two worlds simultaneously, and they do not tick at the same rate.
 
-On-chain, accrual runs on a deterministic schedule. Interest compounds block by block, principal amortizes according to a fixed curve, and the smart contract's view of what investors are owed is always current and always precise. This is the ledger you control.
+On-chain, accrual runs on a deterministic schedule. Interest accrues linearly — balance × `ratePerSecond` × elapsed seconds, no compounding, no amortization curve modeled — and the smart contract's view of what investors are owed is always current and always precise. This is the ledger you control.
 
 Off-chain, cash arrives on its own messy timetable. A borrower makes a payment late, or early, or in two tranches through a servicer that batches wire transfers on business days. A NAV mark changes because an independent appraiser updated a comparable sale. A reserve account at a custodian earns overnight interest that wasn't modeled in the original amortization schedule. None of these events touch the chain until a human or an automated pipeline explicitly writes them there — and that pipeline has latency, failures, and reconciliation gaps of its own.
 
@@ -55,9 +55,9 @@ The loan is the root of trust. Everything else — token supply, accrual schedul
 
 ### Three-layer mental model
 
-**L1 — Permissioned token.** The [`CreditToken`](../../contracts/src/CreditToken.sol) implements a transfer-restricted ERC-20 whose movement is conditioned on the [`IdentityRegistry`](../../contracts/src/IdentityRegistry.sol) and [`ComplianceRegistry`](../../contracts/src/ComplianceRegistry.sol). This is the ERC-3643 pattern stripped to its essential mechanics: no transfer executes unless both the sender and receiver hold valid identity attestations and the compliance module approves the transfer. The token layer is deliberately thin — it holds balances and enforces transfer rules, nothing more. Accrual logic does not live here.
+**L1 — Permissioned token.** The [`CreditToken`](../../contracts/src/CreditToken.sol) implements a transfer-restricted ERC-20 whose movement is conditioned on the [`IdentityRegistry`](../../contracts/src/IdentityRegistry.sol) and [`ComplianceRegistry`](../../contracts/src/ComplianceRegistry.sol). This is the ERC-3643 pattern stripped to its essential mechanics: no transfer executes unless both the sender and receiver hold valid identity attestations and the compliance module approves the transfer. The token layer is deliberately thin on policy — it holds balances, enforces transfer rules, and runs the per-holder accrual bookkeeping (`_settleAccrual`, `claimable`, `ratePerSecond`). What does not live here is any awareness of NAV, reserves, or reconciliation.
 
-**L2 — Accrual and NAV.** The off-chain accrual layer computes what the token supply currently owes. It ingests on-chain events through the indexer ([`indexer/src/ingest.ts`](../../indexer/src/ingest.ts), [`indexer/src/decode.ts`](../../indexer/src/decode.ts)) and replays the full event history into a deterministic state machine ([`api/src/replay/fold.ts`](../../api/src/replay/fold.ts), [`api/src/replay/replay.ts`](../../api/src/replay/replay.ts)) whose integrity is anchored by a rolling hash ([`api/src/replay/hash.ts`](../../api/src/replay/hash.ts)). The NAV bounds module then computes the acceptable range for the reserve given current accrued obligations. L2 is the system's arithmetic — it translates raw events into dollar-denominated obligations and acceptable reserve envelopes.
+**L2 — Accrual and NAV.** Accrual itself is on-chain: `CreditToken` settles per-holder interest lazily in `_settleAccrual` and exposes `claimable()` — the contract is the authority on what each holder is owed (the L2 deep-dive below walks the mechanism). This layer's off-chain job is to independently re-derive and police that number. It ingests on-chain events through the indexer ([`indexer/src/ingest.ts`](../../indexer/src/ingest.ts), [`indexer/src/decode.ts`](../../indexer/src/decode.ts)) and replays the full event history into a deterministic state machine ([`api/src/replay/fold.ts`](../../api/src/replay/fold.ts), [`api/src/replay/replay.ts`](../../api/src/replay/replay.ts)) whose integrity is anchored by a rolling hash ([`api/src/replay/hash.ts`](../../api/src/replay/hash.ts)). The NAV bounds module then computes the acceptable range for the reserve given current accrued obligations. L2 is the system's arithmetic — it translates raw events into dollar-denominated obligations and acceptable reserve envelopes.
 
 **L3 — Reconciliation engine.** The engine ([`api/src/recon/engine.ts`](../../api/src/recon/engine.ts)) continuously evaluates the invariants ([`api/src/recon/invariants.ts`](../../api/src/recon/invariants.ts)) that must hold for the system to be solvent: reserve covers accrued principal, reserve covers accrued interest, NAV mark is within bounds, no distribution is outstanding against an unverified reserve. If any invariant fails, the gate closes and remains closed until the condition is resolved and re-evaluated. The engine does not interpolate or smooth — a failed invariant is a hard stop, not a warning. This is the architectural expression of the core idea: the gate is not advisory.
 
@@ -126,7 +126,7 @@ classDiagram
 
 **Step 0 — `SenderFrozen`**. If `identity.isFrozen(from)`, revert immediately with `SenderFrozen(from)`. A frozen holder cannot initiate any outbound movement. This is checked before the receiver to ensure that enforcement holds trump eligibility questions.
 
-**Step 1 — `ReceiverFrozen`**. If `identity.isFrozen(to)`, revert with `ReceiverFrozen(to)`. A frozen address cannot accumulate new tokens. The receiver freeze is checked second rather than merged with the sender freeze so the revert carries the correct address argument — the indexer and the API layer decode the address out of the revert payload to surface which account is blocked.
+**Step 1 — `ReceiverFrozen`**. If `identity.isFrozen(to)`, revert with `ReceiverFrozen(to)`. A frozen address cannot accumulate new tokens. The receiver freeze is checked second rather than merged with the sender freeze so the revert carries the correct address argument in its payload. (Off-chain, `decodeReason` in [`api/src/chain/errors.ts`](../../api/src/chain/errors.ts) maps the decoded error *name* to a typed reason code — the address argument stays on-chain, undecoded — but the two distinct error names still tell an operator which side of the transfer is blocked.)
 
 **Step 2 — `ReceiverNotVerified`**. If `!identity.isVerified(to)`, revert with `ReceiverNotVerified(to)`. An unverified wallet has not completed KYC. Verification is the gating precondition for every subsequent eligibility check; there is no meaningful result from checking jurisdiction or accreditation on a wallet whose identity has not been confirmed.
 
@@ -245,7 +245,7 @@ Freeze is a complete bidirectional lockout. `SenderFrozen` blocks outbound trans
 
 **Inbound freeze** is less obvious but equally important. A sanctioned entity should not be able to accumulate regulated securities even as a recipient of a gift or an internal corporate transfer. More practically: in a OFAC-type sanction scenario, the regulator's intent is that the sanctioned party should not hold the asset at all. If freeze only blocked outbound movement, a workaround would be to first freeze someone, then have a third party mint or transfer tokens *to* them before the freeze was enforced — `ReceiverFrozen` closes that gap. The freeze is symmetric by design, not by oversight.
 
-Freeze state is set by `ISSUER_ROLE` via `setFrozen`. It takes effect immediately on the next transaction touching that address — there is no grace period, no pending state. The `ClaimsUpdated` event emitted by every `setFrozen` call gives the indexer a deterministic hook to update the off-chain read model; the reconciliation engine's I4 invariant (`IdentityValid`) then confirms that no current token holder is in a frozen state that would imply the on-chain balances and the compliance state have diverged.
+Freeze state is set by `ISSUER_ROLE` via `setFrozen`. It takes effect immediately on the next transaction touching that address — there is no grace period, no pending state. Every `setFrozen` call emits `ClaimsUpdated`, but the indexer does not currently consume that event: the off-chain `identities` table is seeded from the deploy manifest (`seedReference` in [`indexer/src/seed.ts`](../../indexer/src/seed.ts), mirroring `Identities.sol` exactly), and the reconciliation engine's I4 invariant (`IdentityValid`) reads that table to confirm no current token holder is frozen or unverified. `ClaimsUpdated` is therefore an emitted-but-not-yet-consumed hook — a production system that mutates claims after genesis would project it into the read model through the same ingest pipeline; in the current system the seeded set is the source of truth on both sides, so the event is an audit trail and an extension point, not a live pipeline.
 
 ### What is cut from full ERC-3643
 
@@ -386,15 +386,17 @@ flowchart TD
     style G fill:#14532d,color:#f0fdf4
 ```
 
-### Why the Bound Must Be Identical On-Chain and Off-Chain
+### Why the Bound Must Be Identical Everywhere It Is Evaluated
 
-`NAV_BOUNDS` appears as a single exported constant in [`../../api/src/nav/bounds.ts`](../../api/src/nav/bounds.ts). The on-chain `freezeAccrual()` call is triggered by the off-chain gate when a mark is rejected. This means the chain's accrual state is a downstream consequence of the off-chain decision: the gate rejects, calls `freezeAccrual` on-chain, and the chain's `accrualFrozen` flag goes true.
+`NAV_BOUNDS` appears as a single exported constant in [`../../api/src/nav/bounds.ts`](../../api/src/nav/bounds.ts). Both consumers of a NAV verdict — the ingestion gate (`ingestNav`) and the replay path that re-derives NAV acceptance deterministically from the event log — import that one constant. If the gate used a different bound than the replay's re-derivation, the two sides would make different decisions about which marks are valid: the engine might compute expected state assuming a mark was accepted (because its bound accepted it) while the gate had already halted on it. The invariant check I3 (`NavInBounds`) would then fire as a spurious halt — an anomaly that exists only because two copies of the same threshold drifted. The only defense is a single constant that every evaluator imports. Any configuration divergence (e.g., one side reading a different environment variable) produces a false halt that looks like a real anomaly from the inside.
 
-If the off-chain gate used a different bound than whatever off-chain replica logic computes expected claimable, the two sides would make different decisions about which marks are valid. The engine might compute expected claimable assuming a mark was accepted (because its replica bound accepted it), while the chain's accrual was already frozen (because the gate's bound rejected it). The invariant check I3 (`NavInBounds`) would then fire as a spurious halt — the engine sees an anomaly that the replica logic did not anticipate. The only defense is a single constant that both the gate and the engine import. Any configuration divergence (e.g., one side reading a different environment variable) produces a false halt that looks like a real anomaly from the inside.
+The same argument extends to the chain. `CreditToken.freezeAccrual()` is the named on-chain hook for this gate — but it is currently unwired (next section). If it were ever wired with its own copy of the bound rather than as a downstream consequence of the off-chain verdict, on-chain accrual and the engine's replica would disagree in exactly the way described above. The single-constant discipline is what keeps that extension safe to build.
 
-### `freezeAccrual()` — The On-Chain Consequence of NavAnomaly
+### What a NavAnomaly Actually Freezes
 
-When a mark is rejected as `NavAnomaly`, [`../../api/src/nav/gate.ts`](../../api/src/nav/gate.ts) writes a `recon_status` halt row and calls `freezeAccrual(loanId)` on-chain (via the issuer role). The contract method:
+When a mark is rejected as `NavAnomaly`, [`../../api/src/nav/gate.ts`](../../api/src/nav/gate.ts) writes exactly two rows: the rejected reading into `nav_readings` (`accepted = false`, with the typed reject reason) and a halt row into `recon_status` (`state = 'NavAnomaly'`, `failed_invariant = 'NavInBounds'`). **That halt row *is* the freeze.** Everything off-chain that advances or evaluates accrual keys off `recon_status`: [`../../api/src/nav/accrualGate.ts`](../../api/src/nav/accrualGate.ts) exposes `isAccrualFrozen` — a loan is frozen while its most recent NavAnomaly halt has not been superseded by a later clean (`ok = true`) cycle — and `accrualMultiplier`, the 0-or-1 factor for the display ticker. The reconciliation engine's snapshot loader calls `isAccrualFrozen` for every loan on every cycle; a frozen loan lands in `anomalousLoans`, which is precisely what invariant I3 (`NavInBounds`) fails on. And because every distribution path reads `recon_status` before broadcasting, the halt row also blocks payouts the instant it commits.
+
+The contract has a matching hook:
 
 ```solidity
 function freezeAccrual(uint256 loanId) external onlyRole(ISSUER_ROLE) {
@@ -404,7 +406,7 @@ function freezeAccrual(uint256 loanId) external onlyRole(ISSUER_ROLE) {
 }
 ```
 
-This stamps `accrualEndsAt` to the current block timestamp (if not already halted) and sets the `accrualFrozen` flag. From this point, `_accrualClock()` returns `accrualEndsAt` for all future calls, so no additional interest accrues for any holder. Interest earned up to the freeze instant is preserved in each holder's settled `accrued` — the freeze does not claw back already-earned amounts. The `AccrualFrozen` event is indexed, so the read model and recon engine learn of the freeze through the normal event pipeline.
+It stamps `accrualEndsAt` (if not already halted) and sets `accrualFrozen`; from that point `_accrualClock()` returns the frozen instant, so no further interest accrues on-chain, while interest earned up to the freeze is preserved in each holder's settled `accrued`. But the gate does not call it. `freezeAccrual()` is exercised only by the Solidity test suite today — a named, ready extension point, not a wired consequence. That is a real production gap, stated plainly: until the gate's rejection path submits an issuer-signed `freezeAccrual(loanId)` transaction, on-chain `claimable()` keeps growing through a NavAnomaly halt, and only the off-chain halt (which blocks every distribution path) prevents that growth from ever paying out. Closing the loop is a small, well-defined change — the API process already holds the issuer signer for its other write paths — and it would make the on-chain ledger *agree with* the freeze instead of merely being gated by it.
 
 ### Full NAV Spike Scenario — Matrix Row 9
 
@@ -413,7 +415,6 @@ sequenceDiagram
     participant Feed as NAV Feed
     participant Gate as ingestNav (gate.ts)
     participant DB as Postgres
-    participant Chain as CreditToken (on-chain)
     participant Engine as Recon Engine
     participant UI
 
@@ -423,18 +424,16 @@ sequenceDiagram
     Gate-->>Gate: {ok:false, state:"NavAnomaly", reason:"OutOfBounds"}
     Gate->>DB: INSERT nav_readings (accepted=false, reject_reason="OutOfBounds")
     Gate->>DB: INSERT recon_status (state="NavAnomaly", failed_invariant="NavInBounds")
-    Gate->>Chain: freezeAccrual(loanId) [issuer tx]
-    Chain-->>Chain: accrualFrozen=true, accrualEndsAt=block.timestamp
-    Chain-->>Chain: emit AccrualFrozen(loanId)
+    Note over DB: the halt row IS the freeze —\nno on-chain call is made
 
-    Engine->>DB: poll recon_status → NavAnomaly row
+    Engine->>DB: loadSnapshot → isAccrualFrozen(loanId)\nreads recon_status → true
     Engine->>Engine: evaluateInvariants(snapshot)\nI3_navInBounds: anomalousLoans=[loanId] → fail
     Engine->>DB: record HALT state
     Engine-->>UI: SSE: {state:"NavAnomaly", reason:"OutOfBounds", loanId}
     UI-->>UI: render NavAnomaly banner\ndistribution controls disabled
 ```
 
-In the running stack, a mark arrives through the `submitNav` mutation, which feeds `ingestNav` — the Health view's demo control drives this exact path (loan 1, 14000 bps). The sequence has no human in the loop between the bad mark arriving and the accrual freeze landing on-chain. The gate is synchronous from the feed's perspective: by the time `ingestNav` returns, the `recon_status` halt row exists and the on-chain freeze transaction has been submitted. The engine's next evaluation cycle (which may run continuously or be triggered by the SSE pipeline) will find the anomalous loan in the snapshot and confirm the halt.
+In the running stack, a mark arrives through the `submitNav` mutation, which feeds `ingestNav` — the Health view's demo control drives this exact path (loan 1, 14000 bps). The sequence has no human in the loop between the bad mark arriving and the freeze taking effect. The gate is synchronous from the feed's perspective: by the time `ingestNav` returns, the rejected reading and the `recon_status` halt row are committed — and because every off-chain accrual evaluation and every distribution path keys off `recon_status`, the freeze is in force the instant that insert commits. The engine's next evaluation cycle (the driver runs one every two seconds) will find the anomalous loan in the snapshot and confirm the halt. The on-chain `accrualFrozen` flag, by contrast, stays untouched on this path — the unwired hook described above.
 
 ### Why the Freeze Is Sticky
 
@@ -480,7 +479,7 @@ Every meaningful on-chain action in this system emits a typed EVM log. The index
 - **`token`** — the address of the emitting `CreditToken` contract, which maps 1:1 to a loan
 - **typed payload** — event-specific fields (holder, amount, loan, status) as branded scalar types from `@pcl/shared`
 
-The discriminated union structure is intentional: unknown event names are hard errors, not silent skips. An indexer that silently discards unexpected logs allows ABI drift to produce invisible balance discrepancies — the reconciliation engine would then report a mismatch whose real cause is a stale decoder. By throwing on unknown events, ABI drift surfaces immediately at the ingestion layer rather than appearing as a spurious `ReconMismatch` two cycles later.
+The discriminated union structure is intentional about where it is strict. `decodeChainEvent` returns `null` for logs it does not project — `Approval`, `RoleGranted`, `AccrualFrozen` and other emissions outside the read model — so unrelated logs are skipped without polluting the projection. But within the events it claims to understand, drift is a hard error: a log missing its `txHash`/`logIndex`/`blockNumber`, a `LoanStatus` index outside the known enum, or a `Transfer` from a token address with no manifest mapping all throw immediately. The line is drawn between "not ours to project" (safe to skip) and "ours but malformed" (never safe to guess): silently mis-projecting a known event would surface two cycles later as a spurious `ReconMismatch` that masks its real cause — a stale decoder — so those paths fail at the ingestion layer instead.
 
 ---
 
@@ -543,9 +542,9 @@ Clone-on-write is used throughout — `applyInput` never mutates its input state
 
 After folding, the state is fingerprinted by [`../../api/src/replay/hash.ts`](../../api/src/replay/hash.ts). The `stateHash` is a `keccak256` of the canonical JSON serialization of the `ReplayState`. Three determinism hazards are explicitly addressed:
 
-**JSON key order.** JavaScript objects have insertion-order iteration, which varies by construction path. Every object is canonicalized by sorting keys alphabetically before serialization.
+**JSON key order.** JavaScript objects have insertion-order iteration, which varies by construction path. `canonicalize` never serializes the live state directly — it builds a fresh object literal with a fixed, hard-coded key order, so the serialized form is constructed, not inherited from whatever insertion order produced the state.
 
-**Map iteration order.** ES6 Maps iterate in insertion order. Before serializing, every Map (positions, navByLoan) is converted to a sorted array of entries keyed on a stable string.
+**Map iteration order.** ES6 Maps iterate in insertion order. Before serializing, every Map (positions, navByLoan) is converted to an array of entries sorted on a stable string key.
 
 **BigInt serialization.** `JSON.stringify` throws on BigInt values by default. Every `Usdc6` value routes through `usdc6ToString` before entering the canonical form.
 
@@ -561,7 +560,7 @@ The indexer is async and resumable. Events may be delivered out of order across 
 
 This is not a theoretical concern. In the actual deployment, the indexer may receive block N+1's events before block N's if a WebSocket delivery races; a cold-start replays from the stored cursor which may differ by restart timing; a reorg re-delivers events that are already stored as no-ops via the dedup key. In all of these cases, the set of processed events is the same — only the order in which they were encountered changes.
 
-The property test in [`../../scripts/lib/scenarios.ts`](../../scripts/lib/scenarios.ts) (scenario row P in the matrix) generates random permutations of the same `(chainEvents, navReadings)` input set and asserts that every permutation produces an identical `stateHash`. This is a fast-check property test, not a single happy-path assertion. It runs against the full seeded scenario fixture and must pass over enough permutations to make accidental equality statistically implausible.
+The property test in [`../../api/test/replay.interleaving.prop.test.ts`](../../api/test/replay.interleaving.prop.test.ts) generates arbitrary input pools with fast-check — mints across distinct holders plus monotonic NAV marks — and asserts that every Fisher-Yates permutation of the same `ReplayInput[]` produces an identical `stateHash`. This is a fast-check property, not a single happy-path assertion, and it is pure (no database, no chain, no clock), so it runs at ≥256 cases without flaking. The scenario matrix exercises a related but distinct property: [`../../scripts/verify_matrix.ts`](../../scripts/verify_matrix.ts) re-runs the 10 scenario rows in 64 random orderings and asserts the per-row verdicts are order-independent. One property pins the fold's arithmetic; the other pins the harness's row isolation.
 
 ---
 
@@ -640,7 +639,7 @@ The asymmetry of the check (`≤`, not `=`) is also intentional. Equality would 
 
 ### Fail-closed: why HALT beats best-effort
 
-Every value-moving action in the API calls `assertCanDistribute()` before touching the reserve. If the latest `recon_status` row has `ok = false`, distribution is refused entirely — no partial payments, no prorated payouts, no "best effort given current data." The system halts.
+Every value-moving mutation in the API routes through `broadcastGated` ([`../../api/src/resolvers/mutations.ts`](../../api/src/resolvers/mutations.ts)), which calls `isDistributionHalted()` before any chain interaction. The check reads the latest *persisted* `recon_status` row — kept fresh by the reconciliation driver, which runs a cycle every two seconds and once on boot. If that row has `ok = false`, the broadcast is refused entirely — no partial payments, no prorated payouts, no "best effort given current data." The system halts.
 
 This is the correct choice, and the reasoning is asymmetric:
 
@@ -650,7 +649,7 @@ This is the correct choice, and the reasoning is asymmetric:
 
 The fail-closed philosophy also forces bad state to be visible. A best-effort system that pays what it can and logs a warning degrades silently — the warning is seen hours later, by which point the mismatch has widened. A HALT is loud, immediate, and blocks every downstream action that depends on distribution correctness, forcing the operational team to address the root cause before anything else can proceed.
 
-This is expressed structurally, not just by convention: the claim path's guard runs the reconciliation cycle inline and returns a typed `ReconResult`. If `result.ok === false`, the API returns a typed error (carrying `state` and `failed`) and no transaction is sent to the chain. The guard cannot be bypassed without modifying the control flow; there is no configuration flag to run in "degraded mode."
+This is expressed structurally, not just by convention: `broadcastGated` reads the latest persisted reconciliation verdict *first* and throws a typed `ReconHaltError` (carrying the engine state, `NavAnomaly` or `ReconMismatch`) before any transaction is sent to the chain. The verdict it reads is never stale by more than one driver tick, and the operator mutations (`submitNav`, `reportCash`) additionally run a reconciliation cycle inline so their verdict returns immediately rather than waiting for the next tick. The guard cannot be bypassed without modifying the control flow; there is no configuration flag to run in "degraded mode." (`assertCanDistribute` in [`../../api/src/recon/halt.ts`](../../api/src/recon/halt.ts) is the throwing variant of the same `recon_status` check — currently exercised only by the test harness, the mutations use `isDistributionHalted` directly.)
 
 ---
 
@@ -749,19 +748,19 @@ erDiagram
     loans ||--o{ nav_readings : "loan_id"
 ```
 
-Three of these entities deliberately have no foreign keys. `chain_events` is the append-only input log, keyed only by EventId. `reserve` and `indexer_cursor` are single-row tables (`id = 1` enforced by a check constraint). And `recon_status` is *global* — there is no `loan_id` column, because a reconciliation cycle is one verdict over the whole ledger, not a per-loan score (see below).
+Four of these entities deliberately have no foreign keys. `chain_events` is the append-only input log, keyed only by EventId. `reserve` and `indexer_cursor` are single-row tables (`id = 1` enforced by a check constraint). And `recon_status` is *global* — there is no `loan_id` column, because a reconciliation cycle is one verdict over the whole ledger, not a per-loan score (see below).
 
 ### Table-by-Table Ownership
 
 **`chain_events`** is the append-only log of every decoded EVM log that the indexer has ingested. The indexer writes it in [`../../indexer/src/ingest.ts`](../../indexer/src/ingest.ts) using the idempotency pattern described below. Nothing deletes from this table. It is the ground truth record of what happened on-chain from the indexer's perspective. The replay engine in [`../../api/src/replay/replay.ts`](../../api/src/replay/replay.ts) reads it in `(block_number, log_index)` order to reconstruct historical state, and the fold function in [`../../api/src/replay/fold.ts`](../../api/src/replay/fold.ts) projects each event into an in-memory ledger. The hash in [`../../api/src/replay/hash.ts`](../../api/src/replay/hash.ts) is computed over the folded result of the *entire* ordered event sequence plus NAV readings — one global fingerprint of ledger state, not a per-loan digest.
 
-**`positions`** is a mutable projection — the current principal and accrued interest for every `(loan_id, holder)` pair. The indexer upserts into it as events arrive. The reconciliation engine reads it to check supply invariants. The NAV bounds calculator in [`../../api/src/nav/bounds.ts`](../../api/src/nav/bounds.ts) reads it to compute aggregate exposure. A `unique (loan_id, holder)` constraint (over a surrogate text `id` primary key) means there is one row per economic position, not one row per event.
+**`positions`** is a mutable projection — the current principal and accrued interest for every `(loan_id, holder)` pair. The indexer upserts into it as events arrive. The reconciliation engine's snapshot loader reads it for the off-chain side of the supply invariant (and for the holder list whose on-chain `claimable` it queries); the SSE accrual source reads it to drive the display ticker. (The NAV bounds predicate in [`../../api/src/nav/bounds.ts`](../../api/src/nav/bounds.ts) reads nothing — it is a pure function; its stateful wrapper `ingestNav` touches only `nav_readings` and `recon_status`.) A `unique (loan_id, holder)` constraint (over a surrogate text `id` primary key) means there is one row per economic position, not one row per event.
 
 **`nav_readings`** records every NAV observation submitted for a loan — accepted or rejected — along with the reason for rejection if applicable. The gate logic in [`../../api/src/nav/gate.ts`](../../api/src/nav/gate.ts) writes accepted/rejected readings. The recon engine reads the most recent accepted reading when checking NAV-sensitive invariants defined in [`../../api/src/recon/invariants.ts`](../../api/src/recon/invariants.ts). Storing rejected readings with their reasons is deliberate: it provides a complete audit trail of what was proposed versus what was accepted, which matters for regulatory review.
 
 **`recon_status`** is the audit log of every reconciliation run — one row per cycle, and the verdict is *global*: a cycle evaluates the four invariants over the entire ledger, so there is no `loan_id` column. Each row carries an `ok` boolean, a `state_hash` (the cold-replay fingerprint), and a `detail` JSONB blob of offending values for the UI. The typed engine state — `state IN ('NavAnomaly', 'ReconMismatch')` — and `failed_invariant` are populated *only* on a HALT; an `ok = true` row leaves both null. There are no `failed`/`skipped` terminal states: the verdict is the boolean, and the typed state names *why* (`NavAnomaly` when I3 `NavInBounds` breaks, `ReconMismatch` for any other invariant). The engine in [`../../api/src/recon/engine.ts`](../../api/src/recon/engine.ts) inserts these rows; nothing updates them. History is immutable. Operators answer "when did reconciliation last pass, and has ledger state changed since?" by comparing `state_hash` across rows. An `AFTER INSERT` trigger fires `pg_notify('recon_changed', ...)` with the new `cycle_id` and `ok` flag, which the SSE recon feed `LISTEN`s on — a HALT reaches the UI the moment the row commits, not one poll later.
 
-**`reserve`** is a single-row table (`id = 1`, enforced by a check constraint) holding the mock-USDC servicing balance in `numeric(78,0)` integer base units. It is *not* per-loan and stores no claimable aggregate — claimable is computed from `positions.accrued` at check time. The indexer debits it as claims are projected; the ops path can overwrite it (that is how matrix scenario 10 injects servicing cash below claimable). The reconciliation engine reads it as `offchainCollected` for invariant I2, `ClaimableCovered`: aggregate claimable must not exceed this balance.
+**`reserve`** is a single-row table (`id = 1`, enforced by a check constraint) holding the mock-USDC servicing balance in `numeric(78,0)` integer base units. It is *not* per-loan and stores no claimable aggregate — the claimable side of the comparison is read from the chain at check time: the snapshot loader calls `claimable(holder)` on each loan token for every open position and sums the results. The indexer debits the reserve as claims are projected; the ops path can overwrite it (that is how matrix scenario 10 injects servicing cash below claimable). The reconciliation engine reads it as `offchainCollected` for invariant I2, `ClaimableCovered`: aggregate on-chain claimable must not exceed this balance.
 
 **`indexer_cursor`** is a single-row table tracking how far the indexer has read into the chain. Covered in depth below.
 
@@ -779,7 +778,7 @@ ON CONFLICT (id) DO NOTHING;
 
 A log is globally unique by `(txHash, logIndex)` on any EVM chain — the same log cannot appear at two different positions in two different transactions. This means the EventId is a content-addressable key. If the indexer ingests block 1000, crashes, restarts, and re-reads block 1000, every insert hits `ON CONFLICT DO NOTHING` and the projection is unchanged. Double-ingest is structurally a no-op.
 
-This matters for three distinct failure modes. Reorgs: when the chain reorgs and a previously seen block is replaced, the indexer rewinds its cursor to before the reorg depth, re-reads the replaced blocks, and inserts new events. Events from the canonical chain that were already stored are silently skipped; genuinely new events from the replacement blocks are inserted fresh. Restarts: the indexer can restart at any time without a cleanup step — it just resumes from cursor. Replay-for-debugging: engineers can re-run the ingest pipeline against historical blocks to reproduce a projection state without touching production data, because the inserts are no-ops against already-stored events.
+This matters for three distinct failure modes. Reorgs: if the chain reorgs and previously seen transactions are re-mined, re-delivery of their logs hits the dedup key and is silently skipped; genuinely new events from the replacement blocks are inserted fresh (there is no reorg *detection* — see the cursor section below for what that posture relies on). Restarts: the indexer can restart at any time without a cleanup step — it just resumes from cursor. Replay-for-debugging: engineers can re-run the ingest pipeline against historical blocks to reproduce a projection state without touching production data, because the inserts are no-ops against already-stored events.
 
 The downstream upserts into `positions` follow the same principle: they are keyed on the logical entity (`unique (loan_id, holder)`) and use `ON CONFLICT ... DO UPDATE` with idempotent arithmetic where needed; the single-row `reserve` projection is likewise only touched for events that survived the dedup gate.
 
@@ -790,13 +789,13 @@ The downstream upserts into `positions` follow the same principle: they are keye
 indexer_cursor (id INT PK, block_number BIGINT, updated_at TIMESTAMPTZ)
 ```
 
-The indexer in [`../../indexer/src/main.ts`](../../indexer/src/main.ts) reads this row on startup to determine where to begin polling. After successfully ingesting and projecting a block, it updates `block_number` to that block number — the highest block whose logs are fully ingested and projected. The update is inside the same transaction as the event inserts, so `block_number` never advances past a block that failed mid-ingest.
+The indexer in [`../../indexer/src/main.ts`](../../indexer/src/main.ts) reads this row on startup to determine where to begin. After a backfill window completes — and after each live-tail event commits — `setCursor` advances `block_number`, the high-water mark of processed blocks. The cursor update is deliberately *not* in the same transaction as the event inserts: each insert-plus-projection commits atomically on its own, and `setCursor` runs afterward. A crash between ingesting events and advancing the cursor therefore leaves the cursor *behind*, never ahead — the safe direction, because a stale cursor only means re-reading blocks whose events are already stored, and the dedup key makes every one of those re-inserts a no-op.
 
-On restart after a clean shutdown, the indexer resumes from `block_number + 1` with no data loss. On restart after a crash mid-block, it re-reads the partial block — idempotency handles the events that were already written.
+On restart, the backfill resumes *from* the stored cursor block — not the block after it. Re-reading the cursor block costs a handful of no-op inserts and guarantees that a block processed partway through is never skipped.
 
-On a shallow reorg, the cursor is rewound to the last safe block before the fork and ingestion proceeds forward from there. Note the cursor stores only a block number, not a block hash — there is no stored-parent-hash comparison; reorg safety rests on the dedup keys making re-ingestion of replaced blocks a no-op, with the reconciliation invariants as the backstop (see the clarification below).
+There is no reorg detection and no cursor rewind. The cursor stores only a block number, not a block hash — no stored-parent-hash comparison, no fork-point search. The posture is deliberate and honest about what it relies on: if a shallow reorg re-delivers transactions, the `txHash:logIndex` dedup makes already-stored events no-ops and genuinely new events insert fresh; if a reorg *drops* a transaction that was already projected, the projection diverges from the chain — and that divergence is exactly what the reconciliation invariants catch on the next cycle (I1 against on-chain `totalSupply`, I2 against on-chain `claimable`). The backstop is the engine, not the cursor.
 
-### Reorg-Safe Resumption Sequence
+### Resumption Sequence
 
 ```mermaid
 sequenceDiagram
@@ -807,27 +806,22 @@ sequenceDiagram
     I->>DB: SELECT block_number FROM indexer_cursor WHERE id = 1
     DB-->>I: block_number = 4200
 
-    I->>N: eth_getBlockByNumber(4201)
-    N-->>I: block 4201 (canonical)
+    I->>N: getLogs(fromBlock=4200, toBlock=latest)
+    N-->>I: logs, sorted by (blockNumber, logIndex)
 
-    loop for each log in block
+    loop for each decoded event
         I->>DB: INSERT INTO chain_events ... ON CONFLICT DO NOTHING
-        note over DB: already-seen events: no-op<br/>new events: inserted + projected
+        note over DB: block 4200 was already processed —<br/>its events are no-ops (dedup)<br/>new events: inserted + projected atomically
     end
 
-    I->>DB: UPDATE positions / reserve (upsert)
-    I->>DB: UPDATE indexer_cursor SET block_number = 4201
+    I->>DB: UPDATE indexer_cursor SET block_number = latest
 
-    note over I: reorg detected at block 4199
-    I->>DB: UPDATE indexer_cursor SET block_number = 4198
-    I->>N: eth_getBlockByNumber(4199)
-    N-->>I: replacement block 4199 (new canonical)
-    I->>DB: INSERT INTO chain_events ... ON CONFLICT DO NOTHING
-    note over DB: orphaned events already stored<br/>are not deleted — they are<br/>simply not re-projected
-    I->>DB: UPDATE indexer_cursor SET block_number = 4199
+    note over I: crash before the cursor update?
+    I->>DB: next boot re-reads from block 4200 again
+    note over DB: re-delivered events hit the dedup key —<br/>projection unchanged
 ```
 
-One clarification on reorg handling: orphaned events (from the superseded fork) remain in `chain_events` with their original `id`. They do not corrupt the projection because the projection is driven by what the indexer re-ingests going forward, not by what is in `chain_events` at a point in time. If full reorg-awareness is needed — rolling back `positions` to a pre-fork snapshot — that requires additional machinery (a shadow table or event sourcing from scratch). The current design accepts that `chain_events` may contain a small number of orphaned rows from shallow reorgs and tolerates this because the reconciliation engine's invariant checks will catch any resulting projection inconsistency on the next cycle.
+One clarification on reorg handling: if a shallow reorg ever orphans stored events, they remain in `chain_events` with their original `id` — nothing detects or deletes them. They do not corrupt the projection because the projection is driven by what the indexer ingests going forward, not by a re-scan of `chain_events` at a point in time. If full reorg-awareness is needed — rolling back `positions` to a pre-fork snapshot — that requires additional machinery (a shadow table, stored block hashes, or event sourcing from scratch). The current design accepts that `chain_events` may contain a small number of orphaned rows from shallow reorgs and tolerates this because the reconciliation engine's invariant checks will catch any resulting projection inconsistency on the next cycle.
 
 ### Why Not Kafka
 
@@ -882,7 +876,8 @@ sequenceDiagram
         Note over Eng: Claim path unblocked (recon OK)
         Investor->>UI: Click "Claim"
         UI->>GQL: GraphQL mutation claim(loanId)
-        GQL->>CT: assertCanDistribute → reads recon_status.ok
+        GQL->>DB: isDistributionHalted → latest recon_status.ok = true
+        GQL->>CT: claim() via server-signed tx
         CT->>CT: CEI: reset accrued[holder], debit reserve
         CT->>Chain: emit InterestClaimed(holder, loan, amount)
         Chain-->>Idx: event delivery
@@ -898,21 +893,22 @@ sequenceDiagram
         Note over NAV: jumpBps=3200 > maxJumpBps=2000 → OutOfBounds
         NAV->>DB: nav_readings(accepted=false, reject_reason=OutOfBounds)
         NAV->>DB: insert recon_status(ok=false, state=NavAnomaly)
-        NAV->>Chain: freezeAccrual(loanId) on-chain
+        Note over NAV,DB: the halt row IS the freeze —<br/>isAccrualFrozen() keys off recon_status<br/>(on-chain freezeAccrual() stays an unwired hook)
+        Eng->>DB: loadSnapshot → isAccrualFrozen(loanId) = true
         Eng->>Eng: evaluateInvariants → I3 NavInBounds FAILS<br/>anomalousLoans=[loanId]
         Eng->>DB: insert recon_status(ok=false, state=NavAnomaly)
         Note over Eng: Distribution HALT — claim path blocked
         Investor->>UI: Attempt claim
-        GQL->>CT: assertCanDistribute → recon_status.ok=false
-        CT-->>GQL: revert / HALT DomainError{kind:"NavAnomaly"}
-        GQL-->>UI: typed error NavAnomaly
+        UI->>GQL: GraphQL mutation claim(loanId)
+        GQL->>DB: isDistributionHalted → recon_status.ok = false
+        GQL-->>UI: typed ReconHaltError{state:"NavAnomaly"} — no tx broadcast
         UI-->>Investor: Halt banner shown
     end
 ```
 
-**Reading the diagram.** Steps 1–19 are the happy path. The server-signed GraphQL mutation triggers an on-chain `mint`, which routes synchronously through `ComplianceRegistry._checkTransfer` via CreditToken's OpenZeppelin v5 `_update` hook. If that passes, the tx is mined, the indexer picks up the emitted events, and the reconciliation engine immediately runs its four invariant checks. Because all four pass, the `recon_status` table records `ok=true` and the claim path opens. When the investor claims, the contract reads that flag, applies checks-effects-interactions (accrual reset and reserve debit before any external call), emits `InterestClaimed`, and the SSE feed propagates the balance change to the UI.
+**Reading the diagram.** Steps 1–23 are the happy path. The server-signed GraphQL mutation triggers an on-chain `mint`, which routes synchronously through `ComplianceRegistry.checkTransfer` via CreditToken's OpenZeppelin v5 `_update` hook. If that passes, the tx is mined, the indexer picks up the emitted events, and the reconciliation engine's next cycle runs its four invariant checks. Because all four pass, the `recon_status` table records `ok=true` and the claim path opens. When the investor claims, the API's broadcast gate reads that flag (`isDistributionHalted`) before touching the chain; the contract then applies checks-effects-interactions (accrual reset and reserve debit before any external call), emits `InterestClaimed`, and the SSE feed propagates the balance change to the UI.
 
-Steps 20–29 show the NAV anomaly path. The acceptance gate (`withinBounds` in [`../../api/src/nav/bounds.ts`](../../api/src/nav/bounds.ts)) runs against the last *accepted* mark for the loan — not the last received, which would allow a cascade where each bad mark anchors the next. A +40% jump (4000 bps) against the 2000 bps cap is rejected immediately, stored as `accepted=false` with a typed `OutOfBounds` reason, and written as a `NavAnomaly` halt to `recon_status`. The I3 invariant in the next recon cycle confirms it. Both sides independently block distribution — the NAV gate's write and the invariant evaluation are intentionally redundant so neither is a single point of failure.
+Steps 24–34 show the NAV anomaly path. The acceptance gate (`withinBounds` in [`../../api/src/nav/bounds.ts`](../../api/src/nav/bounds.ts)) runs against the last *accepted* mark for the loan — not the last received, which would allow a cascade where each bad mark anchors the next. A +40% jump (4000 bps) against the 2000 bps cap is rejected immediately, stored as `accepted=false` with a typed `OutOfBounds` reason, and written as a `NavAnomaly` halt to `recon_status`. The I3 invariant in the next recon cycle confirms it. Both sides independently block distribution — the NAV gate's write and the invariant evaluation are intentionally redundant so neither is a single point of failure.
 
 ---
 
@@ -932,7 +928,7 @@ Every failure in the system has one machine-checkable code. [`../../contracts/sr
 
 The `assertNever` helper exists to prove union closure at compile time. Every `switch` over `DomainError['kind']` that omits a branch fails to compile — the missing arm leaves a type that is assignable to `never`, and `assertNever` accepts only `never`. This is not a runtime safety net; it is a *proof mechanism* that the closed-set property holds across the codebase. A future error code addition forces the compiler to enumerate every switch that needs updating, turning a potential silent regression into a build failure.
 
-The 4-byte selectors in `SOLIDITY_ERROR_SELECTORS` are populated from the Foundry-emitted ABI, never hand-coded. A stale selector would turn a typed revert opaque — the indexer and GraphQL mapper would receive an unrecognized error and fall through to a generic handler, hiding the true cause. By sourcing selectors from the ABI at build time and failing CI on mismatch, ABI drift becomes a hard error rather than a subtle decoding bug.
+Decoding a revert back into a reason code does not rest on hand-maintained selectors. [`../../api/src/chain/errors.ts`](../../api/src/chain/errors.ts) passes raw revert data to viem's `decodeErrorResult` against `COMBINED_ERROR_ABI` — the union of every custom-error fragment across `CreditToken` and both registries, assembled at module load from the same Foundry-emitted artifacts the contracts compiled to — and then maps the decoded error *name* through a closed name→`ReasonCode` record. Binding to the compiled artifacts means a renamed or re-parameterized error stops decoding loudly (falls through to `null`, surfaced as a generic failure) instead of silently mis-mapping. The event side has its own drift test: `indexer/test/abi.consistency.test.ts` asserts the indexer's inline event fragments are field-for-field identical to the compiled artifact's, failing the suite the moment they diverge. (A `SOLIDITY_ERROR_SELECTORS` map still exists in `shared/src/reasons.ts` from an earlier selector-table design; it is empty and unused — the artifact-bound name decode above is the real mechanism.)
 
 #### (c) Deterministic replay and stateHash
 
@@ -974,7 +970,7 @@ Each item below has a brief production story explaining what would replace it. T
 
 **Hard on-chain supply cap.** There is no `maxSupply` variable on `CreditToken`. The issuer can mint any amount. The reconciliation invariant I1 (`SupplyBacked`) catches drift reactively — if minted supply exceeds the backed principal, I1 fails and distribution halts — but there is no proactive cap preventing the over-mint in the first place. Production: a mutable cap keyed to the loan's outstanding principal (sourced from the originator's loan origination system) enforces a hard ceiling, and I1 becomes a belt-and-suspenders check rather than the only guard.
 
-**Residential consumer-law gating.** The `ComplianceRegistry` includes `collateralType ∈ {CRE, RESIDENTIAL}` as a seam, and the codebase is seeded with 5 CRE loans and 1 residential loan. TILA / RESPA / ability-to-repay checks are named as an extension point on `ComplianceRegistry` but not implemented. The gauntlet structure is designed to accommodate them as additional steps without disturbing the existing checks.
+**Residential consumer-law gating.** The `collateralType ∈ {CRE, RESIDENTIAL}` seam lives on the loan data — the deploy manifest and the `loans.collateral_type` column — and the codebase is seeded with 5 CRE loans and 1 residential loan. The `ComplianceRegistry` itself has no collateral awareness today; TILA / RESPA / ability-to-repay checks are named as an extension point on it but not implemented. The gauntlet structure is designed to accommodate them as additional steps without disturbing the existing checks.
 
 **Borrow-against / money market.** Pledging the credit token as collateral to borrow USDC — with LTV ratios, margin calls, and liquidation — is deferred explicitly. This module depends on NAV and reconciliation integrity being proven in production before it is built. A money-market sitting on top of an unproven backing model amplifies any valuation error into a liquidation cascade; the dependency is intentional, not a scheduling convenience.
 
@@ -1053,7 +1049,7 @@ The following gaps exist in the current codebase and represent the highest-prior
 
 The system ships three verification surfaces. All three must be green on the local node before any change is considered done.
 
-**`forge test -vv`** runs the complete Foundry suite: unit tests for each compliance scenario, fuzz tests for the NAV bounds gate (property: any jump ≤ `maxJumpBps` is accepted; any jump > `maxJumpBps` is rejected), and invariant tests including the reserve/claim conservation invariant (total claimed never exceeds total accrued-minus-reserve even under adversarial call ordering). The reentrancy surface on `claim()` — which applies CEI before any external call — is covered by the invariant harness.
+**`forge test -vv`** runs the complete Foundry suite: unit tests for each compliance scenario, fuzz tests over the accrual math (`CreditTokenFuzz.t.sol` — accrual is monotonic in elapsed time, a frozen loan accrues nothing further, a claim never pays more than settled accrued), and the stateful invariant suite (`CreditTokenInvariant.t.sol`) driving adversarial mint/warp/claim/fund orderings against two invariants: aggregate holder claimable never exceeds the reserve balance (the on-chain half of I2), and total ever claimed never exceeds total ever funded into the reserve. The reentrancy surface on `claim()` — which applies CEI before any external call — is covered by the same invariant harness. The NAV bounds property (no out-of-bounds or non-monotonic mark is ever admitted to the accepted feed) is *not* a forge fuzz — the gate is off-chain code, and the property lives in the Vitest suite (`api/test/nav.bounds.prop.test.ts`).
 
 **`bun run test`** runs the full Vitest + fast-check suite covering the off-chain layers. Key property tests: the deterministic-replay property (any permutation of the same `ReplayInput[]` produces an identical `stateHash`), the invariant property tests (snapshot configurations that violate each of I1–I4 are correctly detected), and unit tests for `withinBounds`, `ingestEvent` idempotency, and the `assertNever` exhaustiveness helper.
 
