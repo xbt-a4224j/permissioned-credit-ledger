@@ -1,4 +1,4 @@
-// Money Layer · #17 fast-check property: the bounds gate never admits an out-of-bounds mark.
+// #17 fast-check property: the bounds gate never admits an out-of-bounds mark.
 // For any sequence of NAV marks, folding them through withinBounds (advancing the baseline only
 // on ACCEPT) yields: every accepted mark is strictly timestamp-monotonic AND within maxJumpBps
 // of its accepted predecessor; every mark violating either is rejected. No false negatives — an

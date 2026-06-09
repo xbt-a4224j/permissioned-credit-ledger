@@ -1,4 +1,4 @@
-// The Seam · deterministic replay barrel · #19
+// Deterministic replay barrel · #19
 export { emptyState } from "./state.ts";
 export { applyInput, orderKey } from "./fold.ts";
 export { replay, loadInputs, replayClock } from "./replay.ts";

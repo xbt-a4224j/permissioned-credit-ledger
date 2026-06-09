@@ -1,4 +1,4 @@
-// Money Layer · NAV gate result types · #17
+// NAV gate result types · #17
 import type { NavReading } from "@pcl/shared";
 import type { NavRejectReason } from "./bounds.ts";
 

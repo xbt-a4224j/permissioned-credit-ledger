@@ -1,4 +1,4 @@
-// On-Chain Layer mirror (presentation) · a holder position row with a live accrual ticker · #24
+// A holder position row with a live accrual ticker · #24
 // Renders principal, the live claimable (count-up from the SSE tick, #22), and the loan status.
 // The ticker derives its value from the engine-pushed `claimableWei` — never a client setInterval —
 // so the displayed number tracks the deterministic on-chain accrued (#9). When `frozen` is set (the

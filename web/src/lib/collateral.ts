@@ -1,4 +1,4 @@
-// Asset Layer (presentation) · the CRE/RESIDENTIAL seam, derived from the seed · #24
+// The CRE/RESIDENTIAL seam, derived from the seed · #24
 // The mortgage-general seam (CLAUDE.md): the platform is seeded CRE-first (5 CRE + 1 RESIDENTIAL)
 // so residential plugs into identical rails. The GraphQL Loan shape (#20) does not yet carry
 // collateralType (it is a named-but-cut extension point), so the marketplace derives the badge from

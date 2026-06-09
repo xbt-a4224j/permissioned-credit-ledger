@@ -1,4 +1,4 @@
-// Money Layer · #23 tx-status tracking — PENDING -> CONFIRMED|REVERTED + optimistic write.
+// #23 tx-status tracking — PENDING -> CONFIRMED|REVERTED + optimistic write.
 // recordPending stamps a PENDING row (+ an optimistic position for an invest); the confirmation
 // watcher transitions it on a mocked receipt: success -> CONFIRMED with the block; reverted ->
 // REVERTED with a decoded ReasonCode (not a raw string). Every transition emits exactly one `tx`

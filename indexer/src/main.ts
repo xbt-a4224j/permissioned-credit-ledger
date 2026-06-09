@@ -1,4 +1,4 @@
-// On-Chain Layer · indexer entrypoint — backfill + live tail · #16
+// Indexer entrypoint — backfill + live tail · #16
 // Wires the whole bridge: migrate the read model, seed reference rows from the manifest,
 // backfill CreditToken logs from the resume cursor to `latest` across all 6 loan tokens, then
 // watch the live tail. Every log is decoded (#16 decode) and ingested idempotently (#16

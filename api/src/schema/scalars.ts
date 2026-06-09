@@ -1,5 +1,5 @@
-// Money Layer · custom GraphQL scalars (string money, address, datetime) · #20
-// The marquee landmine: a uint256 token amount over 2^53 silently corrupts as a JS number and
+// Custom GraphQL scalars (string money, address, datetime) · #20
+// The money-precision landmine: a uint256 token amount over 2^53 silently corrupts as a JS number and
 // fabricates the very off-chain/on-chain drift the reconciliation engine exists to catch. So
 // BigIntStr carries every amount as a base-10 string, validated on parse AND serialize —
 // it round-trips uint256 max losslessly. Address is a 20-byte hex; DateTime is ISO-8601.

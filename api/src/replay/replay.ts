@@ -1,4 +1,4 @@
-// The Seam · replay = sort by canonical order, fold with a deterministic clock · #19
+// Replay = sort by canonical order, fold with a deterministic clock · #19
 // replay(inputs) is the verification oracle: it sorts the append-only inputs into their ONE
 // canonical order and folds them into a single ReplayState. The clock `now` is derived from the
 // inputs (max NAV observedAt) — never Date.now() — so the fold is a pure function of the input

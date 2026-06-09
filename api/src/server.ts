@@ -1,4 +1,4 @@
-// Money Layer · the graphql-yoga server + SSE + health, on the fixed API port · #21/#22
+// The graphql-yoga server + SSE + health, on the fixed API port · #21/#22
 // createServer wires the Pothos schema (#20) onto graphql-yoga with the per-request ApiContext
 // (#21) and the typed formatError guard (every error carries a ReasonCode or INTERNAL). The fetch
 // handler also routes GET /health (liveness) and GET /sse (the live feed, #22) off one shared
@@ -58,7 +58,7 @@ export function createServer(ctx: ApiContext = createContext()): PclServer {
     // #21 same context for every request (stateless reads/writes; no auth layer by design).
     context: () => ctx,
     graphqlEndpoint: "/graphql",
-    // #21 the code guarantee: every surfaced error has extensions.code in the 7 ReasonCodes or INTERNAL.
+    // #21 the code guarantee: every surfaced error has extensions.code in the 8 typed codes or INTERNAL.
     maskedErrors: { maskError: (error) => formatError(error) },
     landingPage: false,
   });

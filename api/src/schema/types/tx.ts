@@ -1,4 +1,4 @@
-// Money Layer · GraphQL TxReceiptRef — the mutation return + tx lifecycle · #20/#23
+// GraphQL TxReceiptRef — the mutation return + tx lifecycle · #20/#23
 // The union-free shape invest/transfer/claim return (#21) and txStatus(hash) reads (#23):
 // the broadcast hash, the PENDING->CONFIRMED|REVERTED state, a typed reasonCode on revert, the
 // settling block, and the optimistic Position the dashboard shows before the indexer catches up.

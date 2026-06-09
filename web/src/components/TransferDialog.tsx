@@ -1,4 +1,4 @@
-// Money Layer (presentation) · the transfer dialog — a gauntleted holder-to-holder transfer · #25
+// The transfer dialog — a gauntleted holder-to-holder transfer · #25
 // Recipient address + amount (6-dec -> bigint). The transfer routes through the compliance gauntlet
 // (#8), so a revert surfaces ReceiverFrozen (row 4) / ReceiverNotVerified (row 5) as a typed
 // ReasonBadge. ensureChain() precedes the broadcast. Money never coerces through a JS number.

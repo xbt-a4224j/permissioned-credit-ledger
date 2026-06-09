@@ -1,4 +1,4 @@
-// Money Layer (presentation) · the invest dialog — fund a loan series through the gauntlet · #25
+// The invest dialog — fund a loan series through the gauntlet · #25
 // Amount input (6-decimal aware, parsed to bigint base units), an Invest button gated on a
 // connected wallet. ensureChain() runs before the mutation (wrong-network broadcasts diverge from
 // the indexer). The result is typed: { ok:false } renders a ReasonBadge inline (rows 3,6 for the

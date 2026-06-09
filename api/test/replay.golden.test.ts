@@ -1,4 +1,4 @@
-// The Seam · #19 golden: the seed replay hash is pinned, and the hash is sensitive (not vacuous).
+// #19 golden: the seed replay hash is pinned, and the hash is sensitive (not vacuous).
 // stateHash(replay(seedInputs)) must equal the committed golden.json hash — a logic change that
 // alters state surfaces here as a diff. And a deliberate 1-base-unit perturbation of an input
 // MUST change the hash, proving the fingerprint actually depends on the values.

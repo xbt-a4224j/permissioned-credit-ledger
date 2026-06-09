@@ -1,11 +1,11 @@
-// The Seam · live reconciliation driver — runs cycles in the running app · #32 (bug)
+// Live reconciliation driver — runs cycles in the running app · #32 (bug)
 // Bug #32: runReconCycle() was only ever called by the test harness, so the live API never wrote a
 // recon_status row — the Health tab was stuck on "awaiting first cycle" and the HALT gate had
 // nothing to read. This driver closes that gap: it runs a reconciliation cycle on a fixed interval
-// (and once immediately on boot), so the marquee is live. Each cycle's insert fires the existing
+// (and once immediately on boot), so the reconciliation verdict is always live. Each cycle's insert fires the existing
 // `recon_changed` NOTIFY trigger (#22 migration), so the SSE recon source pushes it to the UI with
-// no extra wiring. A NavAnomaly (#33 pushNav) or ReconMismatch (#33 injectCash) is therefore picked
-// up within one interval and stays sticky until demo_reset clears it.
+// no extra wiring. A NavAnomaly (rejected NAV mark) or ReconMismatch (under-reported cash) is therefore picked
+// up within one interval and stays sticky until a later all-green cycle (or demo_reset) clears it.
 import type { ApiContext } from "../context.ts";
 import { runReconCycle } from "./engine.ts";
 import type { SnapshotManifest } from "./snapshot.ts";
@@ -16,7 +16,7 @@ function snapshotManifest(ctx: ApiContext): SnapshotManifest {
   return ctx.manifest as unknown as SnapshotManifest;
 }
 
-// #32 run one cycle now (used on boot and by the demo triggers for immediate feedback). Swallows
+// #32 run one cycle now (used on boot and by the ops mutations for immediate feedback). Swallows
 // transient chain/DB read errors — the next tick retries — so a flaky RPC never crashes the API.
 export async function runOneCycle(ctx: ApiContext): Promise<void> {
   try {

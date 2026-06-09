@@ -1,4 +1,4 @@
-// On-Chain Layer · ABI source of truth for the API signer + error decoder · #21
+// ABI source of truth for the API signer + error decoder · #21
 // Loads the Foundry-emitted artifacts (copied by copy_abis.sh, #13) and exposes (a) the
 // CreditToken ABI the wallet client writes invest/transfer/claim against, and (b) a COMBINED
 // error ABI — the union of every custom error across CreditToken + both registries — so a

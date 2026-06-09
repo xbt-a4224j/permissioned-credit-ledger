@@ -1,4 +1,4 @@
-// Asset Layer · #14 schema round-trip + rejection coverage, brand nominality, union closure.
+// #14 schema round-trip + rejection coverage, brand nominality, union closure.
 // (#44: zod -> ArkType.) ArkType Types are called, not `.parse`d; `.assert(data)` is the
 // throw-on-invalid analogue of zod's `.parse` — it returns the morphed (branded) value or throws.
 import { describe, expect, test } from "vitest";

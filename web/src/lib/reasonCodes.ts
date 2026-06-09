@@ -1,4 +1,4 @@
-// On-Chain Layer mirror (presentation) · the typed reason-code bridge — never stringly · #25
+// The typed reason-code bridge — never stringly · #25
 // The 8-member closed set == the GraphQL ReasonCode enum (#20), which itself mirrors the 6 Solidity
 // custom errors (the eligibility gauntlet + reserve, #14) plus the 2 off-chain engine HALT states
 // (#17/#18). The UI renders a typed ReasonBadge keyed off REASON_META; it NEVER renders a raw error

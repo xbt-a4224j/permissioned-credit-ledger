@@ -1,4 +1,4 @@
-# The Money/Asset Layer · local Postgres for the off-chain read models · #15/#18
+# Local Postgres for the off-chain read models · #15/#18
 # Single-service compose: the Postgres the migrations (#15), indexer (#16), NAV gate
 # (#17) and reconciliation engine (#18) read/write. Project name `pcl`, fixed
 # non-default port 55432 (CLAUDE.md ports table) so it never collides with a host

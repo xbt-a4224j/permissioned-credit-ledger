@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-// Asset Layer · canonical seed config (the loan-tape genesis) · #12
+// Canonical seed config (the loan-tape genesis) · #12
 // The single source of the deterministic world Deploy.s.sol (#12) stands up and the
 // off-chain layer (indexer #16, resolvers #21, matrix verifier #27) asserts against:
 // the 6 canonical identities and the 6 loans modeled as first-lien MORTGAGES. Addresses
@@ -41,7 +41,7 @@ library Identities {
         uint16 jurisdictionCode; // ISO-3166 numeric, for the manifest
     }
 
-    // Asset Layer · the loan-tape row: a first-lien MORTGAGE on a Property.
+    // The loan-tape row: a first-lien MORTGAGE on a Property.
     // collateralType is the seam (CRE today, residential-ready). offering selects the
     // RegD (accreditation-gated) or RegS (non-US-gated) ComplianceRegistry the token
     // binds. ratePerSecond/status are varied so the demo and matrix exercise live

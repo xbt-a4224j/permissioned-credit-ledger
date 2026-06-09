@@ -1,4 +1,4 @@
-// Money Layer · #22 SSE handler — push frames, resume, heartbeat, teardown.
+// #22 SSE handler — push frames, resume, heartbeat, teardown.
 // The handler turns the shared bus into a text/event-stream: a recon HALT frame propagates with
 // the typed haltReason (matrix row 9), Last-Event-ID replays only newer ids (no duplicates),
 // aborting removes the listener (no leak), and a heartbeat keeps the connection open. A fast-check

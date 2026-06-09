@@ -1,4 +1,4 @@
-// Money Layer · #17 NAV gate integration coverage against a throwaway Postgres.
+// #17 NAV gate integration coverage against a throwaway Postgres.
 // Matrix row 9 (the +40% spike -> NavAnomaly + accrual frozen), the three reject branches
 // (Stale / NonMonotonicTimestamp / UnknownLoan), and the happy accept path (0 halt rows).
 import { afterEach, beforeEach, describe, expect, test } from "vitest";

@@ -1,4 +1,4 @@
-// Money Layer (presentation) · GraphQL query documents — fields pinned to the #20 SDL · #24
+// GraphQL query documents — fields pinned to the #20 SDL · #24
 // Operation names + fields MUST match the committed Pothos schema (api/schema.graphql). queries.test
 // parses these and asserts every selected field exists in the SDL snapshot so a schema rename fails
 // the build rather than silently returning null. Money fields are BigIntStr (decoded to bigint at

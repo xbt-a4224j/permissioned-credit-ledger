@@ -1,4 +1,4 @@
-// Money Layer · txStatus query resolver — read the tracked lifecycle row · #23
+// TxStatus query resolver — read the tracked lifecycle row · #23
 // resolveTxStatus reads a broadcast tx's PENDING->CONFIRMED|REVERTED lifecycle (#23) so the UI
 // (#25) can poll a single hash for its outcome — including the decoded ReasonCode on a revert.
 // Returns null for an unknown hash. The optimistic position (if still outstanding) is attached

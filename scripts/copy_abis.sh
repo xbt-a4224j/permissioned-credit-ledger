@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The Seam · single-source-of-truth ABI export (contracts -> off-chain) · #13
+# Single-source-of-truth ABI export (contracts -> off-chain) · #13
 # Copies the Foundry build artifacts for the on-chain layer (CreditToken + the identity /
 # compliance registries) out of contracts/out into the indexer and the API. The indexer
 # (#16) decodes CreditToken events and the GraphQL resolvers (#21) encode txs against these

@@ -1,4 +1,4 @@
-// The Seam · #18 soundness property: the cycle never reports OK while any invariant is violated.
+// #18 soundness property: the cycle never reports OK while any invariant is violated.
 // For arbitrary snapshots, the conjunction I1 && I2 && I3 && I4 equals evaluateInvariants(s).ok;
 // and a single deliberately-broken invariant always yields ok === false with that invariant
 // named (fixed evaluation order makes the named one deterministic). Pure — no DB/chain.

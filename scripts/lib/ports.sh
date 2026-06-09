@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The Seam · the fixed port map + idempotent port/health helpers · #31
+# The fixed port map + idempotent port/health helpers · #31
 # Single source of the 4 fixed, non-default ports (CLAUDE.md ports table) and the small toolbox
 # dev.sh / stop.sh share: free a port (lsof), wait for a TCP / HTTP / RPC health gate (bounded
 # poll, never a blind sleep), and pidfile bookkeeping under .dev/. POSIX-bash + lsof + curl only —

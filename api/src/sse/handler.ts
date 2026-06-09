@@ -1,4 +1,4 @@
-// Money Layer · the GET /sse endpoint — a live event-stream off the read models · #22
+// The GET /sse endpoint — a live event-stream off the read models · #22
 // Returns a text/event-stream ReadableStream that: replays buffered events on reconnect
 // (Last-Event-ID), subscribes to the shared bus and writes each event as an SSE frame, emits a
 // heartbeat comment every 15s so latency-tolerant proxies keep the connection open, supports an

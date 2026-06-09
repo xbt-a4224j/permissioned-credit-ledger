@@ -1,4 +1,4 @@
-// On-Chain Layer (presentation) · live block + event log panel · #39
+// Live block + event log panel · #39
 // Polls chainEvents + currentBlock every 2s so the Health view shows a real-time feed of
 // on-chain activity: block counter ticking, PositionOpened/Transfer/InterestClaimed as they land.
 import { useEffect, useRef, useState } from "react";

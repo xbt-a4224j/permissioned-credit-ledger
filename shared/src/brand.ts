@@ -1,4 +1,4 @@
-// Asset Layer · branded domain scalars + validating smart constructors · #14
+// Branded domain scalars + validating smart constructors · #14
 // Nominal types so an on-chain `claimable` and an off-chain `collected` are the same
 // `Usdc6` and never two loose bigints — the precondition the recon invariants (#18) and
 // the replay hash (#19) compare against. Money is 6-decimal fixed-point base units

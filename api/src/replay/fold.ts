@@ -1,4 +1,4 @@
-// The Seam · the pure replay reducer · #19
+// The pure replay reducer · #19
 // applyInput folds ONE ordered input into ReplayState, reusing the SAME math as the live system:
 // the indexer projectors' balance model (#16) for chain events and the NAV withinBounds gate
 // (#17) for marks — so replay and live can't diverge. It is a pure function: state in, state out,

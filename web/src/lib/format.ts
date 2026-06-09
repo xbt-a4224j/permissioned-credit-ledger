@@ -1,4 +1,4 @@
-// Money Layer (presentation) · money + ratio formatters — bigint-safe, no Number coercion · #24
+// Money + ratio formatters — bigint-safe, no Number coercion · #24
 // Money is 6-decimal USDC base units carried as a bigint end to end (the BigIntStr landmine: a
 // Number() coercion above 2^53 desyncs the UI from the engine's deterministic state). fmtUsd6
 // formats a bigint wei amount to a fixed-decimal currency string WITHOUT ever widening to a JS

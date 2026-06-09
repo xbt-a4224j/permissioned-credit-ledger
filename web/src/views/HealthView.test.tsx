@@ -1,6 +1,6 @@
-// #26/#40 HealthView — OK renders 4 green invariants + no banner; a ReconMismatch HALT renders the
+// #26/#26 HealthView — OK renders 4 green invariants + no banner; a ReconMismatch HALT renders the
 // banner + the flagged invariant + the flagged non-zero delta row (the UI mirror of matrix row 10).
-// HealthView now takes the recon `status` as a prop (App's single shared stream, #40); the test
+// HealthView now takes the recon `status` as a prop (App's single shared stream, #26); the test
 // builds that status via the real parseReconFrame so it matches exactly what App passes down. Also
 // guards the invariant name set against drift (exactly the engine's 4 #18 names).
 import { afterEach, describe, expect, it } from "vitest";

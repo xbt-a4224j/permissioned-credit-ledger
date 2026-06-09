@@ -1,8 +1,8 @@
-// Money Layer (presentation) · enterprise design tokens — the one visual system for #24-#26 · #24
+// Enterprise design tokens — the one visual system for #24-#26 · #24
 // A restrained institutional language: navy/neutral palette, generous whitespace, subtle borders
 // over heavy shadows, Inter/system type, tabular-figure money. NO crypto-gradient styling. Every
 // primitive (Card/StatPill/DataTable/Badge/Banner) and view draws from these tokens so the four
-// views read as one calm, bank-grade surface.
+// views read as one calm, institutional surface.
 
 // #24 color tokens. `navy` is the institutional brand spine; `ink`/`slate` carry text + chrome;
 // semantic tones (positive/warn/halt) are reserved for status, never decoration.

@@ -1,4 +1,4 @@
-// On-Chain Layer mirror · GraphQL Position type — a holder's stake in a loan · #20
+// GraphQL Position type — a holder's stake in a loan · #20
 // principal is the token balance; accrued/claimable mirror on-chain interest the recon engine
 // (#18) bounds by collected cash. `optimistic` (populated in #23) flags a pre-confirmation,
 // indexer-not-yet-caught-up row so the dashboard can show an invest the instant it broadcasts

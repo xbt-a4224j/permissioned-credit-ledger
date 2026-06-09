@@ -1,4 +1,4 @@
-// Asset Layer · raw Postgres client (no ORM) · #15
+// Raw Postgres client (no ORM) · #15
 // One porsager `postgres` client configured so money survives the round trip. The LANDMINE
 // (#15 notes): `numeric` comes back as a JS string by default and `BigInt('123.0')` throws,
 // so we (a) keep every money column numeric(78,0) — scale 0, no decimal point — and (b)

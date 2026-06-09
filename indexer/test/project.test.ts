@@ -1,4 +1,4 @@
-// On-Chain Layer · #16 projector + ingest unit coverage against a throwaway Postgres.
+// #16 projector + ingest unit coverage against a throwaway Postgres.
 // Proves: a PositionOpened+Transfer mint creates one position with the right principal and
 // accrued=0; a re-delivered EventId mutates nothing (idempotency); InterestClaimed debits the
 // reserve + resets accrued; a Transfer moves principal between holders.

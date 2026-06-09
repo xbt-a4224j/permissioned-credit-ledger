@@ -1,4 +1,4 @@
-// Money Layer (presentation) · the tx-phase chip + explorer link · #25
+// The tx-phase chip + explorer link · #25
 // Renders the PENDING -> CONFIRMED|REVERTED lifecycle (#23) as a small status chip. On Fuji it
 // links to the explorer (VITE_EXPLORER_URL/tx/<hash>); the link is suppressed for the local node.
 import type { TxPhase } from "../lib/txStatus.ts";

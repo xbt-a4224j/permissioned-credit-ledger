@@ -1,4 +1,4 @@
-// Money Layer (presentation) · wallet connect + ensureChain — the on/off-ramp at the UI edge · #25
+// Wallet connect + ensureChain — the on/off-ramp at the UI edge · #25
 // A thin viem wrapper over window.ethereum (EIP-1193). connect() requests accounts; ensureChain()
 // switches/adds the target chain (Fuji 0xa869 or local anvil 0x7a69 from VITE_CHAIN_ID) and MUST be
 // called before every mutation — a user on the wrong network would broadcast an invest to a chain

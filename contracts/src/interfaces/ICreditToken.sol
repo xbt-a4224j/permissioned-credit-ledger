@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-// #5 credit token interface — the on-chain claimable balance the marquee
+// #5 credit token interface — the on-chain claimable balance the
 // reconciliation engine validates against off-chain servicing cash. Declares the
 // event/selector surface the indexer (#16) decodes and the claim/mint/burn
 // entrypoints. ABI pinned before CreditToken implementation (#8/#9).

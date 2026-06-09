@@ -1,4 +1,4 @@
-// Compliance front-door (presentation) · the header KYC status + verify entry point · #39
+// The header KYC status + verify entry point · #39
 // Shows the acting wallet's on-chain KYC status (Verified / Unverified) and, when unverified, a
 // "Verify" button that opens the onboarding modal. After approval it refetches so the badge flips to
 // Verified live — the visible payoff of the onboarding → gauntlet → invest arc.

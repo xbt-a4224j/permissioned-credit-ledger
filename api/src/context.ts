@@ -1,8 +1,8 @@
-// Money Layer · GraphQL request context — the seam wiring chain + read models · #20/#21
+// GraphQL request context — the seam wiring chain + read models · #20/#21
 // One ApiContext threads the three layers into every resolver: `db` is the off-chain read
 // model (Postgres, #15), `chain` is the on-chain layer (a viem public client to read + a wallet
 // client to broadcast invest/transfer/claim via the single server signer, #21), and `recon`
-// reads the marquee reconciliation status (#18) so the HALT gate can refuse to distribute.
+// reads the latest reconciliation status (#18) so the HALT gate can refuse to distribute.
 // #20 declares the interface (schema builds against it); #21 implements createContext().
 import {
   createPublicClient,

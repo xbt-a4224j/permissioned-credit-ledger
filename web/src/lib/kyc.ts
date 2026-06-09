@@ -1,4 +1,4 @@
-// Compliance front-door (presentation) · KYC client helpers · #39
+// KYC client helpers · #39
 // The document is hashed CLIENT-SIDE (Web Crypto SHA-256) and never uploaded — only {filename,size,
 // sha256} metadata reaches the API. That's a deliberate privacy posture: the platform never custodies
 // PII or document bytes; in production the (real) provider does. Talking point, not just a shortcut.

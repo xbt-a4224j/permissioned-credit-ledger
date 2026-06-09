@@ -1,5 +1,5 @@
 // #24 fmtUsd6 property suite — money formatting is bigint-exact (round-trip) and monotonic.
-// The thesis is determinism; a lossy formatter would silently contradict the engine's state, so we
+// Determinism is the point; a lossy formatter would silently contradict the engine's state, so we
 // prove fmtUsd6 never loses precision (parse(fmt(x)) === x) and preserves order (a<b => parse<parse)
 // over >=100 fast-check cases up to 10^24 wei.
 import { describe, expect, it } from "vitest";

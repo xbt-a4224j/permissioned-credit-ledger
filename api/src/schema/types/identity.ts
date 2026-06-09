@@ -1,4 +1,4 @@
-// Asset Layer · GraphQL Identity type — the eligibility claims · #20
+// GraphQL Identity type — the eligibility claims · #20
 // The claims the on-chain gauntlet (#7) gates transfers on and recon I4 (#18) re-checks:
 // verified / accredited / jurisdiction / frozen. SimpleObject resolved from the `identities`
 // read model in #21.

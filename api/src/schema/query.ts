@@ -1,5 +1,6 @@
-// Money Layer · GraphQL Query root — read the off-chain read models · #20/#21/#23
-// The six read fields (#20) the marketplace/dashboard/health views consume, plus txStatus (#23).
+// GraphQL Query root — read the off-chain read models · #20/#21/#23
+// The read fields the views consume: loans/loan/position/positions/reserve/reconciliationStatus
+// (#20), txStatus (#23), chainEvents/currentBlock (#34), navReadings (#38), kycStatus (#39).
 // Field signatures are frozen here (#20); the resolver bodies read the Postgres read models the
 // indexer (#16) and reconciliation engine (#18) populate (#21) — queries never touch the chain.
 import { builder } from "./builder.ts";
@@ -63,7 +64,7 @@ builder.queryType({
       nullable: false,
       resolve: (_root, _args, ctx) => resolveReserve(ctx),
     }),
-    // #20/#21 the marquee: the latest reconciliation cycle as a first-class query.
+    // #20/#21 the latest reconciliation cycle as a first-class query.
     reconciliationStatus: t.field({
       type: ReconciliationStatus,
       nullable: false,
@@ -76,7 +77,7 @@ builder.queryType({
       args: { hash: t.arg.string({ required: true }) },
       resolve: (_root, args, ctx) => resolveTxStatus(ctx, args.hash),
     }),
-    // #38 the last 10 NAV readings for a loan (newest first), for the ops/Profitr feed panel.
+    // #38 the last 10 NAV readings for a loan (newest first), for the operator ops feed panel.
     navReadings: t.field({
       type: [NavReading],
       nullable: false,

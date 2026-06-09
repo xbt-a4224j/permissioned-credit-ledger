@@ -1,4 +1,4 @@
-// Asset Layer · ArkType schemas + inferred domain types (mortgage-general) · #14 / #44
+// ArkType schemas + inferred domain types (mortgage-general) · #14 / #44
 // One vocabulary for the loan-tape: a Loan is a first-lien MORTGAGE on a Property
 // (collateralType CRE today, RESIDENTIAL-ready — the seam), money is branded Usdc6,
 // ratios are Bps. A `.pipe(...)` morph brands on parse so a parsed value is already a

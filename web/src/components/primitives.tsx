@@ -1,7 +1,7 @@
-// Money Layer (presentation) · the shared primitive set — Card/StatPill/DataTable/Badge/Banner · #24
+// The shared primitive set — Card/StatPill/DataTable/Badge/Banner · #24
 // The small reused vocabulary every view composes from, drawing on the design tokens (theme.ts):
 // subtle borders over heavy shadows, generous padding, tabular money, navy/neutral tones. One
-// primitive set keeps the four views visually identical in weight — bank-grade, not crypto-playful.
+// primitive set keeps the four views visually identical in weight — institutional, not crypto-playful.
 import type { ReactNode } from "react";
 import type { Tone } from "../theme.ts";
 
@@ -58,7 +58,7 @@ export function Banner(props: { tone: Tone; title: string; children?: ReactNode 
 }
 
 // #24 the clean state surfaces every view reuses (loading / error / empty). Calm and centered,
-// never a blank screen — a bank-grade UI is explicit about every state.
+// never a blank screen — an institutional UI is explicit about every state.
 export function LoadingState(props: { label?: string }): JSX.Element {
   return (
     <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-500" role="status" aria-live="polite">

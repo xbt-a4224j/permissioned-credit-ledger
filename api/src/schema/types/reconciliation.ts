@@ -1,4 +1,4 @@
-// The Seam · GraphQL ReconciliationStatus — the marquee as a first-class query · #20
+// GraphQL ReconciliationStatus — the recon verdict as a first-class query · #20
 // Surfaces the latest reconciliation cycle (#18): the typed ReconState (OK/HALTED), the four
 // named invariant verdicts (1:1 with the engine's I1-I4), and — when HALTED — the typed
 // haltReason (NavAnomaly for an I3 break, else ReconMismatch). InvariantResult carries the

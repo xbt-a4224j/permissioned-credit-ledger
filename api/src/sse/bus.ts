@@ -1,4 +1,4 @@
-// Money Layer · in-process typed event bus for the SSE feed · #22
+// In-process typed event bus for the SSE feed · #22
 // A HALT must reach the UI the instant the engine commits it, not one poll later — so the API
 // pushes. The bus is a tiny typed EventEmitter wrapper: sources (#22) and the tx tracker (#23)
 // publish a discriminated FeedEvent; each /sse connection subscribes. A monotonic id is stamped

@@ -1,4 +1,4 @@
-// On-Chain Layer · #16 ABI-drift guard: the inline event fragments == the compiled artifact.
+// #16 ABI-drift guard: the inline event fragments == the compiled artifact.
 // abi.ts pins the 5 CreditToken event fragments `as const` for viem inference; if the compiled
 // ABI ever diverges (a renamed param, a flipped `indexed`), decoding silently mis-parses (the
 // ABI-drift landmine). This test fails loudly the moment they disagree.

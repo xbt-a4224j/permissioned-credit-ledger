@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The Seam · the idempotent, port-safe dev orchestrator (stop -> test -> start) · #31
+# The idempotent, port-safe dev orchestrator (stop -> test -> start) · #31
 # One command stands the whole stack up on the 4 fixed ports, re-runnable safely: STOP frees the
 # ports + tears down stale services; TEST runs forge + bun and ABORTS on failure (--no-test skips);
 # START brings up Postgres (compose), the local EVM node (anvil), deploys + seeds the world

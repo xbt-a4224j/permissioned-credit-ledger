@@ -1,4 +1,4 @@
-// The Seam · #19 stateHash is serialization-stable; replay reproduces both HALT outcomes.
+// #19 stateHash is serialization-stable; replay reproduces both HALT outcomes.
 import { describe, expect, test } from "vitest";
 import { bps, eventId, identityAddr, loanId, unixSeconds, usdc6, type ChainEvent, type NavReading } from "@pcl/shared";
 import { replay } from "../src/replay/replay.ts";

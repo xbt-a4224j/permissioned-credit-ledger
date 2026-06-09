@@ -1,8 +1,8 @@
-// The Seam (presentation) · the reconciliation / health view — the payoff screen · #26
-// The marquee made visible: a HALT banner (when state === 'HALTED'), the 4-invariant grid, the
+// The reconciliation / health view — the payoff screen · #26
+// The recon verdict made visible: a HALT banner (when state === 'HALTED'), the 4-invariant grid, the
 // per-holder on-chain-vs-off-chain DeltaTable, and a stateHash + cycle footer that proves the
 // engine's determinism. Read-only — renders the already-emitted SSE recon status (#22); it never
-// computes a cycle, evaluates an invariant, or recomputes a delta. The 4th and final view.
+// computes a cycle, evaluates an invariant, or recomputes a delta.
 import type { ReconStatus } from "../lib/reconStream.ts";
 import { HaltBanner } from "../components/HaltBanner.tsx";
 import { InvariantGrid } from "../components/InvariantGrid.tsx";
@@ -12,7 +12,7 @@ import { ChainActivity } from "../components/ChainActivity.tsx";
 import { ActionLog } from "../components/ActionLog.tsx";
 import { Card, LoadingState } from "../components/primitives.tsx";
 
-// #40 status comes from App's single shared recon stream (one EventSource for the whole shell) so
+// #26 status comes from App's single shared recon stream (one EventSource for the whole shell) so
 // the panel can never diverge from the header pill and there's no second connection to starve.
 export function HealthView(props: { status: ReconStatus | undefined }): JSX.Element {
   const status = props.status;

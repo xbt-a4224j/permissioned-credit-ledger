@@ -1,4 +1,4 @@
-// #24 Tailwind v3 config — enterprise/bank-grade theming derived from the design tokens
+// #24 Tailwind v3 config — institutional theming derived from the design tokens
 // (web/src/theme.ts). Navy/neutral palette, Inter/system type, and a `font-tabular` utility for
 // aligned money columns. NO crypto-gradient styling.
 import type { Config } from "tailwindcss";

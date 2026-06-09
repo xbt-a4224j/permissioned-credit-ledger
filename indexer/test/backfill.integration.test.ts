@@ -1,4 +1,4 @@
-// On-Chain Layer · #16 integration: backfill the seeded local chain into the read model.
+// #16 integration: backfill the seeded local chain into the read model.
 // Against the local anvil node + Deploy.s.sol seed (#12), a matrix-row-1 accredited-US invest
 // (the anchor position minted at deploy) projects EXACTLY 1 PositionOpened event row and 1
 // positions row with accrued=0 and the correct principal. And because the indexer mirrors

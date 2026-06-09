@@ -1,4 +1,4 @@
-// On-Chain Layer mirror (presentation) · the position dashboard — live per-second accrual · #24
+// The position dashboard — live per-second accrual · #24
 // Runs POSITIONS_QUERY for the active holder and renders a PositionRow per position, wired to the
 // SSE accrual stream (#22) so claimable counts up live off the engine's pushed value (never a
 // client setInterval). `frozenHolders`/`globalFrozen` are the row-9 NavAnomaly freeze inputs #26

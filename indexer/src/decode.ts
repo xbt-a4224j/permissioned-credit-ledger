@@ -1,4 +1,4 @@
-// On-Chain Layer · viem log -> typed ChainEvent · #16
+// Viem log -> typed ChainEvent · #16
 // decodeChainEvent maps a raw CreditToken log onto the @pcl/shared ChainEvent union, building
 // the canonical EventId (txHash:logIndex) the ingest dedupes on (#16) and replay orders by
 // (#19). It resolves the loan series from the emitting token (one CreditToken == one loan) so

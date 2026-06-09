@@ -1,4 +1,4 @@
-// Money Layer (presentation) · seeded demo identities — the no-wallet actor picker · #34 (bug)
+// Seeded demo identities — the no-wallet actor picker · #34 (bug)
 // Bug #34: "Connect wallet" was a dead no-op, and it isn't actually needed — the API server is the
 // single signer (anvil account 0); the browser only supplies the ACTOR ADDRESS passed to a
 // mutation. So the demo picks an actor from this list (one click, no extension) and every gauntlet

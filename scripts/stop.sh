@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The Seam · idempotent teardown — free the 4 fixed ports + stop every service · #31
+# Idempotent teardown — free the 4 fixed ports + stop every service · #31
 # STOP is the first phase of dev.sh and also a standalone command (`bun run stop`). It is
 # idempotent: run it twice and both succeed. It (a) kills every recorded pidfile (anvil/indexer/
 # api/web), (b) tears down the Postgres compose project (volume-wiped so each start is clean), and

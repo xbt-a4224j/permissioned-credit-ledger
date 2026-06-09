@@ -1,5 +1,5 @@
-// The Seam (presentation) · the live reconciliation status stream — the marquee made visible · #26
-// Subscribes to the SAME #22 EventSource feed as useAccrualStream (one connection, no second poll)
+// The live reconciliation status stream — the recon verdict made visible · #26
+// Opens its own EventSource on the #22 /sse feed (capped-backoff reconnect, one per hook instance)
 // and parses `event: recon` frames into a typed ReconStatus. The four InvariantResult.name values
 // are EXACTLY the engine's four invariants (#18). A HALT (NavAnomaly row 9 / ReconMismatch row 10)
 // flips `state` to 'HALTED' and sets the typed `haltCode`; the header pill + panel both read this
@@ -127,7 +127,7 @@ export function useReconStream(): ReconStatus | undefined {
       if (next !== null) setStatus(next);
     };
 
-    // #40 immediate one-shot fetch so the panel/pill render the current status within one request —
+    // #26 immediate one-shot fetch so the panel/pill render the current status within one request —
     // never stuck on "Connecting…" waiting for the next SSE publish. SSE then keeps it live; we only
     // seed if a live frame hasn't already arrived (prev ?? seed), so we never clobber a fresher HALT.
     void fetch(API_URL, {

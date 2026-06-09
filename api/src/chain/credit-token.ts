@@ -1,4 +1,4 @@
-// On-Chain Layer · typed CreditToken bindings for the API signer · #21
+// Typed CreditToken bindings for the API signer · #21
 // Resolves a loan's CreditToken address from the deploy manifest (no hardcoded addresses) and
 // exposes the three write actions invest/transfer/claim as { address, abi, functionName, args }
 // requests the resolver simulates then writes (#21). Reads (totalSupply/claimable) reuse the

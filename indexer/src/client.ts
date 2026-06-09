@@ -1,4 +1,4 @@
-// On-Chain Layer · viem public client for the indexer · #16
+// Viem public client for the indexer · #16
 // makeChainClient returns a read-only viem PublicClient over http. The same indexer runs
 // against a LOCAL anvil node (chainId 31337, deterministic CI/tests) and Avalanche Fuji
 // (43113, the live demo) via an rpcUrl swap — correctness is only ever asserted against the

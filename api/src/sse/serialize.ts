@@ -1,4 +1,4 @@
-// Money Layer · SSE frame encoder · #22
+// SSE frame encoder · #22
 // Turns a FeedEnvelope into a text/event-stream frame (`id:` / `event:` / `data:`). The data is
 // JSON with a bigint replacer so a token amount that somehow arrives as a bigint serializes to a
 // decimal STRING, never a lossy number (the BigIntStr landmine). Dates serialize to ISO strings.

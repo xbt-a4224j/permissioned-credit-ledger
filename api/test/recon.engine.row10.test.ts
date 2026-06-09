@@ -1,4 +1,4 @@
-// The Seam · #18 matrix row 10 integration: inject cash < claimable -> ReconMismatch HALT.
+// #18 matrix row 10 integration: inject cash < claimable -> ReconMismatch HALT.
 // Against the local chain + seeded read model, warp anvil forward so the anchor position
 // accrues on-chain claimable > 0, then drive the off-chain collected reserve BELOW that
 // claimable. runReconCycle must return {ok:false, state:'ReconMismatch', failed:'ClaimableCovered'},
