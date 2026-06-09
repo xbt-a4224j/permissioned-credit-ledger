@@ -1,18 +1,18 @@
-// Profitr platform ops · Loans view — operator's servicing feed → validation gate → distribution · #38
-// Queries all loans + the reserve state, then renders a LoanOpsCard per loan. Read-only data path
-// is the same pattern as MarketplaceView (useQuery + loading/error/empty states); the write path
-// lives inside each card so this view has no mutation state of its own.
+// Servicing view — operator's servicing feed → validation gate → distribution · #38
+// Queries all loans + the reserve state. Renders a global reserve panel (collected cash is one
+// platform-wide value, reported once) and a LoanOpsCard per loan for the per-loan NAV gate.
+// Read-only data path mirrors MarketplaceView (useQuery + loading/error/empty states).
 import type { Loan, LoanId, LoanStatus } from "../types.ts";
 import { LOANS_QUERY } from "../queries.ts";
 import { useQuery } from "../lib/useQuery.ts";
 import { gql } from "../lib/graphqlClient.ts";
-import { useEffect, useState } from "react";
+import { REPORT_CASH_MUTATION } from "../lib/mutations.ts";
+import { fmtUsd6 } from "../lib/format.ts";
+import { useCallback, useEffect, useState } from "react";
 import { LoanOpsCard } from "../components/LoanOpsCard.tsx";
-import { PlatformArchitecture } from "../components/PlatformArchitecture.tsx";
-import { Card, EmptyState, ErrorState, LoadingState } from "../components/primitives.tsx";
+import { Badge, Button, Card, EmptyState, ErrorState, LoadingState, StatPill } from "../components/primitives.tsx";
 
 // #38 the reserve coverage shape (mirrors api/schema.graphql ReserveState).
-// Exported so LoanOpsCard can import the type without duplicating it.
 export interface ReserveState {
   balance: bigint;
   totalClaimable: bigint;
@@ -64,49 +64,108 @@ export function LoansView(): JSX.Element {
     mapLoans,
   );
 
-  // #38 reserve state: fetched once on mount; errors are soft (the cards still render without it).
+  // #38 reserve state: a single platform-wide value (collected cash vs aggregate claimable).
+  // Errors are soft — the loan cards still render their per-loan NAV gate without it.
   const [reserve, setReserve] = useState<ReserveState | null>(null);
   const [reserveError, setReserveError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadReserve = useCallback((): void => {
     gql<ReserveRaw>(RESERVE_QUERY)
       .then((raw) => {
-        setReserve({
-          balance: BigInt(raw.reserve.balance),
-          totalClaimable: BigInt(raw.reserve.totalClaimable),
-        });
+        setReserve({ balance: BigInt(raw.reserve.balance), totalClaimable: BigInt(raw.reserve.totalClaimable) });
+        setReserveError(null);
       })
-      .catch((err: unknown) => {
-        setReserveError(err instanceof Error ? err.message : "Could not load reserve");
-      });
+      .catch((err: unknown) => setReserveError(err instanceof Error ? err.message : "Could not load reserve"));
   }, []);
 
-  // #38 a zero-value fallback so cards render even if the reserve query is still in-flight.
-  const effectiveReserve: ReserveState = reserve ?? { balance: 0n, totalClaimable: 0n };
+  useEffect(() => { loadReserve(); }, [loadReserve]);
+
+  // #38 report collected cash — a single global write (reserve is one row, not per-loan). The
+  // mutation still takes a loanId for validation, so we pass the first loan in the tape.
+  const [cashAmount, setCashAmount] = useState<string>("");
+  const [cashSubmitting, setCashSubmitting] = useState(false);
+  const [cashResult, setCashResult] = useState<{ state: string; haltReason: string | null } | null>(null);
+  const [cashError, setCashError] = useState<string | null>(null);
+
+  async function handleReportCash(): Promise<void> {
+    if (!cashAmount.trim()) { setCashError("Amount is required"); return; }
+    const anchorLoanId = loans && loans[0] !== undefined ? Number(loans[0].id) : 1;
+    setCashSubmitting(true);
+    setCashResult(null);
+    setCashError(null);
+    try {
+      const res = await gql<{ reportCash: { state: string; haltReason: string | null } }>(
+        REPORT_CASH_MUTATION,
+        { loanId: anchorLoanId, amount: cashAmount.trim() },
+      );
+      setCashResult(res.reportCash);
+      loadReserve(); // reflect the new collected balance
+    } catch (err) {
+      setCashError(err instanceof Error ? err.message : "Report failed");
+    } finally {
+      setCashSubmitting(false);
+    }
+  }
+
+  const covered = reserve !== null && reserve.balance >= reserve.totalClaimable;
 
   return (
     <section aria-labelledby="loans-ops-heading">
       {/* ---- Header ---- */}
       <div className="mb-6">
-        <h2 id="loans-ops-heading" className="text-xl font-semibold text-navy-900">Loan operations</h2>
+        <h2 id="loans-ops-heading" className="text-xl font-semibold text-navy-900">Servicing</h2>
         <p className="text-sm text-slate-500">
-          iBorrow&rsquo;s servicing feed &rarr; Profitr&rsquo;s validation gate &rarr; on-chain distribution
+          Servicer-side controls — report collected cash and mark each loan&rsquo;s NAV; these drive the reconciliation gate before any on-chain distribution.
         </p>
       </div>
 
-      {/* #42 the platform thesis up top: shared core + pluggable modules + take-rate economics. */}
-      <div className="mb-6">
-        <PlatformArchitecture />
-      </div>
-
-      {/* ---- Reserve error (soft — does not block the loan cards) ---- */}
-      {reserveError !== null && (
-        <div role="alert" className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-warn">
-          Reserve data unavailable: {reserveError}
+      {/* ---- Global reserve panel (collected cash is one platform-wide value) ---- */}
+      <Card className="mb-6 flex flex-col gap-4">
+        <div>
+          <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Reserve coverage</div>
+          <p className="text-xs text-slate-400">Platform-wide servicing cash vs aggregate on-chain claimable — invariant I2.</p>
         </div>
-      )}
+        {reserveError !== null ? (
+          <div role="alert" className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-warn">
+            Reserve data unavailable: {reserveError}
+          </div>
+        ) : reserve === null ? (
+          <LoadingState label="Loading reserve…" />
+        ) : (
+          <div className="flex flex-wrap items-center gap-4">
+            <StatPill label="Collected" value={fmtUsd6(reserve.balance)} tone="navy" />
+            <StatPill label="Claimable" value={fmtUsd6(reserve.totalClaimable)} />
+            <Badge tone={covered ? "positive" : "halt"}>{covered ? "Covered" : "Shortfall"}</Badge>
+          </div>
+        )}
+        <div className="border-t border-slate-100 pt-4">
+          <label htmlFor="report-cash" className="mb-1.5 block text-xs font-medium text-slate-700">
+            Report collected cash <span className="font-normal text-slate-400">— USDC base units (6 decimals), sets the platform reserve</span>
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              id="report-cash"
+              type="text"
+              value={cashAmount}
+              onChange={(e) => setCashAmount(e.target.value)}
+              placeholder="e.g. 1000000000000 = 1,000,000 USDC"
+              aria-label="Collected USDC amount in base units"
+              className="w-72 rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-800 font-tabular tabular-nums focus:border-navy-600 focus:outline-none focus:ring-1 focus:ring-navy-600"
+            />
+            <Button onClick={() => { void handleReportCash(); }} disabled={cashSubmitting}>
+              {cashSubmitting ? "Submitting…" : "Report"}
+            </Button>
+          </div>
+          {cashResult !== null && (
+            <p className={`mt-1.5 text-xs font-medium ${cashResult.state === "HALTED" ? "text-halt" : "text-positive"}`}>
+              {cashResult.state}{cashResult.haltReason !== null ? ` — ${cashResult.haltReason}` : ""}
+            </p>
+          )}
+          {cashError !== null && <p className="mt-1.5 text-xs font-medium text-halt">{cashError}</p>}
+        </div>
+      </Card>
 
-      {/* ---- Main content ---- */}
+      {/* ---- Per-loan NAV gate ---- */}
       {loansLoading ? (
         <Card><LoadingState label="Loading loan tape…" /></Card>
       ) : loansError !== null ? (
@@ -116,7 +175,7 @@ export function LoansView(): JSX.Element {
       ) : (
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           {loans.map((loan) => (
-            <LoanOpsCard key={loan.id} loan={loan} reserve={effectiveReserve} />
+            <LoanOpsCard key={loan.id} loan={loan} />
           ))}
         </div>
       )}
