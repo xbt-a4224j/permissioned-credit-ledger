@@ -1,4 +1,4 @@
-<!-- The Money Layer · the click-by-click live walkthrough · #30 -->
+<!-- The click-by-click live walkthrough · #30 -->
 
 # Demo — the live walkthrough
 
@@ -21,7 +21,7 @@ The seam at a glance: [`architecture/04-offchain-onchain-reconciliation.svg`](ar
    ```bash
    bun run scripts/verify_matrix.ts     # must print: 10/10 scenarios passed.
    ```
-4. Open the web app at http://localhost:51730 — marketplace + position dashboard + reconciliation panel.
+4. Open the web app at http://localhost:51730. Four views: **Marketplace** and **My positions** (investor tabs — the "Acting as" wallet picker shows here), plus the platform tabs **Servicing** and **Health** (header reads "Acting as Issuer / servicer"). The **Servicing** view has the global reserve panel at top — Collected / Claimable / Covered badge plus the "Report collected cash" form (USDC base units) — then per-loan cards with each loan's NAV mark (bps of par — 10000 = 100%) and NAV history.
 
 **Abort rule:** if any step above fails — `bun run dev` doesn't reach the banner, or `verify_matrix.ts` prints anything other than `10/10 scenarios passed.` — **stop and reset** (`bun run scripts/demo_reset.ts`) before demoing. Never demo against a stack that isn't `10/10`.
 
@@ -33,14 +33,16 @@ Each row: the action, the expected typed code/event, and the UI / SSE signal. Th
 |---|---|---|---|
 | 1 | Invest as **accredited-US** into a CRE loan | OK — `PositionOpened` | Position appears on the dashboard; accrual ticker starts |
 | 2 | Invest as **Reg-S non-US** into a loan | OK — `PositionOpened` | Second position opens; both accrue |
-| 3 | Invest as **unverified** wallet | revert `NotEligible` | Red reason-code badge **`NotEligible`** on the invest panel |
-| 4 | Transfer a position to the **frozen** receiver | revert `ReceiverFrozen` | Reason-code badge **`ReceiverFrozen`** |
-| 5 | Transfer to an **unverified** receiver | revert `ReceiverNotVerified` | Reason-code badge **`ReceiverNotVerified`** |
+| 3 | Invest as **unverified** wallet | revert `ReceiverNotVerified` | Red reason-code badge **`ReceiverNotVerified`** on the invest panel |
+| 4 | Transfer **as the frozen holder** (the harness simulates the call as the frozen sender via a `transferAs` `eth_call`) | revert `SenderFrozen` | Reason-code badge **`SenderFrozen`** |
+| 5 | US holder on a **Reg-S** offering | revert `NotEligible` | Reason-code badge **`NotEligible`** |
 | 6 | Transfer a **Reg-D** token to a verified **US non-accredited** wallet | revert `AccreditationRequired` | Reason-code badge **`AccreditationRequired`** |
-| 7 | Let accrual run, then **claim** with the reserve funded | OK — `InterestClaimed`, reserve debited, accrued reset | Accrual ticker resets to 0; reserve balance drops; `InterestClaimed` in the live feed |
+| 7 | Let accrual run, then **claim** with the reserve funded (fund via **Servicing → "Report collected cash"**) | OK — `InterestClaimed`, reserve debited, accrued reset | Accrual ticker resets to 0; reserve balance drops; `InterestClaimed` in the live feed |
 | 8 | **Claim** when owed exceeds the reserve | revert `InsufficientReserve` | Reason-code badge **`InsufficientReserve`**; no payout |
-| 9 | Push a **+40% NAV** mark through the feed (bound is ±20%) | HALT **`NavAnomaly`**, accrual frozen | Reconciliation panel flips to a **HALT banner — `NavAnomaly`**; accrual ticker freezes |
-| 10 | Inject off-chain **cash < claimable**, run a recon cycle | HALT distribution **`ReconMismatch`** | **HALT banner — `ReconMismatch`**; a subsequent claim is refused (`DistributionHalted`) |
+| 9 | Health view → **"Submit +40% NAV mark"** (calls `submitNav` at 14000 bps; the bound is ±20%) | HALT **`NavAnomaly`**, accrual frozen | Reconciliation panel flips to a **HALT banner — `NavAnomaly`**; accrual ticker freezes |
+| 10 | Health view → **"Report cash below claimable"** (reads `reserve.totalClaimable`, calls `reportCash(claimable − 1)`); the next recon cycle catches it | HALT distribution **`ReconMismatch`** | **HALT banner — `ReconMismatch`**; a subsequent claim is refused (`DistributionHalted`) |
+
+> Row 10 needs non-zero claimable: if `reserve.totalClaimable` is 0, the button tells you to invest first — run rows 1–2 and let accrual build before triggering it.
 
 After rows 9–10, reset to clear the HALT before the next run:
 
@@ -48,7 +50,7 @@ After rows 9–10, reset to clear the HALT before the next run:
 bun run scripts/demo_reset.ts
 ```
 
-**Narration beats:** rows 1–2 are the happy path (the gauntlet *passes*); rows 3–6 are the gauntlet *rejecting* with typed reason-code badges (no stringly-typed errors); rows 7–8 are the money layer (claim against the reserve); rows 9–10 are the **marquee** — the engine fails closed, halting distribution rather than paying out value that isn't there.
+**Narration beats:** rows 1–2 are the happy path (the gauntlet *passes*); rows 3–6 are the gauntlet *rejecting* with typed reason-code badges (no stringly-typed errors); rows 7–8 are the cash path (claim against the reserve); rows 9–10 show the engine failing closed — halting distribution rather than paying out value that isn't there.
 
 ## Fuji deploy
 
@@ -80,8 +82,8 @@ Plan-B per fragile scenario, so a flaky moment never stalls the demo.
 | Fragile step | What can go wrong | Plan B |
 |---|---|---|
 | Fuji deploy | RPC rate-limit / timeout / dropped faucet balance | Skip Fuji; demo entirely on the local node (the matrix is local-only anyway) |
-| Row 9 NAV HALT | Stale feed state from a prior run | `bun run scripts/demo_reset.ts`, re-run, push the +40% mark again |
-| Row 10 ReconMismatch | A prior HALT is still latched | Reset, replay rows 1–2 + 7 to build claimable, then inject the shortfall |
+| Row 9 NAV HALT | Stale feed state from a prior run | `bun run scripts/demo_reset.ts`, re-run, hit **"Submit +40% NAV mark"** again |
+| Row 10 ReconMismatch | A prior HALT is still latched, or claimable is 0 | Reset, replay rows 1–2 + 7 to build claimable, then hit **"Report cash below claimable"** again |
 | Live accrual ticker | SSE connection dropped | Reload the web app (the feed reconnects) or read `reconciliationStatus` via GraphQL |
 | Whole stack wedged | Orphaned port / stale container | `bun run stop` then `bun run dev` (idempotent, port-safe) |
 

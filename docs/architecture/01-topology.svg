@@ -5,7 +5,7 @@
     <marker id="ao" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto"><path d="M0,0 L7.5,3 L0,6 Z" fill="#d2691e"/></marker>
   </defs>
   <text x="32" y="40" font-size="20" font-weight="700" fill="#1a1d24">permissioned-credit-ledger — component topology</text>
-  <text x="32" y="60" font-size="12.5" fill="#5a6472">A permissioned token on Avalanche, a viem indexer, a reconciliation engine, and a typed GraphQL API behind a bank-grade UI.</text>
+  <text x="32" y="60" font-size="12.5" fill="#5a6472">A permissioned token on Avalanche, a viem indexer, a reconciliation engine, and a typed GraphQL API behind a institutional UI.</text>
 
   <!-- CLIENT band -->
   <text x="32" y="96" font-size="11" font-weight="700" fill="#2563eb" letter-spacing="0.08em">CLIENT</text>
@@ -32,12 +32,12 @@
     <text x="507" y="241" text-anchor="middle" font-family="'SF Mono',Menlo,monospace" font-size="13" font-weight="600" fill="#1a1d24">nav-gate</text>
     <text x="507" y="259" text-anchor="middle" font-size="10.5" fill="#5a6472">staleness · bounds · halt</text>
   </g>
-  <!-- reconciliation engine (marquee) -->
+  <!-- reconciliation engine -->
   <g>
     <rect x="612" y="210" width="316" height="72" rx="10" fill="#f1ecfd" stroke="#6d28d9" stroke-width="3"/>
     <text x="770" y="237" text-anchor="middle" font-family="'SF Mono',Menlo,monospace" font-size="14" font-weight="700" fill="#1a1d24">reconciliation-engine  ★</text>
     <text x="770" y="256" text-anchor="middle" font-size="10.5" fill="#5a6472">4 invariants · HALT on mismatch · replay + stateHash</text>
-    <text x="770" y="272" text-anchor="middle" font-size="10" fill="#6d28d9">the marquee: off-chain cash == on-chain claimable, or stop</text>
+    <text x="770" y="272" text-anchor="middle" font-size="10" fill="#6d28d9">the gate: off-chain cash == on-chain claimable, or stop</text>
   </g>
   <!-- Postgres -->
   <g>

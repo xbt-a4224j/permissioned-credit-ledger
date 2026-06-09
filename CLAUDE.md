@@ -1,6 +1,6 @@
 # permissioned-credit-ledger
 
-A deterministic, permissioned tokenized-credit ledger whose marquee feature is an off-chain↔on-chain **reconciliation engine** that proves servicing cash and on-chain claimable balances always agree — and **halts** the moment they don't.
+A deterministic, permissioned tokenized-credit ledger whose core is an off-chain↔on-chain **reconciliation engine** that proves servicing cash and on-chain claimable balances always agree — and **halts** the moment they don't.
 
 ## Why this exists
 
@@ -8,9 +8,9 @@ When a real-world credit asset (a loan) is tokenized, two ledgers run in paralle
 
 The hard, interesting part of tokenized credit is **not** minting a token. It's *continuously proving the token is still backed* — and refusing to distribute when it can't be proven. This repo isolates that problem and builds the smallest honest system that solves it end to end: permissioned issuance, on-chain accrual, an off-chain indexer/reconciler, and a deterministic replay that makes "are we still solvent?" a question with a single, reproducible, byte-exact answer.
 
-## Thesis
+## Core idea
 
-**Reconciliation is a gate, not a report.** Most systems reconcile *after* the fact and surface a dashboard. Here, reconciliation sits *in front of* every value-moving action: a NAV validation gate bounds accrual, and a deterministic event-replay recomputes expected claimable balances from the full event history. If recomputed state disagrees with on-chain state — or if injected servicing cash ≠ aggregate claimable — the engine emits a typed `ReconMismatch` / `NavAnomaly` and **halts distribution**. Correctness is enforced by construction (typed reason codes, not strings) and *proven* by a property test: replaying the same set of chain events + NAV updates in **any interleaving** must yield an **identical `stateHash`**. Determinism is the feature; the halt is the product.
+**Reconciliation is a gate, not a report.** Most systems reconcile *after* the fact and surface a dashboard. Here, reconciliation sits *in front of* every value-moving action: a NAV validation gate bounds accrual, and a deterministic event-replay recomputes expected claimable balances from the full event history. If recomputed state disagrees with on-chain state — or if reported servicing cash ≠ aggregate claimable — the engine emits a typed `ReconMismatch` / `NavAnomaly` and **halts distribution**. Correctness is enforced by construction (typed reason codes, not strings) and *proven* by a property test: replaying the same set of chain events + NAV updates in **any interleaving** must yield an **identical `stateHash`**. Determinism is the feature; the halt is the product.
 
 ## Layers
 
@@ -26,7 +26,7 @@ On-chain interest **accrual** against each position plus a **NAV feed** that mar
 - Accrual accumulates claimable interest per holder over time; `claim()` pays from a **mock reserve**, debits the reserve, and resets accrued. Underfunded reserve reverts `InsufficientReserve`.
 - The NAV feed pushes marks **bounded** by an acceptance gate (off-chain, in the L3 engine). An out-of-bounds mark (e.g. a +40% jump) does **not** silently update — it trips `NavAnomaly`, calls `freezeAccrual()` on-chain, and halts distribution. The bound constant is shared between the on-chain freeze hook and the off-chain gate so both sides always agree.
 
-### L3 — Reconciliation engine + replay (the marquee)
+### L3 — Reconciliation engine + replay (the centerpiece)
 Off-chain TypeScript (Bun). A **viem indexer** reads `CreditToken` events from Fuji (and the local node) into Postgres read models. The **reconciliation engine** then:
 1. **NAV validation gate** — independently re-checks every NAV mark against bounds before it's allowed to drive distribution.
 2. **Deterministic event-replay** — folds the ordered event log (`chainEvents` + `nav`) into expected per-holder claimable balances and a single `stateHash`.
@@ -56,7 +56,7 @@ The integration suite (`scripts/verify_matrix.ts`) runs every row against the **
 | 2 | Reg-S non-US invest | OK |
 | 3 | Unverified invest | revert `ReceiverNotVerified` |
 | 4 | Frozen holder initiates transfer | revert `SenderFrozen` |
-| 5 | Transfer to unverified receiver | revert `ReceiverNotVerified` |
+| 5 | US holder on a Reg-S offering | revert `NotEligible` |
 | 6 | US non-accredited holds Reg-D token | revert `AccreditationRequired` |
 | 7 | Claim, reserve funded | OK — `InterestClaimed`, reserve debited, accrued reset |
 | 8 | Claim, reserve underfunded | revert `InsufficientReserve` |
@@ -93,7 +93,8 @@ permissioned-credit-ledger/
 │   └── migrations/            # raw SQL migrations (no ORM)
 ├── scripts/                   # verify_matrix.ts (10-scenario integration), tooling
 └── docs/
-    └── architecture/          # DESIGN.md, decision records, what's-cut
+    ├── DEMO.md                # guided demo
+    └── architecture/          # DESIGN.md (incl. what's-cut, build-vs-buy), MAP.md, diagrams
 ```
 
 ## Build order
@@ -115,10 +116,10 @@ Documented in `docs/architecture/DESIGN.md` so the boundary is explicit, not acc
 - **Real fiat ramp + real USDC** — reserve is mocked.
 - **Account-abstraction onboarding** — identities are seeded; a **KYC onboarding flow** (mock provider → on-chain claim) is added in Phase 2 (#39).
 - **Secondary market / ATS matching** — no order book.
-- **On-chain multi-tranche securitization** — the token stays single-class; the waterfall is **modeled off-chain** (pure + tested) and visualized as the documented next module (Phase 2 #38), not enforced on-chain.
+- **Multi-tranche securitization** — the token stays single-class; the tranche waterfall is named as a future module, **not built** (a round-2 visualizer existed briefly and was removed — see Phase 2).
 - **Auth / login** — out of scope entirely; no auth layer anywhere.
 
-## Senior signals to hit
+## Engineering standards
 
 - **Correctness is typed and enforced by construction.** Solidity custom errors + TS discriminated unions — never stringly-typed failures. Every revert and every halt has a machine-checkable reason code.
 - **Determinism is provable, not asserted.** The replay equality is a *property* test over interleavings, not a single happy-path assertion.
@@ -145,7 +146,7 @@ A position is a first-lien **mortgage** on a `Property`, not an abstract credit 
 - **Tests ship with the feature.** No feature ticket is done without its tests — forge tests for contracts incl. ≥1 fuzz/invariant; Vitest + fast-check off-chain incl. the deterministic-replay property. Acceptance criteria state numeric counts.
 - **Optimize for simplicity & readability.** Small pure functions, explicit types, the boring solution. Fewer abstractions; no cleverness a reviewer must decode. Delete before you add.
 - **Comments cite the issue #.** Every non-trivial file/function carries a short comment naming the issue it implements and why — e.g. `// #18 reconciliation invariant I2: claimable <= collected`. Any line should trace back to its ticket.
-- **Enterprise / bank-grade UI** (see #24): institutional, calm, data-dense; tabular numerics for money; no crypto-gradient styling; clean empty/loading/error states; every view demoable on seeded data.
+- **Institutional, calm, data-dense UI** (see #24): tabular numerics for money; no crypto-gradient styling; clean empty/loading/error states; every view demoable on seeded data.
 - **Everything is demoable.** No feature without a path to show it — from the UI or `scripts/verify_matrix.ts`. If it can't be demoed, it's out of scope.
 - **The README lands** (see #30): value prop, hero diagram, a working 60-second quickstart, the 10-scenario script.
 - **Idempotent, port-safe dev** (see #31): `bun run dev` stops conflicting processes, runs tests, then starts the whole stack on fixed non-default ports — re-runnable safely.
@@ -163,12 +164,11 @@ Chosen to avoid common dev ports (3000 / 5173 / 5432 / 8545 / 8080). `scripts/de
 
 ## Phase 2 — round-2 demo modules
 
-Round-2 extends the shared core with *pluggable asset/feature modules*, framed as the build-vs-buy /
-integration thesis. The v1 **≤4-view cap is deliberately relaxed** (the app now adds *Loans*, *Tranches*).
-See [`docs/phase-2-plan.md`](docs/phase-2-plan.md), [`docs/architecture/INTEGRATION.md`](docs/architecture/INTEGRATION.md)
-(the shared-core-vs-module map + keep-vs-cut log), and [`docs/DEMO.md`](docs/DEMO.md) (the product walkthrough).
+Round-2 extended the shared core with *pluggable asset/feature modules*, framed around the
+build-vs-buy boundary (see `docs/architecture/DESIGN.md`, the "Build vs. buy — integration boundaries"
+section). The v1 **≤4-view cap holds**: Marketplace, My positions (investor) | Servicing, Health (platform).
 
-- **#38 — Tranche waterfall visualizer** (done): a pure, tested off-chain waterfall engine + animated visualizer. On-chain multi-class stays cut; this *models* the structuring module.
+- **#38 — Tranche waterfall visualizer** (built, then removed): shipped in round 2 as a pure, tested off-chain waterfall engine + visualizer, then deleted in a scope-tightening pass to keep every shipped surface wired to the chain/engine. The waterfall is back to deliberately cut — a named future module, not built. (The same ticket also delivered the Servicing ops view, which stays.)
 - **#39 — KYC onboarding** (done): a mock `KycProvider` behind an interface → verdict issuer-signs `IdentityRegistry.setClaims`. Build-vs-buy made literal; no PII stored (client-side hash, metadata only).
-- **#42 — Platform-architecture panel** (done): one artifact showing the shared core + pluggable modules + the ranked take-rate stack, so the infrastructure thesis is *visible*.
-- **#40/#41 — Borrow-against** (deferred, deliberately): the keystone money-market (pledge token → borrow USDC → LTV/liquidation). Depends on NAV/reconciliation integrity being proven first — building it on an unproven core would be the over-build trap, so it stays Phase 2.
+- **#42 — Platform-architecture panel** (built, then removed): shipped in round 2, then deleted in the same scope-tightening pass — a static artifact with no chain/engine wiring didn't earn its place. The investor/operator tab grouping from that ticket survives in the app shell.
+- **#40/#41 — Borrow-against** (deferred, deliberately): the deferred money-market module (pledge token → borrow USDC → LTV/liquidation). Depends on NAV/reconciliation integrity being proven first — building it on an unproven core would be the over-build trap, so it stays Phase 2.

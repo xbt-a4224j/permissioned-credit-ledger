@@ -5,7 +5,7 @@
     <marker id="ao" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto"><path d="M0,0 L7.5,3 L0,6 Z" fill="#d2691e"/></marker>
   </defs>
   <text x="32" y="40" font-size="20" font-weight="700" fill="#1a1d24">off-chain ↔ on-chain reconciliation — the seam</text>
-  <text x="32" y="60" font-size="12.5" fill="#5a6472">The marquee: servicing cash + NAV (off-chain truth) vs on-chain claimable + supply, folded by a deterministic replay into one stateHash, gated by 4 invariants. Match or HALT.</text>
+  <text x="32" y="60" font-size="12.5" fill="#5a6472">The core: servicing cash + NAV (off-chain truth) vs on-chain claimable + supply, folded by a deterministic replay into one stateHash, gated by 4 invariants. Match or HALT.</text>
 
   <!-- LEFT: off-chain ground truth -->
   <text x="32" y="100" font-size="11" font-weight="700" fill="#c0392b" letter-spacing="0.08em">OFF-CHAIN GROUND TRUTH</text>
