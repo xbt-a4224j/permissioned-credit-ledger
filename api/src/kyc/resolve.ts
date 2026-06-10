@@ -88,6 +88,20 @@ export async function resolveSubmitKyc(ctx: ApiContext, input: KycInputArgs): Pr
   // wait for the claim to land so a follow-up invest sees the verified wallet.
   await ctx.chain.publicClient.waitForTransactionReceipt({ hash: txHash });
 
+  // #39 mirror the on-chain claim into the off-chain identities read-model. The indexer projects
+  // token events (PositionOpened/Transfer/…) but NOT identity-claim changes, so without this the
+  // recon engine's I4 (IdentityValid) keeps reading the stale seed: the instant a freshly-verified
+  // wallet takes a position, I4 sees an "unverified holder" and HALTs the whole platform. Keep the
+  // mirror in sync here so on-chain and off-chain identity views never diverge. jurisdiction in the
+  // table is 'US' | 'nonUS' (the seed's spelling), so NonUS maps to nonUS.
+  await ctx.db`
+    insert into identities (addr, verified, accredited, jurisdiction, frozen)
+    values (${input.wallet.toLowerCase()}, ${c.verified}, ${c.accredited}, ${c.jurisdiction === "NonUS" ? "nonUS" : "US"}, ${c.frozen})
+    on conflict (addr) do update set
+      verified = excluded.verified, accredited = excluded.accredited,
+      jurisdiction = excluded.jurisdiction, frozen = excluded.frozen
+  `;
+
   return {
     decision: "APPROVED",
     reason: null,
