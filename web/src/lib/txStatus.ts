@@ -22,6 +22,7 @@ export interface TxLifecycle {
   phase: TxPhase;
   txHash?: `0x${string}`;
   reason?: ReasonCode;
+  message?: string; // a human-readable failure message for an UNTYPED revert (no ReasonCode badge)
   optimistic: boolean; // true while a pre-confirmation position should show; false once rolled back/settled
   run(send: () => Promise<MutationResult<TxReceiptRef>>): Promise<void>;
   reset(): void;
@@ -61,6 +62,7 @@ export function useTxLifecycle(opts: TxLifecycleOpts = {}): TxLifecycle {
   const [phase, setPhase] = useState<TxPhase>("idle");
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
   const [reason, setReason] = useState<ReasonCode | undefined>(undefined);
+  const [message, setMessage] = useState<string | undefined>(undefined);
   const [optimistic, setOptimistic] = useState(false);
   const optsRef = useRef(opts);
   optsRef.current = opts;
@@ -69,18 +71,23 @@ export function useTxLifecycle(opts: TxLifecycleOpts = {}): TxLifecycle {
     setPhase("idle");
     setTxHash(undefined);
     setReason(undefined);
+    setMessage(undefined);
     setOptimistic(false);
   }, []);
 
   const run = useCallback(async (send: () => Promise<MutationResult<TxReceiptRef>>): Promise<void> => {
     setReason(undefined);
+    setMessage(undefined);
     setPhase("signing");
     setOptimistic(true); // show the optimistic position the instant we sign
     let result: MutationResult<TxReceiptRef>;
     try {
       result = await send();
-    } catch {
+    } catch (err) {
+      // an UNTYPED revert (a boundary validation error with no ReasonCode, e.g. EXCEEDS_PRINCIPAL)
+      // carries its explanation in the message — surface it so the dialog isn't a bare "Reverted".
       setOptimistic(false);
+      setMessage(err instanceof Error ? err.message : "Transaction failed.");
       setPhase("reverted");
       return;
     }
@@ -130,5 +137,6 @@ export function useTxLifecycle(opts: TxLifecycleOpts = {}): TxLifecycle {
   const api: TxLifecycle = { phase, optimistic, run, reset };
   if (txHash !== undefined) api.txHash = txHash;
   if (reason !== undefined) api.reason = reason;
+  if (message !== undefined) api.message = message;
   return api;
 }

@@ -65,6 +65,9 @@ export function InvestDialog(props: { loan: Loan; wallet: WalletApi; onClose: ()
         </div>
 
         {tx.phase === "reverted" && tx.reason !== undefined ? <ReasonBadge code={tx.reason} /> : null}
+        {tx.phase === "reverted" && tx.reason === undefined && tx.message !== undefined ? (
+          <span className="text-sm text-halt">{tx.message}</span>
+        ) : null}
         {tx.phase === "confirmed" ? <span className="text-sm text-positive">Position opened — accrual started.</span> : null}
       </div>
     </Modal>
