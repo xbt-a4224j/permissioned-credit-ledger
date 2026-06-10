@@ -51,7 +51,8 @@ function mapLoans(raw: LoansRaw): Loan[] {
 }
 
 // #38 the reserve query — a standalone gql() call (not useQuery) because the reserve is
-// a single global value, not per-loan, and a simple refetch-on-mount is enough here.
+// a single global value, not per-loan. Polled every 2s to match the engine cycle so the
+// Claimable stat ticks live (#45).
 const RESERVE_QUERY = /* GraphQL */ `
   query Reserve {
     reserve { balance totalClaimable }
@@ -78,7 +79,11 @@ export function LoansView(): JSX.Element {
       .catch((err: unknown) => setReserveError(err instanceof Error ? err.message : "Could not load reserve"));
   }, []);
 
-  useEffect(() => { loadReserve(); }, [loadReserve]);
+  useEffect(() => {
+    loadReserve();
+    const id = setInterval(loadReserve, 2000);
+    return () => clearInterval(id);
+  }, [loadReserve]);
 
   // #38 report collected cash — a single global write (reserve is one row, not per-loan). The
   // mutation still takes a loanId for validation, so we pass the first loan in the tape.
