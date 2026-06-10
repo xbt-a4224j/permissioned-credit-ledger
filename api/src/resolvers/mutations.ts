@@ -109,8 +109,9 @@ export async function resolveInvest(ctx: ApiContext, input: InvestArgs): Promise
   const principal = BigInt(loan.principal);
   if (outstanding + amount > principal) {
     const remaining = principal > outstanding ? principal - outstanding : 0n;
+    const usd = (v: bigint): string => `$${Number(v / 1_000_000n).toLocaleString("en-US")}`;
     throw new GraphQLError(
-      `Investment exceeds loan capacity: ${amount.toString()} requested but only ${remaining.toString()} of ${principal.toString()} principal remains.`,
+      `Exceeds loan capacity — requested ${usd(amount)}, but only ${usd(remaining)} of ${usd(principal)} remains on loan #${input.loanId}.`,
       { extensions: { code: "EXCEEDS_PRINCIPAL" } },
     );
   }
