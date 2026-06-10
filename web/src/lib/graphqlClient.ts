@@ -34,6 +34,16 @@ export function extractCode(err: unknown): ReasonCode | null {
   return null;
 }
 
+// #24 the CLEAN GraphQL error message — graphql-request's ClientError.message appends the whole
+// serialized response+request JSON, which must never reach the UI. Pull the first response error's
+// own message; fall back to the raw Error message only if the structured field is absent.
+export function extractMessage(err: unknown): string {
+  const response = (err as { response?: { errors?: { message?: unknown }[] } }).response;
+  const msg = response?.errors?.[0]?.message;
+  if (typeof msg === "string" && msg.length > 0) return msg;
+  return err instanceof Error ? err.message : "request failed";
+}
+
 // #24 run a query/mutation; on a typed-code error throw GraphqlCodeError so callers branch on the
 // code (the #25 invest/claim flows) instead of parsing strings.
 export async function gql<TData, TVars extends object = object>(doc: string, vars?: TVars): Promise<TData> {
@@ -41,7 +51,6 @@ export async function gql<TData, TVars extends object = object>(doc: string, var
     return await gqlClient.request<TData>(doc, vars);
   } catch (err) {
     const code = extractCode(err);
-    const message = err instanceof Error ? err.message : "request failed";
-    throw new GraphqlCodeError(message, code);
+    throw new GraphqlCodeError(extractMessage(err), code);
   }
 }
