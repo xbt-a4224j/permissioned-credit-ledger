@@ -75,6 +75,30 @@ afterAll(async () => {
   await b.dispose();
 });
 
+// #16 regression: a second event colliding on (block_number, log_index) under a DIFFERENT id
+// (a stale read model meeting a fresh chain instance) must be a NO-OP, never a throw. Before the
+// `on conflict do nothing` fix the ingest targeted only the `id` pk, so this collision raised a
+// unique violation and KILLED the indexer — freezing the cursor and stranding the read model until
+// the recon engine HALTed on a phantom mismatch. The skip must also leave the first projection intact.
+test("a (block, logIndex) collision under a different id is a no-op, not a crash", async () => {
+  await resetRun(a.sql);
+  const holder = identityAddr(holderAddr(0));
+  const first: ChainEvent = { id: eventId(txh(0), 0), name: "Transfer", blockNumber: 1n, logIndex: 0, token: TOKEN, loan: LOAN, from: ZERO, to: holder, amount: usdc6(1000n) };
+  const collidingDifferentId: ChainEvent = { id: eventId(txh(99), 0), name: "Transfer", blockNumber: 1n, logIndex: 0, token: TOKEN, loan: LOAN, from: ZERO, to: holder, amount: usdc6(9999n) };
+
+  const a1 = await ingestEvent(a.sql, first);
+  expect(a1.status).toBe("applied");
+  const before = await snapshot(a.sql);
+
+  // must NOT throw, and must report a skip (the (block, logIndex) row already exists).
+  const a2 = await ingestEvent(a.sql, collidingDifferentId);
+  expect(a2.status).toBe("duplicate");
+  // and the colliding event's payload/amount must NOT have mutated the read model.
+  expect(await snapshot(a.sql)).toBe(before);
+  const rows = await a.sql<{ n: bigint }[]>`select count(*)::bigint as n from chain_events where block_number = 1 and log_index = 0`;
+  expect(rows[0]?.n).toBe(1n);
+});
+
 test("ingestion is idempotent + order-stable over duplicates and reorderings", async () => {
   await fc.assert(
     fc.asyncProperty(
