@@ -120,6 +120,7 @@ test("Usdc6 round-trips above 2^53 without precision loss", () => {
 test("DomainError union is closed (exhaustive switch compiles)", () => {
   const classify = (e: DomainError): string => {
     switch (e.kind) {
+      case "SenderFrozen":
       case "NotEligible":
       case "ReceiverFrozen":
       case "ReceiverNotVerified":
