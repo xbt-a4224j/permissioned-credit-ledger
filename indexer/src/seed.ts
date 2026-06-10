@@ -69,3 +69,24 @@ export async function seedReference(sql: Sql, m: Manifest): Promise<void> {
   // the engine HALTs on its own. InterestClaimed projections debit this; reportCash overrides it.
   await sql`insert into reserve (id, balance, updated_at) values (1, 1000000000000, 0) on conflict (id) do update set balance = 1000000000000`;
 }
+
+// #17 demo-world fixture: give every loan an accepted par (10000 bps = 100%) NAV baseline so the
+// per-loan NAV cards read "100%" instead of "No mark submitted yet", and — crucially — so the
+// interactive +40% spike has a baseline to jump FROM. The NAV gate bounds a mark against the last
+// ACCEPTED mark; with no baseline the first +40% mark is accepted as the baseline and never trips
+// OutOfBounds (the demo row-9 HALT silently no-ops). observed_at is a fixed past second (well
+// before any live `Date.now()` mark) so a later spike is always monotonically newer. This lives in
+// the LIVE indexer boot only — NOT in seedReference — because the replay golden hash + the matrix
+// fold nav_readings into their deterministic state, and a test-shared NAV seed would change them.
+// Idempotent: a loan that already carries any reading is left alone (restarts don't re-baseline).
+const PAR_BASELINE_BPS = 10000;
+const BASELINE_OBSERVED_AT = 1_700_000_000;
+export async function seedDemoNavBaselines(sql: Sql, m: Manifest): Promise<void> {
+  for (const ln of Object.values(m.loans)) {
+    await sql`
+      insert into nav_readings (loan_id, nav_bps, observed_at, source, accepted, reject_reason)
+      select ${String(ln.loanId)}, ${PAR_BASELINE_BPS}, ${BASELINE_OBSERVED_AT}, 'seed-baseline', true, null
+      where not exists (select 1 from nav_readings where loan_id = ${String(ln.loanId)})
+    `;
+  }
+}

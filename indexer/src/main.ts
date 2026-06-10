@@ -11,7 +11,7 @@ import { decodeChainEvent, type RawLog } from "./decode.ts";
 import { ingestEvent } from "./ingest.ts";
 import { getCursor, setCursor } from "./cursor.ts";
 import { loadManifest, tokenAddresses, tokenToLoanMap } from "./manifest.ts";
-import { seedReference } from "./seed.ts";
+import { seedReference, seedDemoNavBaselines } from "./seed.ts";
 import type { Sql } from "@pcl/shared";
 import type { PublicClient } from "viem";
 
@@ -55,6 +55,9 @@ async function main(): Promise<void> {
 
   const manifest = loadManifest(CHAIN_ID);
   await seedReference(sql, manifest);
+  // #17 demo-world only: a par NAV baseline per loan so the +40% spike has something to jump from
+  // (the matrix/golden seed their own NAV deterministically and must not inherit this).
+  await seedDemoNavBaselines(sql, manifest);
 
   const client = makeChainClient(LOCAL_RPC, CHAIN_ID);
   const tokens = tokenAddresses(manifest);
