@@ -48,6 +48,17 @@ export async function runReconCycle(sql: Sql, chain: PublicClient, manifest: Sna
   const verdict = evaluateInvariants(snapshot);
   const stateHash = await stateHasher(sql, snapshot);
 
+  // #45 persist the snapshot's aggregate on-chain claimable. positions.accrued only moves on
+  // claims (accrual is a time-based view, it emits no events), so this engine-written value is
+  // the only live off-chain record of aggregate claimable — the GraphQL reserve surface reads it,
+  // making the Servicing panel show the exact number I2 just evaluated. Upsert because a virgin
+  // world has no reserve row yet (balance 0 = nothing collected, which is true).
+  await sql`
+    insert into reserve (id, balance, total_claimable)
+    values (1, 0, ${snapshot.onchainClaimableTotal.toString()})
+    on conflict (id) do update set total_claimable = ${snapshot.onchainClaimableTotal.toString()}
+  `;
+
   if (verdict.ok) {
     await sql`
       insert into recon_status (ok, state, failed_invariant, state_hash, detail)

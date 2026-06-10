@@ -80,6 +80,16 @@ test("a funded cycle (collected >= claimable) passes and re-opens distribution",
   await expect(assertCanDistribute(sql)).resolves.toBeUndefined();
 });
 
+test("#45 each cycle persists the snapshot's aggregate claimable to reserve.total_claimable", async () => {
+  // anvil time only advances on mining, so claimable() is stable between the cycle above and
+  // this read — the persisted value must equal a fresh snapshot's total exactly.
+  const snap = await loadSnapshot(sql, chain, manifest);
+  const rows = await sql<{ total_claimable: string }[]>`select total_claimable::text as total_claimable from reserve where id = 1`;
+  expect(rows[0]?.total_claimable).toBe(snap.onchainClaimableTotal.toString());
+  // and it is genuinely live (this world accrued ~30 days of interest), not the dead accrued sum.
+  expect(BigInt(rows[0]?.total_claimable ?? "0") > 0n).toBe(true);
+});
+
 test("I3 break: an anomalous NAV makes the cycle HALT with state NavAnomaly", async () => {
   const now = unixSeconds(1_700_000_700);
   // accepted baseline then a +40% spike on the anchor loan -> NavAnomaly halt + frozen accrual.

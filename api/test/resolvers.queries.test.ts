@@ -77,3 +77,14 @@ test("reserve exposes balance + totalClaimable as strings", async () => {
   expect(typeof reserve.totalClaimable).toBe("string");
   expect(reserve.balance).toMatch(/^\d+$/);
 });
+
+test("#45 totalClaimable surfaces the engine-written reserve.total_claimable, not sum(accrued)", async () => {
+  // the engine (#18) is the only writer of total_claimable; the resolver must read it verbatim.
+  // (sum(positions.accrued) would be 0 here — accrued only moves on claims, never on accrual.)
+  await sql`
+    insert into reserve (id, balance, total_claimable) values (1, 0, 424242)
+    on conflict (id) do update set total_claimable = 424242
+  `;
+  const reserve = await resolveReserve(ctx);
+  expect(reserve.totalClaimable).toBe("424242");
+});

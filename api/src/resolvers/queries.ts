@@ -116,14 +116,18 @@ export async function resolvePositions(ctx: ApiContext, holder: string): Promise
   return [...canonical, ...optimistic];
 }
 
-// #21 the reserve coverage: the single-row balance + the aggregate off-chain claimable
-// (sum of positions.accrued). recon I2 requires totalClaimable <= balance.
+// #21 the reserve coverage: the single-row balance + the engine-snapshotted aggregate on-chain
+// claimable (#45). NOT sum(positions.accrued) — accrued is event-projected and only moves on
+// claims, so it reads 0 forever while interest accrues. The recon cycle (#18) writes
+// total_claimable from its live chain snapshot every pass, so this surface (the Servicing
+// panel + the demo cash-shortfall trigger) shows the same number I2 evaluates.
 export async function resolveReserve(ctx: ApiContext): Promise<ReserveStateSource> {
-  const reserveRows = await ctx.db<{ balance: bigint }[]>`select balance::text as balance from reserve where id = 1`;
-  const claimRows = await ctx.db<{ total: bigint }[]>`select coalesce(sum(accrued), 0)::text as total from positions`;
+  const reserveRows = await ctx.db<{ balance: bigint; total_claimable: bigint }[]>`
+    select balance::text as balance, total_claimable::text as total_claimable from reserve where id = 1
+  `;
   return {
     balance: (reserveRows[0]?.balance ?? 0n).toString(),
-    totalClaimable: (claimRows[0]?.total ?? 0n).toString(),
+    totalClaimable: (reserveRows[0]?.total_claimable ?? 0n).toString(),
   };
 }
 
