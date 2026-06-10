@@ -4,7 +4,9 @@
 // margin. Money fields BigIntStr.
 import { builder } from "../builder.ts";
 
-// #20 the resolver-produced ReserveState source (the single-row `reserve` + summed claimable).
+// #20 the resolver-produced ReserveState source — both fields off the single-row `reserve`:
+// balance is reported collected cash; totalClaimable is the engine-snapshotted aggregate
+// on-chain claimable the recon cycle persists each pass (#45).
 export interface ReserveStateSource {
   balance: string;
   totalClaimable: string;
