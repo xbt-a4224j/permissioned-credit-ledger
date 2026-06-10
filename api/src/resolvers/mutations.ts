@@ -90,6 +90,31 @@ async function pendingRef(ctx: ApiContext, hash: `0x${string}`, kind: "invest" |
 export async function resolveInvest(ctx: ApiContext, input: InvestArgs): Promise<TxReceiptRefSource> {
   const wallet = input.wallet.toLowerCase() as Address;
   const amount = BigInt(input.amount);
+
+  // #21 over-subscription guard: total issued for a loan must never exceed its principal. I1
+  // (SupplyBacked) only checks supply == sum(position principals) — it does NOT cap against the
+  // loan's own principal, so without this an investor can mint MORE claims than the loan exists,
+  // overselling the asset (e.g. $5M into a $4.1M loan). Reject at the boundary before any broadcast.
+  const loan = ctx.manifest.loans[input.loanId];
+  if (loan === undefined) {
+    throw new GraphQLError(`Unknown loan ${input.loanId}.`, { extensions: { code: "BAD_USER_INPUT" } });
+  }
+  if (amount <= 0n) {
+    throw new GraphQLError("Investment amount must be positive.", { extensions: { code: "BAD_USER_INPUT" } });
+  }
+  const outstandingRows = await ctx.db<{ sum: string }[]>`
+    select coalesce(sum(principal), 0)::text as sum from positions where loan_id = ${input.loanId} and principal > 0
+  `;
+  const outstanding = BigInt(outstandingRows[0]?.sum ?? "0");
+  const principal = BigInt(loan.principal);
+  if (outstanding + amount > principal) {
+    const remaining = principal > outstanding ? principal - outstanding : 0n;
+    throw new GraphQLError(
+      `Investment exceeds loan capacity: ${amount.toString()} requested but only ${remaining.toString()} of ${principal.toString()} principal remains.`,
+      { extensions: { code: "EXCEEDS_PRINCIPAL" } },
+    );
+  }
+
   const request = investRequest(ctx.manifest, input.loanId, wallet, amount);
   const hash = await broadcastGated(ctx, request);
   await recordPending(ctx.db, { hash, kind: "invest", holder: wallet, loanId: input.loanId, amount });
