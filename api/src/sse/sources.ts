@@ -25,9 +25,9 @@ const RATE_SCALE = 10n ** 18n;
 async function emitAccrualTicks(sql: Sql, manifest: Manifest, bus: EventBus, now: number, anchors: Map<string, number>, prevAccrued: Map<string, bigint>): Promise<void> {
   // money is selected ::text so it arrives as a decimal string; BigInt it for the math (the
   // numeric parser only fires on the numeric OID, not on a ::text cast — #15 client note).
-  const rows = await sql<{ loan_id: string; holder: string; principal: string; accrued: string; opened_at: bigint | null }[]>`
-    select loan_id, holder, principal::text as principal, accrued::text as accrued, opened_at
-    from positions where principal > 0
+  const rows = await sql<{ loan_id: string; holder: string; principal: string; accrued: string; opened_at: bigint | null; status: string }[]>`
+    select p.loan_id, p.holder, p.principal::text as principal, p.accrued::text as accrued, p.opened_at, l.status
+    from positions p join loans l on l.id = p.loan_id where p.principal > 0
   `;
   for (const r of rows) {
     const ln = manifest.loans[r.loan_id];
@@ -47,7 +47,10 @@ async function emitAccrualTicks(sql: Sql, manifest: Manifest, bus: EventBus, now
     }
     prevAccrued.set(key, accrued);
     const elapsed = BigInt(Math.max(0, now - anchor));
-    const pending = (BigInt(r.principal) * ratePerSecond * elapsed) / RATE_SCALE;
+    // #9 only a PERFORMING loan accrues on-chain; a DEFAULT/Matured loan's claimable is frozen at
+    // its settled accrued. Gate the projection so the display ticker can't show phantom yield on a
+    // non-performing loan (on-chain claimable() returns 0 there — the ticker must agree, not drift).
+    const pending = r.status === "PERFORMING" ? (BigInt(r.principal) * ratePerSecond * elapsed) / RATE_SCALE : 0n;
     const claimable = accrued + pending;
     bus.publish({
       type: "accrual",
