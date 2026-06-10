@@ -1,10 +1,19 @@
 // Idempotent event ingestion · #16
-// ingestEvent inserts the chain_events row with ON CONFLICT (id) DO NOTHING and, ONLY when the
+// ingestEvent inserts the chain_events row with ON CONFLICT DO NOTHING and, ONLY when the
 // row was newly inserted, runs the projection — all in ONE transaction. A re-delivered log
 // (reorg, WebSocket reconnect, getLogs/watch overlap) is therefore a no-op: 0 balance
 // mutations. This DB-level idempotency on the canonical EventId is the precondition the
 // deterministic-replay property (#19) and matrix row 10 (#18) both stand on. payload is
 // serialized with bigints -> strings so numeric precision survives the jsonb round trip.
+//
+// The conflict target is LEFT UNSPECIFIED on purpose: chain_events carries TWO unique keys —
+// the pk `id` (txHash:logIndex) and unique(block_number, log_index). A bare DO NOTHING skips on
+// EITHER (the migration documents both as idempotency keys). A targeted `(id)` would let an event
+// whose (block_number, log_index) already exists under a DIFFERENT id — a stale read model meeting
+// a fresh chain instance — throw a unique violation and KILL the indexer process. A crashed
+// indexer is the worst failure mode: the cursor freezes, the read model goes stale, and the recon
+// engine eventually HALTs on a phantom mismatch with no visible cause. Failing closed to a no-op
+// keeps the indexer alive; a clean reseed (wiped read model) is the only correct stale-PG recovery.
 import type { Sql } from "@pcl/shared";
 import { usdc6ToString, type ChainEvent } from "@pcl/shared";
 import { project } from "./project.ts";
@@ -32,7 +41,7 @@ export async function ingestEvent(sql: Sql, ev: ChainEvent): Promise<IngestResul
     const inserted = await tx`
       insert into chain_events (id, name, block_number, log_index, payload)
       values (${ev.id}, ${ev.name}, ${ev.blockNumber.toString()}, ${ev.logIndex}, ${tx.json(serializePayload(ev))})
-      on conflict (id) do nothing
+      on conflict do nothing
       returning id
     `;
     if (inserted.length === 0) {
