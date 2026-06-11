@@ -1,0 +1,146 @@
+<svg viewBox="0 0 960 812" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto"><path d="M0,0 L7.5,3 L0,6 Z" fill="#222"/></marker>
+    <marker id="ao" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto"><path d="M0,0 L7.5,3 L0,6 Z" fill="#d2691e"/></marker>
+    <marker id="ab" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto"><path d="M0,0 L7.5,3 L0,6 Z" fill="#2c6fbb"/></marker>
+  </defs>
+
+  <text x="32" y="40" font-size="20" font-weight="700" fill="#1a1d24">on-chain calls ↔ DB projection · the two heartbeats</text>
+  <text x="32" y="60" font-size="12.5" fill="#5a6472">The chain is the single authority; Postgres is a projection of it. Two independent clocks drive the system — the block clock advances on-chain state, the recon clock proves the projection still matches it (or halts).</text>
+
+  <!-- ================= BAND 1 — THE PROJECTION ================= -->
+  <text x="32" y="96" font-size="11" font-weight="700" fill="#c0392b" letter-spacing="0.08em">BAND 1 · THE PROJECTION — every on-chain call emits an event the indexer folds into a read model</text>
+
+  <!-- LEFT: on-chain calls + events -->
+  <text x="32" y="122" font-size="10" font-weight="700" fill="#7a4ea0" letter-spacing="0.06em">ON-CHAIN (Solidity · authority)</text>
+  <g font-family="'SF Mono',Menlo,monospace">
+    <rect x="32" y="130" width="250" height="40" rx="7" fill="#f3eefa" stroke="#7a4ea0" stroke-width="2"/>
+    <text x="44" y="150" font-size="11.5" font-weight="600" fill="#1a1d24">CreditToken.mint()</text>
+    <text x="44" y="164" font-size="10" fill="#5a6472">emits · PositionOpened</text>
+
+    <rect x="32" y="178" width="250" height="40" rx="7" fill="#f3eefa" stroke="#7a4ea0" stroke-width="2"/>
+    <text x="44" y="198" font-size="11.5" font-weight="600" fill="#1a1d24">CreditToken._update()</text>
+    <text x="44" y="212" font-size="10" fill="#5a6472">emits · Transfer</text>
+
+    <rect x="32" y="226" width="250" height="40" rx="7" fill="#f3eefa" stroke="#7a4ea0" stroke-width="2"/>
+    <text x="44" y="246" font-size="11.5" font-weight="600" fill="#1a1d24">CreditToken.claim()</text>
+    <text x="44" y="260" font-size="10" fill="#5a6472">emits · InterestClaimed</text>
+
+    <rect x="32" y="274" width="250" height="40" rx="7" fill="#f3eefa" stroke="#7a4ea0" stroke-width="2"/>
+    <text x="44" y="294" font-size="11.5" font-weight="600" fill="#1a1d24">CreditToken.setLoanStatus()</text>
+    <text x="44" y="308" font-size="10" fill="#5a6472">emits · LoanStatusChanged</text>
+
+    <rect x="32" y="322" width="250" height="40" rx="7" fill="#eef5fb" stroke="#2c6fbb" stroke-width="2" stroke-dasharray="5 3"/>
+    <text x="44" y="342" font-size="11.5" font-weight="600" fill="#1a1d24">IdentityRegistry.setClaims()</text>
+    <text x="44" y="356" font-size="10" fill="#2c6fbb">emits · ClaimsUpdated  (KYC)</text>
+  </g>
+
+  <!-- CENTER: indexer -->
+  <rect x="362" y="200" width="170" height="120" rx="9" fill="#fff7ec" stroke="#d2691e" stroke-width="2.5"/>
+  <text x="447" y="232" text-anchor="middle" font-size="13" font-weight="700" fill="#1a1d24">viem indexer</text>
+  <text x="447" y="252" text-anchor="middle" font-size="10" fill="#5a6472">tails new blocks</text>
+  <text x="447" y="268" text-anchor="middle" font-size="10" fill="#5a6472">decode → idempotent</text>
+  <text x="447" y="282" text-anchor="middle" font-size="10" fill="#5a6472">ingest (txHash:logIndex)</text>
+  <text x="447" y="302" text-anchor="middle" font-family="'SF Mono',Menlo,monospace" font-size="9.5" fill="#d2691e">project(event) → read model</text>
+
+  <!-- arrows: events -> indexer -->
+  <g stroke="#7a4ea0" stroke-width="1.6" fill="none">
+    <path d="M282,150 C320,150 330,250 360,255" marker-end="url(#a)"/>
+    <path d="M282,198 C322,198 330,256 360,260" marker-end="url(#a)"/>
+    <path d="M282,246 L360,262" marker-end="url(#a)"/>
+    <path d="M282,294 C322,294 330,268 360,266" marker-end="url(#a)"/>
+  </g>
+  <path d="M282,342 C322,342 330,290 360,278" stroke="#2c6fbb" stroke-width="1.6" stroke-dasharray="5 3" fill="none" marker-end="url(#ab)"/>
+
+  <!-- RIGHT: DB read models -->
+  <text x="928" y="122" text-anchor="end" font-size="10" font-weight="700" fill="#1f7a4d" letter-spacing="0.06em">POSTGRES (read models · projection)</text>
+  <g font-family="'SF Mono',Menlo,monospace">
+    <rect x="612" y="130" width="316" height="34" rx="7" fill="#eaf6ef" stroke="#1f7a4d" stroke-width="2"/>
+    <text x="624" y="151" font-size="11.5" font-weight="600" fill="#1a1d24">positions</text>
+    <text x="916" y="151" text-anchor="end" font-size="9.5" fill="#5a6472">principal · accrued · holder</text>
+
+    <rect x="612" y="172" width="316" height="34" rx="7" fill="#eaf6ef" stroke="#1f7a4d" stroke-width="2"/>
+    <text x="624" y="193" font-size="11.5" font-weight="600" fill="#1a1d24">loans</text>
+    <text x="916" y="193" text-anchor="end" font-size="9.5" fill="#5a6472">status (PERFORMING / DEFAULT)</text>
+
+    <rect x="612" y="214" width="316" height="34" rx="7" fill="#eef5fb" stroke="#2c6fbb" stroke-width="2"/>
+    <text x="624" y="235" font-size="11.5" font-weight="600" fill="#1a1d24">identities</text>
+    <text x="916" y="235" text-anchor="end" font-size="9.5" fill="#2c6fbb">verified · accredited · frozen</text>
+
+    <rect x="612" y="256" width="316" height="34" rx="7" fill="#eaf6ef" stroke="#1f7a4d" stroke-width="2"/>
+    <text x="624" y="277" font-size="11.5" font-weight="600" fill="#1a1d24">reserve</text>
+    <text x="916" y="277" text-anchor="end" font-size="9.5" fill="#5a6472">collected cash · total_claimable</text>
+
+    <rect x="612" y="298" width="316" height="34" rx="7" fill="#f4f6f8" stroke="#5a6472" stroke-width="2"/>
+    <text x="624" y="319" font-size="11.5" font-weight="600" fill="#1a1d24">chain_events</text>
+    <text x="916" y="319" text-anchor="end" font-size="9.5" fill="#5a6472">the append-only activity log / feed</text>
+  </g>
+
+  <!-- arrows: indexer -> read models -->
+  <g stroke="#d2691e" stroke-width="1.6" fill="none">
+    <path d="M532,245 C570,200 580,150 610,147" marker-end="url(#ao)"/>
+    <path d="M532,255 C575,235 585,195 610,189" marker-end="url(#ao)"/>
+    <path d="M532,275 C575,275 585,275 610,273" marker-end="url(#ao)"/>
+    <path d="M532,295 C575,310 585,315 610,315" marker-end="url(#ao)"/>
+  </g>
+  <path d="M532,268 C575,255 585,235 610,231" stroke="#2c6fbb" stroke-width="1.6" stroke-dasharray="5 3" fill="none" marker-end="url(#ab)"/>
+  <text x="447" y="356" text-anchor="middle" font-size="9.5" fill="#2c6fbb">ClaimsUpdated → identities + the feed</text>
+
+  <line x1="32" y1="392" x2="928" y2="392" stroke="#e3e7ec" stroke-width="1.5"/>
+
+  <!-- ================= BAND 2 — THE TWO HEARTBEATS ================= -->
+  <text x="32" y="420" font-size="11" font-weight="700" fill="#c0392b" letter-spacing="0.08em">BAND 2 · THE TWO HEARTBEATS — one clock advances state, the other proves it still reconciles</text>
+
+  <!-- Heartbeat 1: block clock -->
+  <rect x="32" y="438" width="250" height="150" rx="9" fill="#f3eefa" stroke="#7a4ea0" stroke-width="2.5"/>
+  <text x="157" y="466" text-anchor="middle" font-size="13" font-weight="700" fill="#7a4ea0">♥ BLOCK CLOCK</text>
+  <text x="157" y="484" text-anchor="middle" font-size="10.5" fill="#5a6472">anvil mines 1 block / second</text>
+  <text x="48" y="510" font-size="10.5" fill="#1a1d24">• time advances → accrual grows</text>
+  <text x="48" y="528" font-size="10.5" fill="#1a1d24">• claimable(holder) ticks up</text>
+  <text x="48" y="546" font-size="10.5" fill="#1a1d24">• new blocks carry events →</text>
+  <text x="60" y="562" font-size="10.5" fill="#5a6472">the indexer tails them (Band 1)</text>
+  <text x="157" y="580" text-anchor="middle" font-size="9.5" font-style="italic" fill="#7a4ea0">the chain moves on its own</text>
+
+  <!-- Heartbeat 2: recon clock (center) -->
+  <rect x="355" y="438" width="250" height="150" rx="9" fill="#fbe9e7" stroke="#c0392b" stroke-width="2.5"/>
+  <text x="480" y="466" text-anchor="middle" font-size="13" font-weight="700" fill="#c0392b">♥ RECON CLOCK</text>
+  <text x="480" y="484" text-anchor="middle" font-size="10.5" fill="#5a6472">engine cycle ≈ every 2 seconds</text>
+  <text x="371" y="510" font-size="10.5" fill="#1a1d24">1 · loadSnapshot — read BOTH sides</text>
+  <text x="383" y="526" font-size="9.5" fill="#5a6472">live chain (supply, claimable) + DB</text>
+  <text x="371" y="546" font-size="10.5" fill="#1a1d24">2 · evaluate the 4 invariants</text>
+  <text x="371" y="566" font-size="10.5" fill="#1a1d24">3 · persist recon_status + stateHash</text>
+  <text x="480" y="582" text-anchor="middle" font-size="9.5" font-style="italic" fill="#c0392b">samples both clocks, proves agreement</text>
+
+  <!-- live chain read arrow into recon -->
+  <path d="M157,438 C157,415 320,415 360,470" stroke="#7a4ea0" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+  <text x="250" y="409" text-anchor="middle" font-size="9" fill="#7a4ea0">live on-chain read each cycle</text>
+  <!-- DB read arrow into recon -->
+  <path d="M770,260 C840,360 660,420 605,470" stroke="#1f7a4d" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+  <text x="730" y="402" text-anchor="middle" font-size="9" fill="#1f7a4d">read models each cycle</text>
+
+  <!-- outcomes -->
+  <rect x="678" y="446" width="250" height="60" rx="9" fill="#eaf6ef" stroke="#1f7a4d" stroke-width="2.5"/>
+  <text x="803" y="472" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1f7a4d">MATCH → OK</text>
+  <text x="803" y="492" text-anchor="middle" font-size="10" fill="#5a6472">distribution stays open</text>
+
+  <rect x="678" y="520" width="250" height="68" rx="9" fill="#fdecea" stroke="#c0392b" stroke-width="2.5"/>
+  <text x="803" y="546" text-anchor="middle" font-size="12.5" font-weight="700" fill="#c0392b">MISMATCH → HALT</text>
+  <text x="803" y="565" text-anchor="middle" font-size="10" fill="#5a6472">typed NavAnomaly / ReconMismatch</text>
+  <text x="803" y="579" text-anchor="middle" font-size="10" fill="#5a6472">fails closed — no payout</text>
+
+  <path d="M605,500 C640,490 650,478 676,476" stroke="#1f7a4d" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+  <path d="M605,540 C640,548 650,552 676,553" stroke="#c0392b" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+
+  <!-- ================= the punchline ================= -->
+  <rect x="32" y="616" width="896" height="76" rx="9" fill="#f7f9fb" stroke="#cbd2da" stroke-width="1.5"/>
+  <text x="48" y="642" font-size="12.5" font-weight="700" fill="#1a1d24">Why two clocks is the whole point</text>
+  <text x="48" y="663" font-size="11" fill="#37404a">The block clock pushes on-chain state forward continuously and asynchronously; the projection always lags it by an indexer cycle. The recon clock is the only thing that closes the gap — each</text>
+  <text x="48" y="679" font-size="11" fill="#37404a">cycle it re-reads both sides and proves they still reconcile. The drift <tspan font-style="italic">between</tspan> the two clocks is exactly the error the engine exists to catch. You can't 2-phase-commit a blockchain — so you prove eventual consistency and halt on divergence.</text>
+
+  <text x="32" y="724" font-size="10.5" fill="#5a6472" font-weight="700">KYC path (dashed-blue):</text>
+  <text x="170" y="724" font-size="10.5" fill="#5a6472">verify mirrors the claim into <tspan font-family="'SF Mono',Menlo,monospace">identities</tspan> synchronously (the resolver waits on the receipt) so a follow-up invest is eligible immediately;</text>
+  <text x="32" y="740" font-size="10.5" fill="#5a6472">projecting the <tspan font-family="'SF Mono',Menlo,monospace" fill="#2c6fbb">ClaimsUpdated</tspan> event through the indexer is the canonical, replayable record of the same change — the path that lands KYC in the activity feed. Invariant I2 reads <tspan font-family="'SF Mono',Menlo,monospace">reserve.total_claimable</tspan>, written by the recon clock each pass.</text>
+
+  <text x="32" y="784" font-size="9.5" fill="#9aa3ad">Band 1 = the projection pipeline (authority → event → read model). Band 2 = the reconciliation loop (sample both clocks → 4 invariants → OK or typed HALT). ClaimsUpdated/KYC path shown dashed-blue.</text>
+</svg>

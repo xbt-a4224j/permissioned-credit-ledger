@@ -22,6 +22,10 @@ The runtime topology — a permissioned token on Avalanche, a viem indexer, the 
 
 ![component topology](docs/architecture/01-topology.svg)
 
+How an on-chain call becomes a DB read model, and the **two heartbeats** that drive correctness — the block clock advances on-chain state every block, the reconciliation clock samples both sides every cycle and proves they still agree (or halts). The chain is the single authority; Postgres is a projection of it, so you prove eventual consistency rather than pretending to 2-phase-commit a blockchain:
+
+![on-chain calls ↔ DB projection · the two heartbeats](docs/architecture/07-onchain-db-heartbeats.svg)
+
 ## Compliance & onboarding
 
 Compliance is enforced **by construction**. A new investor onboards through **KYC**: the document is hashed in the browser (only `{filename, size, sha256}` is sent — no PII or bytes are stored), a provider — *mocked behind an interface; swap it for Persona / Parallel Markets* — returns a verdict, and on approval the issuer signs `IdentityRegistry.setClaims`. From that point the wallet's claims drive every transfer.
@@ -113,7 +117,7 @@ permissioned-credit-ledger/
 ├── scripts/                # verify_matrix.ts, dev.sh, demo_reset.ts
 └── docs/
     ├── DEMO.md             # the click-by-click live walkthrough
-    └── architecture/       # DESIGN.md · MAP.md · 6 architecture SVGs (01–06)
+    └── architecture/       # DESIGN.md · MAP.md · 7 architecture SVGs (01–07)
 ```
 
 ## Test suite
