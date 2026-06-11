@@ -62,15 +62,18 @@ async function main(): Promise<void> {
   const client = makeChainClient(LOCAL_RPC, CHAIN_ID);
   const tokens = tokenAddresses(manifest);
   const tokenToLoan = tokenToLoanMap(manifest);
+  // #47 also watch the IdentityRegistry so ClaimsUpdated (KYC) logs are backfilled + tailed and
+  // projected into `identities` + the activity feed. Registry logs carry no loan; decode handles that.
+  const watched = [...tokens, manifest.identityRegistry.toLowerCase() as `0x${string}`];
 
   const from = await getCursor(sql);
   const latest = await client.getBlockNumber();
-  const { applied, scanned } = await backfill(sql, client, tokens, tokenToLoan, from, latest);
+  const { applied, scanned } = await backfill(sql, client, watched, tokenToLoan, from, latest);
   console.log(`[indexer] backfill ${from}->${latest}: scanned ${scanned} logs, applied ${applied} events`);
 
   // #16 live tail: re-decode + idempotently ingest each new log; advance the cursor.
   const unwatch = client.watchEvent({
-    address: tokens,
+    address: watched,
     onLogs: async (logs) => {
       for (const log of logs) {
         const ev = decodeChainEvent(log as RawLog, tokenToLoan);

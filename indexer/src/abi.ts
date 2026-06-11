@@ -60,6 +60,28 @@ export const CREDIT_TOKEN_EVENTS = [
   },
 ] as const;
 
+// #47 IdentityRegistry events the indexer projects. ClaimsUpdated is emitted on every KYC verdict
+// (setClaims); projecting it keeps the off-chain `identities` read model in sync via the canonical
+// event path AND surfaces the KYC tx in the activity feed. Decoded off its own ABI (a registry log,
+// not a token log) — pinned `as const` for viem inference, same convention as CREDIT_TOKEN_EVENTS.
+export const IDENTITY_EVENTS = [
+  {
+    type: "event",
+    name: "ClaimsUpdated",
+    inputs: [
+      { name: "account", type: "address", indexed: true },
+      { name: "verified", type: "bool", indexed: false },
+      { name: "accredited", type: "bool", indexed: false },
+      { name: "jurisdiction", type: "uint8", indexed: false },
+      { name: "frozen", type: "bool", indexed: false },
+    ],
+    anonymous: false,
+  },
+] as const;
+
+// #47 IdentityRegistry.Jurisdiction enum order -> off-chain string (matches the seed spelling).
+export const JURISDICTION_BY_INDEX = ["Unknown", "US", "nonUS"] as const;
+
 // #16 on-chain LoanStatus enum order (ICreditToken.LoanStatus) -> off-chain string. The
 // uint8 in LoanStatusChanged indexes this array; out-of-range is a hard error (ABI drift).
 export const LOAN_STATUS_BY_INDEX = ["PERFORMING", "DELINQUENT", "DEFAULT"] as const;

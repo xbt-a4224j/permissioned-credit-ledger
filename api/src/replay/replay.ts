@@ -56,12 +56,17 @@ function eventFromRow(row: { id: string; name: string; block_number: bigint; log
   }
 }
 
-// #19 load the canonical inputs from Postgres: every chain_event + every nav_reading (accepted
-// AND rejected, so replay re-derives the same HALTs). The fold re-sorts, so SELECT order is
-// irrelevant.
+// #19 load the canonical inputs from Postgres: the economic chain_events + every nav_reading
+// (accepted AND rejected, so replay re-derives the same HALTs). The fold re-sorts, so SELECT order
+// is irrelevant.
+// #47 filter to the four events the fold actually folds. chain_events is now a broader activity log
+// (it also carries ClaimsUpdated/KYC for the feed), but identity events don't affect the claimable
+// stateHash — folding them would only perturb the golden hash and the order-independence property.
+// The replay decoder would also throw on an unknown name; this keeps it total and deterministic.
 export async function loadInputs(sql: Sql): Promise<ReplayInput[]> {
   const events = await sql<{ id: string; name: string; block_number: bigint; log_index: number; payload: Record<string, unknown> }[]>`
     select id, name, block_number, log_index, payload from chain_events
+    where name in ('PositionOpened', 'InterestClaimed', 'Transfer', 'LoanStatusChanged')
   `;
   const navs = await sql<{ loan_id: string; nav_bps: number; observed_at: bigint; source: string }[]>`
     select loan_id, nav_bps, observed_at, source from nav_readings

@@ -77,6 +77,21 @@ describe("arktype schemas round-trip valid fixtures", () => {
     if (e.name === "LoanStatusChanged") expect(e.status).toBe("DEFAULT");
   });
 
+  test("ChainEvent ClaimsUpdated (the KYC event — registry-emitted, no loan)", () => {
+    const e = ChainEventSchema.assert({
+      id: { txHash: "0x" + "c".repeat(64), logIndex: 1 },
+      name: "ClaimsUpdated", blockNumber: 9n, logIndex: 1,
+      token: "0x5FbDB2315678afecb367f032d93F642f64180aa3", // the IdentityRegistry that emitted it
+      account: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      verified: true, accredited: true, jurisdiction: "US", frozen: false,
+    });
+    if (e.name === "ClaimsUpdated") {
+      expect(e.account).toBe("0x70997970c51812dc3a010c7d01b50e0d17dc79c8"); // lowercased
+      expect(e.verified).toBe(true);
+      expect(e.jurisdiction).toBe("US");
+    }
+  });
+
   test("NavReading + ReserveState", () => {
     const n = NavReadingSchema.assert({ loan: 1, navBps: 10000, observedAt: 1_700_000_000, source: "servicer" });
     expect(n.navBps).toBe(10000);
