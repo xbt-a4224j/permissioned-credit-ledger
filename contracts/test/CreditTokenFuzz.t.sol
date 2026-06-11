@@ -32,7 +32,7 @@ contract CreditTokenFuzzTest is Test {
 
     // #11 deploy a token with a chosen per-second rate + mint a position to holder.
     function _tokenWith(uint256 ratePerSecond, uint256 principal) internal returns (CreditToken t) {
-        t = new CreditToken(admin, address(id), address(compliance), address(reserve), ratePerSecond);
+        t = new CreditToken(admin, address(id), address(compliance), address(reserve), ratePerSecond, principal);
         vm.prank(admin);
         t.mint(holder, LOAN_ID, principal);
     }

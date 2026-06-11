@@ -1,6 +1,6 @@
 // #25 reason-code taxonomy — exhaustive, tone-partitioned, and pinned to the #20 SDL enum.
-// Correctness is typed: REASON_META covers every ReasonCode (exhaustiveness), the 6 transfer/claim
-// codes are tone 'block' and the 2 engine HALTs are tone 'halt', isReasonCode rejects garbage, and
+// Correctness is typed: REASON_META covers every ReasonCode (exhaustiveness), the 7 transfer/claim/
+// issuance codes are tone 'block' and the 2 engine HALTs are tone 'halt', isReasonCode rejects garbage, and
 // the union equals the committed GraphQL ReasonCode enum (api/schema.graphql) so a renamed code on
 // either side fails the build — the ABI/enum-drift landmine applied to the reason taxonomy.
 import { readFileSync } from "node:fs";
@@ -15,13 +15,13 @@ describe("ReasonCode taxonomy", () => {
   it("REASON_META has an entry for every ReasonCode (exhaustiveness)", () => {
     for (const code of REASON_CODES) expect(REASON_META[code]).toBeDefined();
     expect(Object.keys(REASON_META).length).toBe(REASON_CODES.length);
-    expect(REASON_CODES.length).toBe(8);
+    expect(REASON_CODES.length).toBe(9);
   });
 
-  it("partitions tones: 6 block (on-chain reverts) + 2 halt (engine states)", () => {
+  it("partitions tones: 7 block (on-chain reverts) + 2 halt (engine states)", () => {
     const block = REASON_CODES.filter((c) => REASON_META[c].tone === "block");
     const halt = REASON_CODES.filter((c) => REASON_META[c].tone === "halt");
-    expect(block).toEqual(["SenderFrozen", "NotEligible", "ReceiverFrozen", "ReceiverNotVerified", "AccreditationRequired", "InsufficientReserve"]);
+    expect(block).toEqual(["SenderFrozen", "NotEligible", "ReceiverFrozen", "ReceiverNotVerified", "AccreditationRequired", "InsufficientReserve", "ExceedsPrincipal"]);
     expect(halt).toEqual(["NavAnomaly", "ReconMismatch"]);
   });
 

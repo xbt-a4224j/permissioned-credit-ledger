@@ -126,6 +126,7 @@ test("DomainError union is closed (exhaustive switch compiles)", () => {
       case "ReceiverNotVerified":
       case "AccreditationRequired":
       case "InsufficientReserve":
+      case "ExceedsPrincipal":
         return "revert";
       case "NavAnomaly":
       case "ReconMismatch":

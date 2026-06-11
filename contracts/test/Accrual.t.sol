@@ -61,7 +61,7 @@ contract AccrualTest is Test {
         id = new IdentityRegistry(admin);
         compliance = new ComplianceRegistry(admin, address(id), IComplianceRegistry.Offering.RegD);
         reserve = new MockUSDC();
-        token = new CreditToken(admin, address(id), address(compliance), address(reserve), RATE);
+        token = new CreditToken(admin, address(id), address(compliance), address(reserve), RATE, type(uint256).max);
 
         vm.prank(admin);
         id.setClaims(holder, IIdentityRegistry.Claims(true, true, IIdentityRegistry.Jurisdiction.US, false));
@@ -220,7 +220,7 @@ contract AccrualTest is Test {
     // repelled by nonReentrant — the whole claim reverts.
     function test_claim_reentrancy_repelled() public {
         MaliciousReserve evil = new MaliciousReserve();
-        CreditToken t = new CreditToken(admin, address(id), address(compliance), address(evil), RATE);
+        CreditToken t = new CreditToken(admin, address(id), address(compliance), address(evil), RATE, type(uint256).max);
         evil.setToken(t);
 
         vm.prank(admin);

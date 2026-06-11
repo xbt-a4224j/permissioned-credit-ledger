@@ -8,7 +8,13 @@ import {ICreditToken} from "../src/interfaces/ICreditToken.sol";
 import {IComplianceRegistry} from "../src/interfaces/IComplianceRegistry.sol";
 import {IIdentityRegistry} from "../src/interfaces/IIdentityRegistry.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
-import {ReceiverFrozen, ReceiverNotVerified, AccreditationRequired, InsufficientReserve} from "../src/Errors.sol";
+import {
+    ReceiverFrozen,
+    ReceiverNotVerified,
+    AccreditationRequired,
+    InsufficientReserve,
+    ExceedsPrincipal
+} from "../src/Errors.sol";
 
 // #10 transfer-gauntlet reason-code coverage — the contract half of the design:
 // every gauntlet branch terminates in the EXACT typed custom error the matrix
@@ -40,7 +46,8 @@ contract CreditTokenTest is SeedIdentities {
     // AccreditationRequired). Deploy a Reg-S instance and prove the mint succeeds.
     function test_invest_regS_ok() public {
         ComplianceRegistry regS = new ComplianceRegistry(admin, address(id), IComplianceRegistry.Offering.RegS);
-        CreditToken regSToken = new CreditToken(admin, address(id), address(regS), address(reserve), RATE);
+        CreditToken regSToken =
+            new CreditToken(admin, address(id), address(regS), address(reserve), RATE, type(uint256).max);
         vm.prank(admin);
         regSToken.mint(regsNonUS1, LOAN_ID, 25_000e6);
         assertEq(regSToken.balanceOf(regsNonUS1), 25_000e6);
@@ -62,6 +69,20 @@ contract CreditTokenTest is SeedIdentities {
         assertEq(reserve.balanceOf(accreditedUS1), owed); // paid
         assertEq(reserve.balanceOf(address(token)), reserveBefore - owed); // debited
         assertEq(token.claimable(accreditedUS1), 0); // accrued reset
+    }
+
+    // #5 issuance cap: minting up to the loan's principal succeeds; the next unit reverts
+    // ExceedsPrincipal(attempted, cap). Enforced on-chain so issuance can never out-run the loan.
+    function test_mint_uptoCap_ok_thenExceedsPrincipal_reverts() public {
+        uint256 cap = 1_000_000e6;
+        CreditToken capped = new CreditToken(admin, address(id), address(compliance), address(reserve), RATE, cap);
+        vm.startPrank(admin);
+        capped.mint(accreditedUS1, LOAN_ID, cap); // exactly to the cap: OK
+        assertEq(capped.totalSupply(), cap);
+        // one more unit pushes total supply past the principal -> typed revert with (attempted, cap).
+        vm.expectRevert(abi.encodeWithSelector(ExceedsPrincipal.selector, cap + 1, cap));
+        capped.mint(accreditedUS2, LOAN_ID, 1);
+        vm.stopPrank();
     }
 
     // === typed-revert branches (selector WITH decoded args) ===

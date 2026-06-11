@@ -9,7 +9,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ICreditToken} from "./interfaces/ICreditToken.sol";
 import {IIdentityRegistry} from "./interfaces/IIdentityRegistry.sol";
 import {IComplianceRegistry} from "./interfaces/IComplianceRegistry.sol";
-import {InsufficientReserve} from "./Errors.sol";
+import {InsufficientReserve, ExceedsPrincipal} from "./Errors.sol";
 
 // #8 CreditToken — ERC-3643-lite permissioned security token representing a single
 // loan series. Every balance change routes through the OZ v5 `_update` hook, the
@@ -30,6 +30,10 @@ contract CreditToken is ERC20, AccessControl, ReentrancyGuard, ICreditToken {
 
     // #9 the mock-USDC reserve claim() pays interest from.
     IERC20 public immutable reserve;
+    // #5 the loan's principal — the hard cap on total issuance. mint() rejects any
+    // amount that would push totalSupply past it, ON-CHAIN (the chain is the sole
+    // authority for how much of a loan exists; an off-chain cap would lag and race).
+    uint256 public immutable principalCap;
     // #9 per-second interest rate, scaled by RATE_SCALE; accrued = bal*rate*dt/SCALE.
     uint256 public ratePerSecond;
 
@@ -64,15 +68,21 @@ contract CreditToken is ERC20, AccessControl, ReentrancyGuard, ICreditToken {
 
     mapping(address => Accrual) public accruals;
 
-    constructor(address admin, address identityReg, address complianceReg, address reserveToken, uint256 ratePerSecond_)
-        ERC20("Credit Token", "CRDT")
-    {
+    constructor(
+        address admin,
+        address identityReg,
+        address complianceReg,
+        address reserveToken,
+        uint256 ratePerSecond_,
+        uint256 principalCap_
+    ) ERC20("Credit Token", "CRDT") {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(ISSUER_ROLE, admin);
         identity = IIdentityRegistry(identityReg);
         compliance = IComplianceRegistry(complianceReg);
         reserve = IERC20(reserveToken);
         ratePerSecond = ratePerSecond_;
+        principalCap = principalCap_;
     }
 
     // #8 6 decimals to match the mock-USDC reserve.
@@ -84,6 +94,11 @@ contract CreditToken is ERC20, AccessControl, ReentrancyGuard, ICreditToken {
     // gauntlet still runs on the recipient via _update (mint path), so minting to
     // an unverified/frozen address reverts (matrix row 3).
     function mint(address to, uint256 loanId, uint256 amount) external onlyRole(ISSUER_ROLE) {
+        // #5 issuance cap: never mint more of a loan than its principal. Enforced here, on-chain,
+        // because totalSupply is the authoritative record of how much exists — checked and applied
+        // in one transaction, so it can't be raced the way a read-then-write off-chain guard can.
+        uint256 newSupply = totalSupply() + amount;
+        if (newSupply > principalCap) revert ExceedsPrincipal(newSupply, principalCap);
         loanOf[to] = loanId;
         _mint(to, amount);
         emit PositionOpened(to, loanId, amount);

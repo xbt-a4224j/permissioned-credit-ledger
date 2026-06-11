@@ -1,10 +1,10 @@
 // The typed reason-code bridge — never stringly · #25
-// The 8-member closed set == the GraphQL ReasonCode enum (#20), which itself mirrors the 6 Solidity
-// custom errors (the eligibility gauntlet + reserve, #14) plus the 2 off-chain engine HALT states
-// (#17/#18). The UI renders a typed ReasonBadge keyed off REASON_META; it NEVER renders a raw error
-// string. `tone: 'block'` = an on-chain eligibility/reserve revert (rows 3-6,8); `tone: 'halt'` =
-// an engine HALT (rows 9-10). reasonCodes.test.ts pins this set equal to the #20 SDL enum snapshot
-// (api/schema.graphql) so a renamed code fails the build rather than silently mis-rendering.
+// The 9-member closed set == the GraphQL ReasonCode enum (#20), which itself mirrors the 7 Solidity
+// custom errors (the eligibility gauntlet + reserve + issuance cap, #14) plus the 2 off-chain engine
+// HALT states (#17/#18). The UI renders a typed ReasonBadge keyed off REASON_META; it NEVER renders a
+// raw error string. `tone: 'block'` = an on-chain eligibility/reserve/issuance revert (rows 3-6,8);
+// `tone: 'halt'` = an engine HALT (rows 9-10). reasonCodes.test.ts pins this set equal to the #20 SDL
+// enum snapshot (api/schema.graphql) so a renamed code fails the build rather than silently mis-rendering.
 
 export type ReasonCode =
   | "SenderFrozen"
@@ -13,6 +13,7 @@ export type ReasonCode =
   | "ReceiverNotVerified"
   | "AccreditationRequired"
   | "InsufficientReserve"
+  | "ExceedsPrincipal"
   | "NavAnomaly"
   | "ReconMismatch";
 
@@ -24,6 +25,7 @@ export const REASON_CODES: readonly ReasonCode[] = [
   "ReceiverNotVerified",
   "AccreditationRequired",
   "InsufficientReserve",
+  "ExceedsPrincipal",
   "NavAnomaly",
   "ReconMismatch",
 ] as const;
@@ -59,6 +61,11 @@ export const REASON_META: Record<ReasonCode, { label: string; blurb: string; ton
   InsufficientReserve: {
     label: "Insufficient reserve",
     blurb: "The mock reserve cannot cover this claim; accrued interest is left intact.",
+    tone: "block",
+  },
+  ExceedsPrincipal: {
+    label: "Exceeds principal",
+    blurb: "This investment would issue more of the loan than its principal. The cap is enforced on-chain — total supply can never out-run the loan.",
     tone: "block",
   },
   NavAnomaly: {

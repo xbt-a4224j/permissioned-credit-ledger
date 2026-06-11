@@ -29,7 +29,7 @@ contract CreditTokenInvariantTest is StdInvariant, Test {
         id = new IdentityRegistry(admin);
         compliance = new ComplianceRegistry(admin, address(id), IComplianceRegistry.Offering.RegD);
         reserve = new MockUSDC();
-        token = new CreditToken(admin, address(id), address(compliance), address(reserve), RATE);
+        token = new CreditToken(admin, address(id), address(compliance), address(reserve), RATE, type(uint256).max);
 
         // Seed the 6 canonical identities (the bounded actor set).
         address[6] memory holders =

@@ -40,7 +40,7 @@ abstract contract SeedIdentities is Test {
         id = new IdentityRegistry(admin);
         compliance = new ComplianceRegistry(admin, address(id), IComplianceRegistry.Offering.RegD);
         reserve = new MockUSDC();
-        token = new CreditToken(admin, address(id), address(compliance), address(reserve), RATE);
+        token = new CreditToken(admin, address(id), address(compliance), address(reserve), RATE, type(uint256).max);
 
         vm.startPrank(admin);
         // 2 accredited-US.
