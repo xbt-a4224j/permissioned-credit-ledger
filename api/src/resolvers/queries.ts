@@ -152,6 +152,18 @@ function eventSummary(name: string, payload: Record<string, unknown>): string {
     if (isMint) return `Loan #${loan} · minted ${amt(payload["amount"])} → ${short(to)}`;
     return `Loan #${loan} · ${short(from)} → ${short(to)} (${amt(payload["amount"])})`;
   }
+  // #47 KYC verdict surfaced in the feed: who, and the resulting claim flags.
+  if (name === "ClaimsUpdated") {
+    const flags = [
+      payload["verified"] ? "verified" : "unverified",
+      payload["accredited"] ? "accredited" : null,
+      payload["frozen"] ? "frozen" : null,
+      typeof payload["jurisdiction"] === "string" ? (payload["jurisdiction"] as string) : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    return `KYC · ${short(payload["account"])} → ${flags}`;
+  }
   return name;
 }
 

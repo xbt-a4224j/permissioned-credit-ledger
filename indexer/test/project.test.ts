@@ -89,4 +89,29 @@ describe("indexer projection", () => {
     expect(byHolder[HOLDER]).toBe(70_000n);
     expect(byHolder[HOLDER2]).toBe(30_000n);
   });
+
+  // #47 KYC: ClaimsUpdated upserts the identities read model AND lands in the activity log.
+  test("ClaimsUpdated upserts identities and lands in the event log", async () => {
+    const NEWBIE = identityAddr("0x9965507d1a55bcc2695c58ba16fb37d819b0a4dc"); // unseeded
+    const REGISTRY = identityAddr("0x5fbdb2315678afecb367f032d93f642f64180aa3");
+    await ingestEvent(sql, {
+      id: eventId(txh(9), 0), name: "ClaimsUpdated", blockNumber: 8n, logIndex: 0, token: REGISTRY,
+      account: NEWBIE, verified: true, accredited: true, jurisdiction: "US", frozen: false,
+    });
+    const row = (await sql<{ verified: boolean; accredited: boolean; jurisdiction: string; frozen: boolean }[]>`
+      select verified, accredited, jurisdiction, frozen from identities where addr = ${NEWBIE}`)[0];
+    expect(row).toEqual({ verified: true, accredited: true, jurisdiction: "US", frozen: false });
+    // it lands in chain_events (the activity-feed source) with booleans intact.
+    const ev = (await sql<{ name: string; payload: Record<string, unknown> }[]>`
+      select name, payload from chain_events where name = 'ClaimsUpdated'`)[0];
+    expect(ev?.name).toBe("ClaimsUpdated");
+    expect(ev?.payload["verified"]).toBe(true);
+
+    // a later verdict (freeze) updates the same row.
+    await ingestEvent(sql, {
+      id: eventId(txh(10), 0), name: "ClaimsUpdated", blockNumber: 9n, logIndex: 0, token: REGISTRY,
+      account: NEWBIE, verified: true, accredited: true, jurisdiction: "US", frozen: true,
+    });
+    expect((await sql<{ frozen: boolean }[]>`select frozen from identities where addr = ${NEWBIE}`)[0]?.frozen).toBe(true);
+  });
 });

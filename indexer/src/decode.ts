@@ -15,7 +15,7 @@ import {
   type IdentityAddr,
   type LoanId,
 } from "@pcl/shared";
-import { CREDIT_TOKEN_EVENTS, LOAN_STATUS_BY_INDEX } from "./abi.ts";
+import { CREDIT_TOKEN_EVENTS, IDENTITY_EVENTS, JURISDICTION_BY_INDEX, LOAN_STATUS_BY_INDEX } from "./abi.ts";
 
 // #16 a log carrying the fields the projection needs (viem getLogs/watch provide these).
 export type RawLog = Log & {
@@ -29,6 +29,35 @@ function statusName(idx: number): "PERFORMING" | "DELINQUENT" | "DEFAULT" {
   const s = LOAN_STATUS_BY_INDEX[idx];
   if (s === undefined) throw new Error(`unknown LoanStatus index ${idx} (ABI drift)`);
   return s;
+}
+
+// #47 decode an IdentityRegistry ClaimsUpdated (KYC) log into a ChainEvent — a registry log, not a
+// token log, so there is no loan. Returns null for any other registry log. The caller (decodeChainEvent)
+// has already validated txHash/logIndex/blockNumber are non-null before delegating here.
+function decodeIdentityEvent(log: RawLog): ChainEvent | null {
+  let decoded: { eventName: string; args: Record<string, unknown> };
+  try {
+    decoded = decodeEventLog({ abi: IDENTITY_EVENTS, data: log.data, topics: log.topics }) as {
+      eventName: string;
+      args: Record<string, unknown>;
+    };
+  } catch {
+    return null;
+  }
+  if (decoded.eventName !== "ClaimsUpdated") return null;
+  const a = decoded.args;
+  return {
+    id: eventId(log.transactionHash as `0x${string}`, log.logIndex as number),
+    blockNumber: log.blockNumber as bigint,
+    logIndex: log.logIndex as number,
+    token: identityAddr(log.address), // the emitting IdentityRegistry (no loan series)
+    name: "ClaimsUpdated",
+    account: identityAddr(a["account"] as string),
+    verified: a["verified"] as boolean,
+    accredited: a["accredited"] as boolean,
+    jurisdiction: JURISDICTION_BY_INDEX[Number(a["jurisdiction"] as bigint | number)] ?? "Unknown",
+    frozen: a["frozen"] as boolean,
+  };
 }
 
 // #16 decode one log. Returns null for a CreditToken log we don't project (e.g. Approval,
@@ -46,7 +75,8 @@ export function decodeChainEvent(log: RawLog, tokenToLoan: ReadonlyMap<IdentityA
       topics: log.topics,
     }) as { eventName: string; args: Record<string, unknown> };
   } catch {
-    return null; // not one of our 5 events (or an unrelated topic) -> skip
+    // #47 not a CreditToken event — try the IdentityRegistry (ClaimsUpdated/KYC); else skip.
+    return decodeIdentityEvent(log);
   }
 
   const token = identityAddr(log.address);

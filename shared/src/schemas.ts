@@ -136,6 +136,18 @@ export const ChainEventSchema = type({
     name: "'LoanStatusChanged'",
     loan: LoanIdSchema,
     status: LoanStatusSchema,
+  })
+  .or({
+    // #47 the KYC verdict event from the IdentityRegistry (no loan — `token` is the registry that
+    // emitted it). Projected into `identities`; surfaced in the activity feed. The replay IGNORES
+    // it (loadInputs filters by name) so it never enters the deterministic stateHash fold.
+    ...eventBase,
+    name: "'ClaimsUpdated'",
+    account: IdentityAddrSchema,
+    verified: "boolean",
+    accredited: "boolean",
+    jurisdiction: "string",
+    frozen: "boolean",
   });
 export type ChainEvent = typeof ChainEventSchema.infer;
 export type ChainEventName = ChainEvent["name"];

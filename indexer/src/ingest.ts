@@ -22,7 +22,7 @@ export type IngestResult = { status: "applied" | "duplicate"; id: string };
 
 // #16 canonical jsonb payload — every bigint/Usdc6 as a decimal-free string (the #14
 // serialization landmine: a default JSON.stringify of a bigint throws / loses precision).
-function serializePayload(ev: ChainEvent): Record<string, string | number> {
+function serializePayload(ev: ChainEvent): Record<string, string | number | boolean> {
   const common = { name: ev.name, blockNumber: ev.blockNumber.toString(), logIndex: ev.logIndex, token: ev.token };
   switch (ev.name) {
     case "PositionOpened":
@@ -32,6 +32,16 @@ function serializePayload(ev: ChainEvent): Record<string, string | number> {
       return { ...common, loan: ev.loan, from: ev.from, to: ev.to, amount: usdc6ToString(ev.amount) };
     case "LoanStatusChanged":
       return { ...common, loan: ev.loan, status: ev.status };
+    case "ClaimsUpdated":
+      // #47 booleans stored natively (jsonb) so the feed's truthy checks read them correctly.
+      return {
+        ...common,
+        account: ev.account,
+        verified: ev.verified,
+        accredited: ev.accredited,
+        jurisdiction: ev.jurisdiction,
+        frozen: ev.frozen,
+      };
   }
 }
 
