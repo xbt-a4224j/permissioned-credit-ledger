@@ -6,24 +6,23 @@
 // freezeAccrual, #9) — it gates whether the off-chain engine/replay advances accrued.
 import type { LoanId, Sql } from "@pcl/shared";
 
-// #17 a loan is frozen iff its most recent NAV-related recon_status is a NavAnomaly halt that
-// no later clean cycle (ok=true) has cleared. Sticky, mirroring the on-chain freeze.
+// #49 a loan is frozen iff its MOST RECENT NAV reading is a rejection. This reflects the live feed,
+// not recon_status stickiness: an out-of-bounds spike (accepted=false) freezes accrual, and a later
+// in-bounds corrective mark (accepted=true) becomes the latest reading and UN-freezes it — the next
+// recon cycle then writes ok=true and distribution resumes, no world reset required.
+//
+// The previous definition (a NavAnomaly recon_status halt with no later ok=true cycle) DEADLOCKED:
+// while frozen, I3 re-failed every cycle, so ok=true was never written and only a reset could clear
+// it — a corrective mark couldn't. Reading the feed's latest verdict makes "halt → fix the feed →
+// resume" work, which is both the demo beat and the more honest model (the gate tracks current state).
 export async function isAccrualFrozen(sql: Sql, loan: LoanId): Promise<boolean> {
-  const rows = await sql<{ frozen: boolean }[]>`
-    with last_halt as (
-      select cycle_id from recon_status
-      where state = 'NavAnomaly' and detail ->> 'loan' = ${loan}
-      order by cycle_id desc limit 1
-    ),
-    last_clear as (
-      select cycle_id from recon_status where ok = true order by cycle_id desc limit 1
-    )
-    select
-      exists(select 1 from last_halt) and
-      (not exists(select 1 from last_clear)
-        or (select cycle_id from last_halt) > (select cycle_id from last_clear)) as frozen
+  const rows = await sql<{ accepted: boolean }[]>`
+    select accepted from nav_readings
+    where loan_id = ${loan}
+    order by observed_at desc, id desc
+    limit 1
   `;
-  return rows[0]?.frozen ?? false;
+  return rows[0] !== undefined && rows[0].accepted === false;
 }
 
 // #17 0 while frozen, 1 while accruing — the engine/UI multiply the per-cycle accrual delta by

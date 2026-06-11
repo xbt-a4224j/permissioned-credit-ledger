@@ -46,6 +46,18 @@ describe("NAV gate", () => {
     expect(await isAccrualFrozen(sql, LOAN)).toBe(true);
   });
 
+  test("#49 a corrective in-bounds mark clears the freeze (latest reading accepted)", async () => {
+    await ingestNav(sql, reading(10000, 1_700_000_000), NOW); // baseline accepted
+    const spike = await ingestNav(sql, reading(14000, 1_700_000_100), NOW); // +40% rejected
+    expect(spike.accepted).toBe(false);
+    expect(await isAccrualFrozen(sql, LOAN)).toBe(true); // frozen while the latest mark is the rejection
+
+    // a corrective par mark (in-bounds vs the last ACCEPTED baseline) becomes the latest reading.
+    const fix = await ingestNav(sql, reading(10000, 1_700_000_200), NOW);
+    expect(fix.accepted).toBe(true);
+    expect(await isAccrualFrozen(sql, LOAN)).toBe(false); // un-frozen — no world reset needed
+  });
+
   test("a stale reading -> reason Stale", async () => {
     // observedAt far older than NOW - maxStalenessSec(3600).
     const res = await ingestNav(sql, reading(10000, 1_700_000_000 - 10_000), NOW);
