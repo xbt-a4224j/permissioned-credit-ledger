@@ -143,7 +143,9 @@ export function App(): JSX.Element {
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
         {view === "marketplace" ? (
-          <MarketplaceView renderAction={(loan) => <InvestAction loan={loan} wallet={wallet} />} />
+          <MarketplaceView
+            renderAction={(loan) => (loan.status === "Active" ? <InvestAction loan={loan} wallet={wallet} /> : null)}
+          />
         ) : view === "positions" ? (
           <PositionDashboardView
             holder={wallet.address}

@@ -100,6 +100,15 @@ export async function resolveInvest(ctx: ApiContext, input: InvestArgs): Promise
     throw new GraphQLError("Investment amount must be positive.", { extensions: { code: "BAD_USER_INPUT" } });
   }
 
+  // #48 a matured (DEFAULT) loan is not open for new issuance — it no longer accrues, so a fresh
+  // position would mislead. Gate here on the live loans.status (kept current by the LoanStatusChanged
+  // projection). Invest is issuer-mediated (the single signer), so an issuer-side guard is the right
+  // altitude — unlike the issuance cap, which protects against any caller and lives on-chain (#46).
+  const statusRows = await ctx.db<{ status: string }[]>`select status from loans where id = ${input.loanId}`;
+  if (statusRows[0]?.status === "DEFAULT") {
+    throw new GraphQLError(`Loan #${input.loanId} is matured — not open for investment.`, { extensions: { code: "BAD_USER_INPUT" } });
+  }
+
   const request = investRequest(ctx.manifest, input.loanId, wallet, amount);
   const hash = await broadcastGated(ctx, request);
   await recordPending(ctx.db, { hash, kind: "invest", holder: wallet, loanId: input.loanId, amount });
