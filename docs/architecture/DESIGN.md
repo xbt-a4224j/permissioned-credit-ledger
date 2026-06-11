@@ -24,7 +24,7 @@ The conventional mitigation is monthly reconciliation by a fund administrator, f
 
 The NAV bounds module ([`api/src/nav/bounds.ts`](../../api/src/nav/bounds.ts)) and its gate ([`api/src/nav/gate.ts`](../../api/src/nav/gate.ts)) encode exactly where the acceptable envelope sits — the maximum tolerable spread between accrued obligations and verified reserves — and the engine evaluates every incoming event against that envelope. Crossing the bound does not trigger a report; it trips the gate.
 
-### Company-neutral by construction
+### Vendor-agnostic by construction
 
 This codebase models a problem, not a product. It does not assume a particular servicer API, a particular custodian's wire format, or a particular compliance vendor's KYC schema. The reasons layer ([`shared/src/reasons.ts`](../../shared/src/reasons.ts)) expresses denial semantics in terms of abstract compliance predicates; the error taxonomy ([`contracts/src/Errors.sol`](../../contracts/src/Errors.sol)) expresses revert conditions in terms of protocol invariants; the scenario library ([`scripts/lib/scenarios.ts`](../../scripts/lib/scenarios.ts)) and verification matrix ([`scripts/verify_matrix.ts`](../../scripts/verify_matrix.ts)) exercise the system against synthetic but structurally realistic loan tapes rather than against any live data feed.
 

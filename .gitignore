@@ -24,10 +24,9 @@ dist/
 *.log
 coverage/
 lcov.info
-# private planning (never commit) — repo-specific
-INTERVIEW_NOTES.md
-TALKING_POINTS.md
+# local scratch & private notes (never committed)
 /_private/
+*.local.md
 /img*.png
 /Screenshot*.png
 /screenshot*.png
