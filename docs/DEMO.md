@@ -44,7 +44,11 @@ Each row: the action, the expected typed code/event, and the UI / SSE signal. Th
 
 > Row 10 needs non-zero claimable: if `reserve.totalClaimable` is 0, the button tells you to invest first — run rows 1–2 and let accrual build before triggering it.
 
-After rows 9–10, reset to clear the HALT before the next run:
+**Recovering a HALT (no reset required):**
+- A **`NavAnomaly`** (row 9) clears when you submit a **corrective in-bounds NAV mark** on the loan — e.g. a par `10000` bps mark on the Servicing card. The freeze tracks the *latest* NAV verdict, so a good mark un-freezes it and the next recon cycle re-opens distribution. (The "halt → fix the feed → resume" beat.)
+- A **`ReconMismatch`** (row 10) clears when you **fund the reserve** back above aggregate claimable (Servicing → "Report collected cash").
+
+To start completely fresh between runs:
 
 ```bash
 bun run scripts/demo_reset.ts
