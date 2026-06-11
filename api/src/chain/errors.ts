@@ -23,6 +23,7 @@ const ERROR_NAME_TO_REASON: Record<string, ReasonCode> = {
   ReceiverNotVerified: "ReceiverNotVerified",
   AccreditationRequired: "AccreditationRequired",
   InsufficientReserve: "InsufficientReserve",
+  ExceedsPrincipal: "ExceedsPrincipal",
 };
 
 // #21 decode raw revert bytes -> error name -> ReasonCode. Returns null for non-matching /

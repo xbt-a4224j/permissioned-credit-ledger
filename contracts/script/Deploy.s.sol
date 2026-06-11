@@ -66,8 +66,9 @@ contract Deploy is Script {
             address complianceFor =
                 ln.offering == IComplianceRegistry.Offering.RegD ? address(complianceRegD) : address(complianceRegS);
 
-            CreditToken token =
-                new CreditToken(msg.sender, address(identity), complianceFor, address(reserve), ln.ratePerSecond);
+            CreditToken token = new CreditToken(
+                msg.sender, address(identity), complianceFor, address(reserve), ln.ratePerSecond, ln.principal
+            );
             // #12 set the loan status so DELINQUENT/DEFAULT loans exist in the world.
             // DEFAULT stamps the accrual halt at deploy (mirrors the off-chain replay).
             if (ln.status != ICreditToken.LoanStatus.PERFORMING) {

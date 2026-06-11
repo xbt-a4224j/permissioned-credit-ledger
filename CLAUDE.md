@@ -19,6 +19,7 @@ An **ERC-3643-lite** permissioned security token on the Avalanche **Fuji C-Chain
 - `IdentityRegistry` — who is verified, their jurisdiction (US-accredited / Reg-S non-US), frozen flag.
 - `ComplianceRegistry` — transfer-eligibility rules (accreditation, Reg-D/Reg-S gating, freeze).
 - `CreditToken` — the security token itself; every transfer routes through compliance via the OpenZeppelin v5 **`_update`** hook. Transfers that fail compliance revert with a **typed custom error** (`SenderFrozen`, `ReceiverFrozen`, `ReceiverNotVerified`, `NotEligible`, `AccreditationRequired`). Freeze = complete lockout: a frozen holder cannot send or receive tokens.
+- **Issuance is capped at the loan's principal on-chain**: `mint()` rejects any amount that would push `totalSupply` past the immutable `principalCap` (`ExceedsPrincipal`). The cap lives on the chain — the sole authority for how much of a loan exists — so it can't be raced by a lagging off-chain check.
 - Single loan per token (no tranching).
 
 ### L2 — Accrual + NAV feed
@@ -41,7 +42,7 @@ The replay is **pure and order-independent over interleavings**: the canonical o
 |---|---|
 | Loans | 6 |
 | Identities | 6 — 2 US-accredited, 2 Reg-S non-US, 1 unverified, 1 frozen |
-| Reason codes | 6 (`SenderFrozen`, `NotEligible`, `ReceiverFrozen`, `ReceiverNotVerified`, `AccreditationRequired`, `InsufficientReserve`) + 2 engine states (`NavAnomaly`, `ReconMismatch`) |
+| Reason codes | 7 (`SenderFrozen`, `NotEligible`, `ReceiverFrozen`, `ReceiverNotVerified`, `AccreditationRequired`, `InsufficientReserve`, `ExceedsPrincipal`) + 2 engine states (`NavAnomaly`, `ReconMismatch`) |
 | Reconciliation invariants | 4 |
 | React app | 1 app, ≤ 4 views |
 | Scenario matrix | 10 scenarios + 1 replay property |

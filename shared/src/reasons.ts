@@ -5,14 +5,16 @@
 // (#18) raise. An exhaustive switch over DomainError['kind'] with no `default` compiles,
 // proving union closure.
 
-// #14 the 6 reason codes == the 6 Solidity custom errors (matrix rows 3-6, 8, + sender-freeze).
+// #14 the 7 reason codes == the 7 Solidity custom errors (matrix rows 3-6, 8, sender-freeze,
+// + the issuance cap ExceedsPrincipal).
 export type ReasonCode =
   | "SenderFrozen"
   | "NotEligible"
   | "ReceiverFrozen"
   | "ReceiverNotVerified"
   | "AccreditationRequired"
-  | "InsufficientReserve";
+  | "InsufficientReserve"
+  | "ExceedsPrincipal";
 
 // #14 engine-only HALT states (no Solidity analog): row 9 NAV spike, row 10 cash shortfall.
 export type EngineState = "NavAnomaly" | "ReconMismatch";
@@ -38,6 +40,7 @@ export const REASON_CODES: readonly ReasonCode[] = [
   "ReceiverNotVerified",
   "AccreditationRequired",
   "InsufficientReserve",
+  "ExceedsPrincipal",
 ] as const;
 
 export const ENGINE_STATES: readonly EngineState[] = ["NavAnomaly", "ReconMismatch"] as const;

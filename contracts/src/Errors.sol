@@ -31,3 +31,9 @@ error AccreditationRequired(address account);
 // #5 matrix row 8: claim against an underfunded reserve. Typed args expose the
 // shortfall (requested vs available) for the off-chain reconciler.
 error InsufficientReserve(uint256 requested, uint256 available);
+
+// #5 issuance guard: a mint that would push total supply past the loan's principal
+// is rejected ON-CHAIN — the chain is the single authority for how much of a loan
+// exists, so the cap cannot be a (lagging) off-chain check. Typed args expose the
+// attempted total vs the cap for the off-chain reconciler / UI badge.
+error ExceedsPrincipal(uint256 requested, uint256 cap);

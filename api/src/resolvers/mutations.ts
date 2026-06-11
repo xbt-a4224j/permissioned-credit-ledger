@@ -91,29 +91,13 @@ export async function resolveInvest(ctx: ApiContext, input: InvestArgs): Promise
   const wallet = input.wallet.toLowerCase() as Address;
   const amount = BigInt(input.amount);
 
-  // #21 over-subscription guard: total issued for a loan must never exceed its principal. I1
-  // (SupplyBacked) only checks supply == sum(position principals) — it does NOT cap against the
-  // loan's own principal, so without this an investor can mint MORE claims than the loan exists,
-  // overselling the asset (e.g. $5M into a $4.1M loan). Reject at the boundary before any broadcast.
-  const loan = ctx.manifest.loans[input.loanId];
-  if (loan === undefined) {
-    throw new GraphQLError(`Unknown loan ${input.loanId}.`, { extensions: { code: "BAD_USER_INPUT" } });
-  }
+  // #21 cheap input validation only. The issuance cap (total supply ≤ loan principal) is enforced
+  // ON-CHAIN by CreditToken.mint (ExceedsPrincipal), because the chain is the sole authority for how
+  // much of a loan exists — an off-chain sum would lag the indexer and could be raced. The cap revert
+  // surfaces here for free: broadcastGated simulates first, so it decodes to the typed ExceedsPrincipal
+  // ReasonCode and renders a badge exactly like the compliance reverts. No DB pre-check needed.
   if (amount <= 0n) {
     throw new GraphQLError("Investment amount must be positive.", { extensions: { code: "BAD_USER_INPUT" } });
-  }
-  const outstandingRows = await ctx.db<{ sum: string }[]>`
-    select coalesce(sum(principal), 0)::text as sum from positions where loan_id = ${input.loanId} and principal > 0
-  `;
-  const outstanding = BigInt(outstandingRows[0]?.sum ?? "0");
-  const principal = BigInt(loan.principal);
-  if (outstanding + amount > principal) {
-    const remaining = principal > outstanding ? principal - outstanding : 0n;
-    const usd = (v: bigint): string => `$${Number(v / 1_000_000n).toLocaleString("en-US")}`;
-    throw new GraphQLError(
-      `Exceeds loan capacity — requested ${usd(amount)}, but only ${usd(remaining)} of ${usd(principal)} remains on loan #${input.loanId}.`,
-      { extensions: { code: "EXCEEDS_PRINCIPAL" } },
-    );
   }
 
   const request = investRequest(ctx.manifest, input.loanId, wallet, amount);
