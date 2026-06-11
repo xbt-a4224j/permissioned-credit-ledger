@@ -2,8 +2,6 @@
 
 A deterministic, permissioned tokenized-credit ledger built around an off-chain↔on-chain **reconciliation engine** that proves servicing cash and on-chain claimable balances always agree — and **halts distribution** the moment they don't.
 
-[![CI](https://github.com/xbt-a4224j/permissioned-credit-ledger/actions/workflows/ci.yml/badge.svg)](https://github.com/xbt-a4224j/permissioned-credit-ledger/actions/workflows/ci.yml)
-
 ![off-chain ↔ on-chain reconciliation — the seam](docs/architecture/04-offchain-onchain-reconciliation.svg)
 
 ## What it is
