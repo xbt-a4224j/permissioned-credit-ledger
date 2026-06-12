@@ -55,11 +55,12 @@ export async function seedReference(sql: Sql, m: Manifest): Promise<void> {
       on conflict (id) do update set address_label = excluded.address_label, appraised_value = excluded.appraised_value
     `;
     await sql`
-      insert into loans (id, principal, rate_bps, status, started_at, collateral_type, property_id, ltv_bps, dscr_bps)
-      values (${String(ln.loanId)}, ${ln.principal}, ${annualRateBps(BigInt(ln.ratePerSecond))}, ${ln.status}, 0, ${ln.collateralType}, ${propId}, ${ln.ltvBps}, ${ln.dscrBps})
+      insert into loans (id, principal, rate_bps, status, started_at, collateral_type, property_id, ltv_bps, dscr_bps, token_address)
+      values (${String(ln.loanId)}, ${ln.principal}, ${annualRateBps(BigInt(ln.ratePerSecond))}, ${ln.status}, 0, ${ln.collateralType}, ${propId}, ${ln.ltvBps}, ${ln.dscrBps}, ${ln.token.toLowerCase()})
       on conflict (id) do update set
         principal = excluded.principal, status = excluded.status,
-        collateral_type = excluded.collateral_type, ltv_bps = excluded.ltv_bps, dscr_bps = excluded.dscr_bps
+        collateral_type = excluded.collateral_type, ltv_bps = excluded.ltv_bps, dscr_bps = excluded.dscr_bps,
+        token_address = excluded.token_address
     `;
   }
 
