@@ -28,4 +28,7 @@ jobs:
       - name: semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # the @semantic-release/git CHANGELOG commit must not run the local husky hooks —
+          # the runner has no forge, so pre-commit's `forge fmt --check` dies (forge: not found).
+          HUSKY: "0"
         run: bunx semantic-release
