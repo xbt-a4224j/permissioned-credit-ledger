@@ -75,7 +75,7 @@ contract CreditToken is ERC20, AccessControl, ReentrancyGuard, ICreditToken {
         address reserveToken,
         uint256 ratePerSecond_,
         uint256 principalCap_
-    ) ERC20("Credit Token", "CRDTatus") {
+    ) ERC20("Credit Token", "CRDT") {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(ISSUER_ROLE, admin);
         identity = IIdentityRegistry(identityReg);
