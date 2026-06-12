@@ -1,3 +1,13 @@
+# [1.1.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.0.1...v1.1.0) (2026-06-12)
+
+
+### Features
+
+* **warehouse:** deterministic ~10k CRE book generator ([#52](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/52)) ([f2cd5cb](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/f2cd5cbdd18b5c4633b7c08e3edaa5537bf93f65))
+* **warehouse:** mirror the on-chain loans into wh_book as the tokenized tip ([#53](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/53)) ([a8fc000](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/a8fc0008629dbb9da02b4f95d961e155d60d5b55))
+* **warehouse:** scaffold Spring Boot sidecar on 47100 + dev wiring ([#51](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/51)) ([e6ccf6f](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/e6ccf6f24d4a8ea4df0042fe60389be06b0e3ef1))
+* **warehouse:** wh_* read-model tables via Boot SQL init, shared pcl Postgres ([#74](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/74)) ([fc42858](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/fc42858882b691ac61c6842f41133f614da66e6e))
+
 ## [1.0.1](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.0.0...v1.0.1) (2026-06-12)
 
 
