@@ -27,6 +27,7 @@ import {
   FROZEN,
 } from "./helpers.ts";
 import { resolveInvest, resolveTransfer, resolveClaim } from "../src/resolvers/mutations.ts";
+import { resolveReportCash } from "../src/resolvers/ops.ts";
 import type { ApiContext } from "../src/context.ts";
 
 let sql: Sql;
@@ -71,10 +72,24 @@ test("invest (accredited-US, RegD loan 1) broadcasts + writes an optimistic posi
   expect(optRows[0]?.count).toBe(1n);
 });
 
-test("invest amount is carried as a string end to end (no IEEE-754 widening)", async () => {
-  const big = "123456789012345"; // > 2^53
-  const res = await resolveInvest(ctx, { loanId: "2", wallet: ACCREDITED_US_2, amount: big });
-  expect(res.position?.principal).toBe(big);
+test("money round-trips as a string end to end — no IEEE-754 widening (2^53+1)", async () => {
+  // 2^53+1 is the first integer a JS double CANNOT represent (it silently widens to ...992).
+  // Invest amounts are capped at the loan principal on-chain (#46), so the uncapped carrier is
+  // reportCash: BigIntStr -> resolver -> numeric(78,0) -> read back, byte-exact.
+  const big = "9007199254740993";
+  const before = await sql<{ balance: string }[]>`select balance::text as balance from reserve where id = 1`;
+  await resolveReportCash(ctx, 1, big);
+  const after = await sql<{ balance: string }[]>`select balance::text as balance from reserve where id = 1`;
+  expect(after[0]?.balance).toBe(big);
+  // restore the deploy-funded reserve so the funded/underfunded claim rows below see real state.
+  await resolveReportCash(ctx, 1, before[0]?.balance ?? "0");
+});
+
+test("#46 an invest past the loan principal cap -> typed ExceedsPrincipal", async () => {
+  // $123M into the $3.2M loan 2 — the on-chain cap reverts; simulate surfaces the typed code.
+  await expect(resolveInvest(ctx, { loanId: "2", wallet: ACCREDITED_US_2, amount: "123456789012345" })).rejects.toMatchObject({
+    extensions: { code: "ExceedsPrincipal" },
+  });
 });
 
 test("claim (anchor holder, funded reserve) broadcasts (row 7)", async () => {
