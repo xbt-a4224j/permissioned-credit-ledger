@@ -13,6 +13,8 @@ export default tseslint.config(
       "contracts/lib/**",
       "contracts/out/**",
       "contracts/cache/**",
+      "warehouse/build/**", // #51 Gradle build output (generated test-report JS etc.)
+      "warehouse/.gradle/**",
     ],
   },
   js.configs.recommended,

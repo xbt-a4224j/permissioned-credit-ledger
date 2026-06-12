@@ -36,11 +36,12 @@ export function StatPill(props: { label: ReactNode; value: ReactNode; tone?: Ton
 }
 
 // #24 Badge — a small typed status pill (collateral type, loan status, reason code).
-export function Badge(props: { children: ReactNode; tone?: Tone; title?: string }): JSX.Element {
+export function Badge(props: { children: ReactNode; tone?: Tone; title?: string; onClick?: () => void }): JSX.Element {
   return (
     <span
       title={props.title}
-      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${TONE_CLASS[props.tone ?? "neutral"]}`}
+      onClick={props.onClick}
+      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${props.onClick ? "cursor-pointer" : ""} ${TONE_CLASS[props.tone ?? "neutral"]}`}
     >
       {props.children}
     </span>
