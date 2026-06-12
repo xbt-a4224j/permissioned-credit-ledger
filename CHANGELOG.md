@@ -1,3 +1,11 @@
+# [1.2.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.1.1...v1.2.0) (2026-06-12)
+
+
+### Features
+
+* **warehouse:** ranked book + analytics REST endpoints ([#57](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/57) [#58](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/58)) ([c8fee1d](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/c8fee1df57831c3d8034a16826cf3dcce922937f))
+* **warehouse:** transparent weighted scoring engine ([#54](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/54) [#55](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/55) [#56](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/56)) ([173100a](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/173100a23e7acb4666d796399a331a175d681547))
+
 ## [1.1.1](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.1.0...v1.1.1) (2026-06-12)
 
 
