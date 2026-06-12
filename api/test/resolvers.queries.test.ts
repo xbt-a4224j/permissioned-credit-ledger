@@ -48,6 +48,14 @@ test("every loan money field is a decimal string (BigIntStr), never a number", a
   }
 });
 
+test("subscribed aggregates the canonical positions per loan (anchor on loan 1, zero elsewhere)", async () => {
+  const loans = await resolveLoans(ctx);
+  const loan1 = loans.find((l) => l.id === "1");
+  expect(loan1?.subscribed).toBe("100000000000"); // the 100_000e6 anchor position
+  const loan2 = loans.find((l) => l.id === "2");
+  expect(loan2?.subscribed).toBe("0"); // no positions -> coalesced to 0, not null
+});
+
 test("loan(id) maps DEFAULT -> Matured and resolves the residential seam loan", async () => {
   const loan5 = await resolveLoan(ctx, "5"); // DEFAULT in the manifest
   expect(loan5?.status).toBe("Matured");

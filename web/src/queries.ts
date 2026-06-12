@@ -11,6 +11,7 @@ export const LOANS_QUERY = /* GraphQL */ `
     loans {
       id
       principal
+      subscribed
       ratePerSecond
       ltvBps
       dscrBps

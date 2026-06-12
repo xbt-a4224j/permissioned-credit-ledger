@@ -31,10 +31,10 @@ describe("#20 GraphQL schema contract", () => {
     expect(fields).toContain("txStatus");
   });
 
-  test("ReasonCode enum exposes exactly the 8 typed codes", () => {
+  test("ReasonCode enum exposes exactly the 9 typed codes", () => {
     const reason = schema.getType("ReasonCode") as GraphQLEnumType;
     const values = reason.getValues().map((v) => v.name);
-    expect(values.length).toBe(8);
+    expect(values.length).toBe(9);
     expect(new Set(values)).toEqual(
       new Set([
         "SenderFrozen",
@@ -43,6 +43,7 @@ describe("#20 GraphQL schema contract", () => {
         "ReceiverNotVerified",
         "AccreditationRequired",
         "InsufficientReserve",
+        "ExceedsPrincipal",
         "NavAnomaly",
         "ReconMismatch",
       ]),

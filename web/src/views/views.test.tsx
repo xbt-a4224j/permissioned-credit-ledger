@@ -46,6 +46,7 @@ function loanTape(): { loans: unknown[] } {
     loans: Array.from({ length: 6 }, (_, i) => ({
       id: String(i + 1),
       principal: String(1_000_000n * BigInt(i + 1)),
+      subscribed: String(250_000n * BigInt(i + 1)), // a quarter taken — Unsubscribed must render
       ratePerSecond: "1000",
       ltvBps: 6500 + i * 200,
       dscrBps: 12000 + i * 250,

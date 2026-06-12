@@ -7,9 +7,12 @@ import { builder } from "../builder.ts";
 import { LoanStatus } from "../enums.ts";
 
 // #20 the resolver-produced Loan source (the `loans` row, money as decimal strings).
+// subscribed = principal already taken by investors (sum of canonical positions, #21);
+// principal − subscribed is the series' unsubscribed capacity the marketplace renders.
 export interface LoanSource {
   id: string;
   principal: string;
+  subscribed: string;
   ratePerSecond: string;
   ltvBps: number;
   dscrBps: number;
@@ -21,6 +24,7 @@ export const Loan = builder.simpleObject("Loan", {
   fields: (t) => ({
     id: t.id({ nullable: false }),
     principal: t.field({ type: "BigIntStr", nullable: false }),
+    subscribed: t.field({ type: "BigIntStr", nullable: false }),
     ratePerSecond: t.field({ type: "BigIntStr", nullable: false }),
     ltvBps: t.int({ nullable: false }),
     dscrBps: t.int({ nullable: false }),
