@@ -92,7 +92,7 @@ export function App(): JSX.Element {
                 ))}
               </select>
               {wallet.address !== undefined ? (
-                <Badge tone="positive" title="Acting wallet">{wallet.address.slice(0, 6)}…{wallet.address.slice(-4)}</Badge>
+                <Badge tone="positive" title="Acting wallet — click to copy" onClick={() => { navigator.clipboard.writeText(wallet.address ?? ""); }}>{wallet.address}</Badge>
               ) : null}
               {/* #39 KYC status + verify entry point for the acting wallet. */}
               {wallet.address !== undefined ? <KycBadge key={wallet.address} wallet={wallet.address} /> : null}

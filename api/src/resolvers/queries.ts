@@ -155,8 +155,7 @@ export async function resolveReconciliationStatus(ctx: ApiContext): Promise<Reco
 // #39 build a human-readable summary line from a chain_events payload object.
 function eventSummary(name: string, payload: Record<string, unknown>): string {
   const loan = payload["loan"] ?? payload["loanId"] ?? "?";
-  const short = (addr: unknown): string =>
-    typeof addr === "string" && addr.length > 10 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : String(addr ?? "?");
+  const short = (addr: unknown): string => typeof addr === "string" ? addr : String(addr ?? "?");
   const amt = (v: unknown): string =>
     typeof v === "string" ? `$${(BigInt(v) / 1_000_000n).toString()}` : "?";
   if (name === "PositionOpened") return `Loan #${loan} · ${short(payload["holder"])} invested ${amt(payload["amount"])}`;
