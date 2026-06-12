@@ -11,7 +11,7 @@ import { Card, EmptyState, ErrorState, LoadingState } from "../components/primit
 
 // #24 the raw LOANS_QUERY response (BigIntStr money as decimal strings).
 interface LoansRaw {
-  loans: { id: string; principal: string; ratePerSecond: string; ltvBps: number; dscrBps: number; status: LoanStatus; dataRoomUri: string | null }[];
+  loans: { id: string; principal: string; subscribed: string; ratePerSecond: string; ltvBps: number; dscrBps: number; status: LoanStatus; dataRoomUri: string | null }[];
 }
 
 // #24 decode the wire shape to the bigint-carrying Loan view model (never a JS number for money).
@@ -19,6 +19,7 @@ function mapLoans(raw: LoansRaw): Loan[] {
   return raw.loans.map((l) => ({
     id: l.id as LoanId,
     principal: BigInt(l.principal),
+    subscribed: BigInt(l.subscribed),
     ratePerSecond: BigInt(l.ratePerSecond),
     ltvBps: l.ltvBps,
     dscrBps: l.dscrBps,

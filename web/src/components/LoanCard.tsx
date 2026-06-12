@@ -22,6 +22,10 @@ export function LoanCard(props: { loan: Loan; actionSlot?: ReactNode }): JSX.Ele
   // #37 the data-room doc the viewer clicked (opens a stub modal); null when none is open.
   const [activeDoc, setActiveDoc] = useState<string | null>(null);
   const collateral = collateralTypeFor(loan.id);
+  // #46 the series' remaining subscription capacity (principal − subscribed, floored at 0 —
+  // the projection can momentarily trail a pending invest). The on-chain cap is authoritative;
+  // this is the same number ExceedsPrincipal enforces, surfaced before the attempt.
+  const unsubscribed = loan.principal > loan.subscribed ? loan.principal - loan.subscribed : 0n;
 
   return (
     <Card className="flex flex-col gap-4">
@@ -43,6 +47,13 @@ export function LoanCard(props: { loan: Loan; actionSlot?: ReactNode }): JSX.Ele
         <StatPill label="APY" value={fmtApy(loan.ratePerSecond)} />
         <StatPill label={<abbr title="Loan-to-Value — loan amount as a % of the property's appraised value; lower is safer">LTV</abbr>} value={fmtLtv(loan.ltvBps)} />
         <StatPill label={<abbr title="Debt-Service Coverage Ratio — net operating income ÷ annual debt payments; above 1.0x means the property covers its own payments">DSCR</abbr>} value={fmtDscr(loan.dscrBps)} />
+        <div className="col-span-2">
+          <StatPill
+            label={<abbr title="Principal not yet taken by investors — the series' remaining subscription capacity. Issuance past this reverts on-chain (ExceedsPrincipal).">Unsubscribed</abbr>}
+            value={unsubscribed === 0n ? "Fully subscribed" : fmtUsd6(unsubscribed)}
+            {...(unsubscribed === 0n ? { tone: "navy" as const } : {})}
+          />
+        </div>
       </div>
 
       <div>

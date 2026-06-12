@@ -16,9 +16,11 @@ export type LoanStatus = "Active" | "Frozen" | "Matured";
 export type CollateralType = "CRE" | "RESIDENTIAL";
 
 // #24 a marketplace Loan: a first-lien mortgage on a Property. Money fields are bigint base units.
+// subscribed = principal already taken by investors; principal − subscribed = unsubscribed capacity.
 export interface Loan {
   id: LoanId;
   principal: bigint;
+  subscribed: bigint;
   ratePerSecond: bigint;
   ltvBps: number;
   dscrBps: number;

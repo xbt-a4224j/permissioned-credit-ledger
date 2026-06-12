@@ -28,6 +28,7 @@ interface LoansRaw {
   loans: {
     id: string;
     principal: string;
+    subscribed: string;
     ratePerSecond: string;
     ltvBps: number;
     dscrBps: number;
@@ -41,6 +42,7 @@ function mapLoans(raw: LoansRaw): Loan[] {
   return raw.loans.map((l) => ({
     id: l.id as LoanId,
     principal: BigInt(l.principal),
+    subscribed: BigInt(l.subscribed),
     ratePerSecond: BigInt(l.ratePerSecond),
     ltvBps: l.ltvBps,
     dscrBps: l.dscrBps,
