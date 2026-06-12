@@ -11,6 +11,7 @@ export PG_PORT="${PG_PORT:-55432}"
 export EVM_PORT="${EVM_PORT:-18545}"
 export API_PORT="${API_PORT:-41990}"
 export WEB_PORT="${WEB_PORT:-51730}"
+export WAREHOUSE_PORT="${WAREHOUSE_PORT:-47100}" # #51 Java data-platform sidecar
 
 # #31 the docker compose project name (so `down` targets exactly our stack).
 export COMPOSE_PROJECT="${COMPOSE_PROJECT:-pcl}"
@@ -22,7 +23,7 @@ export DEV_DIR="${REPO_ROOT}/.dev"
 
 # #31 all 4 fixed ports as a list (stop.sh frees every one).
 fixed_ports() {
-  echo "${PG_PORT} ${EVM_PORT} ${API_PORT} ${WEB_PORT}"
+  echo "${PG_PORT} ${EVM_PORT} ${API_PORT} ${WEB_PORT} ${WAREHOUSE_PORT}"
 }
 
 # #31 free a TCP port: kill -9 whatever listens on it (idempotent — no-op if nothing does).

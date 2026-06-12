@@ -109,6 +109,21 @@ echo "[dev]   web (vite) on ${WEB_PORT}…"
 write_pidfile "web" "$!"
 wait_tcp "${WEB_PORT}" "web" 60
 
+# 7. warehouse — the Java data-platform sidecar (#51) on 47100. Best-effort: a build/boot hiccup must
+# never block the core demo stack (which doesn't depend on it yet). Builds the bootJar (cached after
+# the first run), then `exec java -jar` so the pidfile targets the JVM directly (no gradle orphan).
+echo "[dev]   warehouse (data platform) on ${WAREHOUSE_PORT}…"
+(
+  cd "${REPO_ROOT}/warehouse" \
+    && ./gradlew -q bootJar \
+    && exec env SERVER_PORT="${WAREHOUSE_PORT}" \
+         WAREHOUSE_DB_URL="jdbc:postgresql://localhost:${PG_PORT}/pcl" \
+         java -jar build/libs/warehouse-0.0.1-SNAPSHOT.jar
+) > "${DEV_DIR}/warehouse.log" 2>&1 &
+write_pidfile "warehouse" "$!"
+wait_http "http://localhost:${WAREHOUSE_PORT}/actuator/health" "warehouse" 90 \
+  || echo "[dev]   warehouse did not come up — continuing (core stack unaffected). See .dev/warehouse.log"
+
 # ── BANNER ───────────────────────────────────────────────────────────────────
 STARTED_OK=1
 cat <<BANNER
@@ -120,6 +135,7 @@ cat <<BANNER
    SSE feed      http://localhost:${API_PORT}/sse
    Health        http://localhost:${API_PORT}/health
    Web app       http://localhost:${WEB_PORT}
+   Data platform http://localhost:${WAREHOUSE_PORT}/actuator/health  (#51 warehouse sidecar)
    Postgres      postgres://postgres:postgres@localhost:${PG_PORT}/pcl
    Local EVM     ${LOCAL_RPC}  (chain id 31337)
 
