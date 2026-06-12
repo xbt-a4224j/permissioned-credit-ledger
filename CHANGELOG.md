@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.1.0...v1.1.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* **ui:** badge accepts onClick prop + eslint-ignore warehouse build ([82e1173](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/82e11732b8a003164372c3fed185b07f50148af4))
+
 # [1.1.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.0.1...v1.1.0) (2026-06-12)
 
 
