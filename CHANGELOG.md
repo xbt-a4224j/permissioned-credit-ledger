@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.0.0...v1.0.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* **contracts:** correct token symbol typo CRDTatus -> CRDT ([99445ec](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/99445ec57bc10c0586c351db37b86be6cecd147c))
+
 # 1.0.0 (2026-06-12)
 
 
