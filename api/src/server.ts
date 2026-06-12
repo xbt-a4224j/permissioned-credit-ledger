@@ -40,6 +40,20 @@ function readLog(limit: number): unknown[] {
   } catch { return []; }
 }
 
+// #39 POST /log — append a user/product action entry (fire-and-forget from the UI).
+async function handleLogPost(req: Request): Promise<Response> {
+  try {
+    const body = await req.json() as Record<string, unknown>;
+    // strip any attempt to inject large payloads or prototype pollution
+    const safe: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(body)) {
+      if (typeof k === "string" && k.length < 64 && !k.startsWith("__")) safe[k] = v;
+    }
+    appendLog(safe);
+  } catch { /* malformed body — ignore */ }
+  return new Response(null, { status: 204, headers: CORS_HEADERS });
+}
+
 // #21 the assembled server: a fetch handler + the started background loops + a disposer.
 export interface PclServer {
   fetch: (req: Request) => Promise<Response> | Response;
@@ -83,20 +97,8 @@ export function createServer(ctx: ApiContext = createContext()): PclServer {
     if (req.method === "GET" && url.pathname === "/sse") {
       return sseHandler(req, bus);
     }
-    // #39 POST /log — append a user/product action entry (fire-and-forget from the UI).
     if (req.method === "POST" && url.pathname === "/log") {
-      return (async (): Promise<Response> => {
-        try {
-          const body = await req.json() as Record<string, unknown>;
-          // strip any attempt to inject large payloads or prototype pollution
-          const safe: Record<string, unknown> = {};
-          for (const [k, v] of Object.entries(body)) {
-            if (typeof k === "string" && k.length < 64 && !k.startsWith("__")) safe[k] = v;
-          }
-          appendLog(safe);
-        } catch { /* malformed body — ignore */ }
-        return new Response(null, { status: 204, headers: CORS_HEADERS });
-      })();
+      return handleLogPost(req);
     }
     // #39 GET /logs?limit=N — return the last N action log entries as JSON (newest first).
     if (req.method === "GET" && url.pathname === "/logs") {
