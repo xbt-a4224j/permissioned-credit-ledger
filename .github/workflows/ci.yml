@@ -54,8 +54,11 @@ jobs:
         # regenerate the SDL from the live Pothos builder and diff against the committed snapshot;
         # any drift (renamed field, added mutation) fails the build until the snapshot is refreshed.
         run: bun run api/scripts/print-schema.ts | diff - api/schema.graphql
-      - name: bun run test (off-chain suites + web)
-        run: bun run test
+      - name: web tests (pure, jsdom — no services needed)
+        # the off-chain integration suites need a real Postgres + anvil; they run in the
+        # verify-matrix job below, which stands up that exact stack. This fast job runs only
+        # the dependency-free web suite.
+        run: bun --filter '@pcl/web' test
 
   # #28 verify-matrix — the 10-scenario end-to-end gate on a REAL local node + REAL Postgres.
   # The core claim (eligibility gauntlet + both HALT states) is only credible if its proof runs
@@ -126,6 +129,11 @@ jobs:
             --rpc-url http://127.0.0.1:8545 \
             --broadcast \
             --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+      - name: Full off-chain test suites (real chain + real Postgres)
+        # the integration suites (recon engine, NAV gate, indexer projection, resolvers) need the
+        # exact stack this job just stood up — throwaway DBs are carved off the service Postgres,
+        # the chain reads hit the live anvil, and the manifest comes from the Deploy step.
+        run: bunx vitest run
       - name: Run the 10-scenario matrix verifier
         # migrates the service Postgres, boots the API in-process, drives all 10 rows; any row
         # mismatch is a nonzero exit that fails this step (and therefore the merge gate).
