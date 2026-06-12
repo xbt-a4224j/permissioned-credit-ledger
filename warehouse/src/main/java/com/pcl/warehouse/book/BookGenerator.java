@@ -4,9 +4,9 @@ import java.math.BigDecimal;
 import java.sql.Date;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.IntStream;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;
@@ -15,15 +15,15 @@ import org.springframework.stereotype.Component;
 
 // #52 synthetic CRE book generator. On boot, if wh_book has no generated rows yet, deterministically
 // synthesize ~10k realistic CRE bridge loans (the originator's full pipeline — the warehouse holds
-// far more than the chain's tokenized tip) and batch-insert them. Seeded RNG => the book is
-// reproducible across runs. The handful of tokenized loans are layered on separately (#53), so this
-// only generates untokenized inventory. Runs before the mirror/scoring runners (@Order).
+// far more than the chain's tokenized tip) and batch-insert them. Each loan is seeded from its own
+// index (SEED ^ i), so generation is pure and independent per element: reproducible AND safely
+// parallelizable, with no shared mutable RNG. The tokenized loans are layered on separately (#53).
 @Component
 @Order(10)
 public class BookGenerator implements ApplicationRunner {
 
     static final int BOOK_SIZE = 10_000;
-    private static final long SEED = 424242L;
+    private static final long SEED = 424_242L;
     private static final LocalDate ANCHOR = LocalDate.of(2026, 6, 1);
 
     // fictional originators — generic by construction (this is a generic POC).
@@ -40,6 +40,12 @@ public class BookGenerator implements ApplicationRunner {
         "Office", "Multifamily", "Retail", "Industrial", "Hospitality", "Mixed-Use", "Residential"
     };
 
+    private static final String INSERT = """
+        insert into wh_book (loan_id, principal, ltv_bps, dscr_bps, coupon_bps, origination_date,
+            maturity_date, state, msa, property_type, originator, seasoning_months, tokenized)
+        values (?,?,?,?,?,?,?,?,?,?,?,?,false) on conflict (loan_id) do nothing
+        """;
+
     private final JdbcTemplate jdbc;
 
     public BookGenerator(JdbcTemplate jdbc) {
@@ -48,41 +54,49 @@ public class BookGenerator implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        Integer generated = jdbc.queryForObject(
+        var generated = jdbc.queryForObject(
             "select count(*) from wh_book where tokenized = false", Integer.class);
         if (generated != null && generated >= BOOK_SIZE) {
             return; // idempotent — already generated
         }
-        jdbc.batchUpdate(
-            "insert into wh_book (loan_id, principal, ltv_bps, dscr_bps, coupon_bps, origination_date, "
-                + "maturity_date, state, msa, property_type, originator, seasoning_months, tokenized) "
-                + "values (?,?,?,?,?,?,?,?,?,?,?,?,false) on conflict (loan_id) do nothing",
-            generate());
+        var rows = IntStream.rangeClosed(1, BOOK_SIZE)
+            .mapToObj(BookGenerator::generate)
+            .map(BookGenerator::toArgs)
+            .toList();
+        jdbc.batchUpdate(INSERT, rows);
     }
 
-    // deterministic synthesis of the full book. Distributions chosen to look like a real CRE bridge
-    // tape: principal skewed to the $5-20M range, LTV 50-80%, DSCR 1.0-1.6x, coupon 8-12%, 6-36mo term.
-    List<Object[]> generate() {
-        Random rng = new Random(SEED);
-        List<Object[]> rows = new ArrayList<>(BOOK_SIZE);
-        for (int i = 1; i <= BOOK_SIZE; i++) {
-            String loanId = String.format("L%05d", i);
-            long principal = Math.round(1_000_000d + Math.pow(rng.nextDouble(), 2) * 49_000_000d);
-            int ltvBps = 5000 + rng.nextInt(3001);   // 50-80%
-            int dscrBps = 10000 + rng.nextInt(6001);  // 1.00-1.60x
-            int couponBps = 800 + rng.nextInt(401);   // 8.00-12.00%
-            LocalDate orig = ANCHOR.minusDays(rng.nextInt(720));  // originated within ~24 months
-            LocalDate maturity = orig.plusMonths(6 + rng.nextInt(31)); // 6-36mo bridge
-            int seasoning = (int) ChronoUnit.MONTHS.between(orig, ANCHOR);
-            String[] metro = METROS[rng.nextInt(METROS.length)];
-            String propType = PROPERTY_TYPES[rng.nextInt(PROPERTY_TYPES.length)];
-            String originator = ORIGINATORS[rng.nextInt(ORIGINATORS.length)];
-            rows.add(new Object[] {
-                loanId, BigDecimal.valueOf(principal), ltvBps, dscrBps, couponBps,
-                Date.valueOf(orig), Date.valueOf(maturity),
-                metro[0], metro[0] + "-" + metro[1], propType, originator, seasoning
-            });
-        }
-        return rows;
+    // one synthetic CRE bridge loan, deterministic in its index. Distributions chosen to look like a
+    // real tape: principal skewed to the $5-20M range, LTV 50-80%, DSCR 1.0-1.6x, coupon 8-12%.
+    static BookRow generate(int i) {
+        var rng = new Random(SEED ^ i);
+        long principal = Math.round(1_000_000d + Math.pow(rng.nextDouble(), 2) * 49_000_000d);
+        var orig = ANCHOR.minusDays(rng.nextInt(720));        // originated within ~24 months
+        var maturity = orig.plusMonths(6 + rng.nextInt(31));  // 6-36mo bridge
+        var metro = METROS[rng.nextInt(METROS.length)];
+        return new BookRow(
+            "L%05d".formatted(i),
+            BigDecimal.valueOf(principal),
+            5_000 + rng.nextInt(3_001),   // LTV 50-80%
+            10_000 + rng.nextInt(6_001),  // DSCR 1.00-1.60x
+            800 + rng.nextInt(401),       // coupon 8.00-12.00%
+            orig, maturity,
+            metro[0], metro[0] + "-" + metro[1],
+            PROPERTY_TYPES[rng.nextInt(PROPERTY_TYPES.length)],
+            ORIGINATORS[rng.nextInt(ORIGINATORS.length)],
+            (int) ChronoUnit.MONTHS.between(orig, ANCHOR));
     }
+
+    private static Object[] toArgs(BookRow r) {
+        return new Object[] {
+            r.loanId(), r.principal(), r.ltvBps(), r.dscrBps(), r.couponBps(),
+            Date.valueOf(r.origination()), Date.valueOf(r.maturity()),
+            r.state(), r.msa(), r.propertyType(), r.originator(), r.seasoningMonths()
+        };
+    }
+
+    // the generated-loan shape (warehouse-internal; the REST DTO is separate, #57).
+    record BookRow(String loanId, BigDecimal principal, int ltvBps, int dscrBps, int couponBps,
+        LocalDate origination, LocalDate maturity, String state, String msa,
+        String propertyType, String originator, int seasoningMonths) {}
 }
