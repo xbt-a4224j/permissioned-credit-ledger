@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.2.0...v1.3.0) (2026-06-12)
+
+
+### Features
+
+* **warehouse:** live servicing feed — generator, SSE stream, rolling KPIs ([#60](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/60) [#61](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/61) [#62](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/62)) ([2b73401](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/2b73401fecde4812a8b3fb06863c2f2aa931f4a9))
+
 # [1.2.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.1.1...v1.2.0) (2026-06-12)
 
 
