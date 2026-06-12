@@ -52,6 +52,24 @@ Portfolio-fit is **relative to what's already tokenized**, so the ranking shifts
 3. **Real deploy:** click → new `CreditToken` on-chain → indexer watches it → **next loan in Marketplace**
 4. Live servicing ticker (SSE) + book concentration analytics
 
+## Releases & versioning (#77)
+
+CI builds three independent surfaces — `forge` (contracts), `bun` (TS), `warehouse` (Gradle/Java,
+against a Postgres service) — plus the `verify-matrix` e2e gate. Versioning is automatic via
+semantic-release on push to `main`:
+
+| Commit type | Version bump |
+|---|---|
+| `fix:` | patch (x.y.**z**) |
+| `feat:` | minor (x.**y**.0) |
+| `feat!:` / `BREAKING CHANGE:` | major (**x**.0.0) |
+| `chore:` / `docs:` / `ci:` / `test:` / `refactor:` | no release |
+
+Each push to `main` with release-worthy commits cuts a **git tag + GitHub Release + CHANGELOG entry**
+(notes generated from the commits since the prior tag). **Convention: one release per completed
+issue-block** — work the block's issues locally, then push the block as a unit so it lands as a
+single coherent version.
+
 ## Ports
 
 | Service | Port |

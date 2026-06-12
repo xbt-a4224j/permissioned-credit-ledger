@@ -60,6 +60,44 @@ jobs:
         # the dependency-free web suite.
         run: bun --filter '@pcl/web' test
 
+  # #77 warehouse job — Gradle build + test for the Java data-platform sidecar against a real
+  # Postgres service. The Boot context test runs SQL-init (#74) + the 10k book generator (#52); the
+  # tokenized mirror (#53) skips cleanly because the TS `loans` table isn't present in this job.
+  # Cheap minutes: setup-java caches the Gradle dependency + build cache.
+  warehouse:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: warehouse
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: pcl
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      WAREHOUSE_DB_URL: jdbc:postgresql://localhost:5432/pcl
+      WAREHOUSE_DB_USER: postgres
+      WAREHOUSE_DB_PASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+      - name: gradlew build
+        run: ./gradlew build --no-daemon
+
   # #28 verify-matrix — the 10-scenario end-to-end gate on a REAL local node + REAL Postgres.
   # The core claim (eligibility gauntlet + both HALT states) is only credible if its proof runs
   # on every change. This job spins anvil (a real local EVM node) + a real postgres:16-alpine
