@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.5.0...v1.6.0) (2026-06-13)
+
+
+### Features
+
+* **ui:** origination tab — ranked book, one-click tokenize, analytics, live feed ([ba4815e](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/ba4815ea2f99d4f943507abfc718eefa874c7199)), closes [#7](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/7) [#69](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/69) [#70](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/70) [#71](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/71) [#72](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/72)
+
 # [1.5.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.4.0...v1.5.0) (2026-06-13)
 
 
