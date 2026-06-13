@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.8.0...v1.9.0) (2026-06-13)
+
+
+### Features
+
+* **recon:** reserve as an append-only ledger of record ([#82](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/82)) ([85595d9](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/85595d930eccc1ba39ff8ffbd3f80d2488811ebc))
+
 # [1.8.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.7.0...v1.8.0) (2026-06-13)
 
 
