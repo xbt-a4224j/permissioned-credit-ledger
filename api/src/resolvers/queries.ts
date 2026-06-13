@@ -216,9 +216,11 @@ export async function resolveChainEvents(ctx: ApiContext, limit: number): Promis
 // #39 the live chain head (anvil mines a block every second with --block-time 1), so the Health
 // panel's block counter ticks in real time. Reads the node directly, not the indexer cursor (which
 // only advances on blocks that carry events). Falls back to the cursor if the RPC hiccups.
+// cacheTime: 0 — viem caches getBlockNumber for ~4s by default, which made the head stutter (the
+// counter froze for seconds while the chain raced ahead); bypass it so the 1s UI poll reads fresh.
 export async function resolveCurrentBlock(ctx: ApiContext): Promise<number> {
   try {
-    return Number(await ctx.chain.publicClient.getBlockNumber());
+    return Number(await ctx.chain.publicClient.getBlockNumber({ cacheTime: 0 }));
   } catch {
     const rows = await ctx.db<{ block_number: bigint }[]>`select block_number from indexer_cursor where id = 1`;
     return Number(rows[0]?.block_number ?? 0n);
