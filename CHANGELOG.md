@@ -1,3 +1,10 @@
+## [1.11.2](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.11.1...v1.11.2) (2026-06-13)
+
+
+### Bug Fixes
+
+* **api:** surface tokenization in the chain-events feed ([9dafc57](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/9dafc57effe79113ec49c1e9e3defd17ec7c998d)), closes [#75](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/75)
+
 ## [1.11.1](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.11.0...v1.11.1) (2026-06-13)
 
 
