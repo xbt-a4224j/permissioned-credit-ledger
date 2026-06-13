@@ -1,6 +1,6 @@
 // #20 schema assertions — the frozen GraphQL contract.
 // The schema is the surface the UI (#24-26) and the matrix verifier (#27) build against, so its
-// shape is pinned here: exactly 6 mutations (3 writes + 2 ops + KYC), the core query fields, the
+// shape is pinned here: exactly 7 mutations (3 writes + 2 ops + KYC + tokenizeLoan), the core query fields, the
 // 8-member ReasonCode enum, the 4 named invariants, no schema-validation errors, and the BigIntStr
 // scalar round-tripping uint256 max with zero precision loss (a fast-check property — the IEEE-754 guard).
 import { describe, expect, test } from "vitest";
@@ -19,7 +19,7 @@ describe("#20 GraphQL schema contract", () => {
 
   test("the write mutations (invest/transfer/claim) + #38 ops (submitNav/reportCash) + #39 KYC (submitKyc)", () => {
     const mutation = schema.getMutationType() as GraphQLObjectType;
-    expect(Object.keys(mutation.getFields()).sort()).toEqual(["claim", "invest", "reportCash", "submitKyc", "submitNav", "transfer"]);
+    expect(Object.keys(mutation.getFields()).sort()).toEqual(["claim", "invest", "reportCash", "submitKyc", "submitNav", "tokenizeLoan", "transfer"]);
   });
 
   test("the core query fields (+ txStatus from #23) are present", () => {
