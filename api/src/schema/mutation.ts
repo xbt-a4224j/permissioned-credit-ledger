@@ -8,9 +8,10 @@ import { builder } from "./builder.ts";
 import { TxReceiptRef } from "./types/tx.ts";
 import { ReconciliationStatus } from "./types/reconciliation.ts";
 import { KycResult } from "./types/kyc.ts";
+import { TokenizeResult } from "./types/tokenize.ts";
 import { InvestInput, TransferInput, ClaimInput, KycInput } from "./inputs.ts";
 import { resolveInvest, resolveTransfer, resolveClaim } from "../resolvers/mutations.ts";
-import { resolveSubmitNav, resolveReportCash } from "../resolvers/ops.ts";
+import { resolveSubmitNav, resolveReportCash, resolveTokenizeLoan } from "../resolvers/ops.ts";
 import { resolveSubmitKyc } from "../kyc/resolve.ts";
 
 builder.mutationType({
@@ -64,6 +65,14 @@ builder.mutationType({
       nullable: false,
       args: { input: t.arg({ type: KycInput, required: true }) },
       resolve: (_root, args, ctx) => resolveSubmitKyc(ctx, args.input),
+    }),
+    // #66 tokenize a warehouse loan: deploy a real CreditToken on-chain (same wiring as the seeded
+    // 6), register it so the indexer (#75) watches it + it appears in the marketplace as the next loan.
+    tokenizeLoan: t.field({
+      type: TokenizeResult,
+      nullable: false,
+      args: { warehouseLoanId: t.arg.string({ required: true }) },
+      resolve: (_root, args, ctx) => resolveTokenizeLoan(ctx, args.warehouseLoanId),
     }),
   }),
 });

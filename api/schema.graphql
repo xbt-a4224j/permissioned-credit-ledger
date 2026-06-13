@@ -92,6 +92,7 @@ type Mutation {
   reportCash(amount: String!, loanId: Int!): ReconciliationStatus!
   submitKyc(input: KycInput!): KycResult!
   submitNav(loanId: Int!, navBps: Int!): ReconciliationStatus!
+  tokenizeLoan(warehouseLoanId: String!): TokenizeResult!
   transfer(input: TransferInput!): TxReceiptRef!
 }
 
@@ -161,6 +162,12 @@ type ReconciliationStatus {
 type ReserveState {
   balance: BigIntStr!
   totalClaimable: BigIntStr!
+}
+
+type TokenizeResult {
+  loanId: ID!
+  tokenAddress: String!
+  txHash: String!
 }
 
 input TransferInput {
