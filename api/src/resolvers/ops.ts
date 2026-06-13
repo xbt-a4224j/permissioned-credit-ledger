@@ -149,6 +149,20 @@ export async function resolveTokenizeLoan(ctx: ApiContext, warehouseLoanId: stri
     chain: ctx.chain.walletClient.chain,
   });
 
+  // #75 announce the tokenization on-chain so it surfaces in the chain-events feed. The deploy
+  // itself emits no log (a contract creation is not an event), so emit the loan's activation —
+  // LoanStatusChanged -> PERFORMING — which the indexer already decodes + projects. The #75 refresh
+  // backfills the new token's logs (from block 0) within one cycle, so this lands in the feed with
+  // no new plumbing. (0 == LoanStatus.PERFORMING, the status the loan is born in.)
+  await ctx.chain.walletClient.writeContract({
+    address: tokenAddress,
+    abi: CreditTokenArtifact.abi,
+    functionName: "setLoanStatus",
+    args: [BigInt(newId), 0],
+    account: ctx.chain.account,
+    chain: ctx.chain.walletClient.chain,
+  });
+
   // #66/#68 register the loan in the read model. The indexer (#75) watches the token within one
   // refresh; a par NAV baseline keeps the new loan at 100% so it doesn't false-halt.
   const appraised = (principalBase * 10_000n) / BigInt(wl.ltv_bps);
