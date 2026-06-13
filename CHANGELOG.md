@@ -1,3 +1,10 @@
+## [1.11.4](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.11.3...v1.11.4) (2026-06-13)
+
+
+### Bug Fixes
+
+* keep the chain-activity feed visibly live ([6fe6728](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/6fe67281c8fb89e7e2f6c337824a220541bb8703))
+
 ## [1.11.3](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.11.2...v1.11.3) (2026-06-13)
 
 
