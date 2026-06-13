@@ -17,8 +17,8 @@ const RATE_SCALE = 10n ** 18n;
 // ratePerSecond * elapsed / SCALE, where elapsed is wall-seconds since opened_at. Publishes one
 // `accrual` event per holder-position. Frozen loans contribute their accrued only (no advance).
 // #41 per-position wall-clock anchor for the DISPLAY ticker. positions.opened_at is a block NUMBER
-// (the optimistic-reconcile gate in tx/reconcile.ts depends on that), so it CANNOT be used as a
-// unix timestamp here — doing so made `now - opened_at` ~56 years and inflated claimable to ~$178k,
+// (the indexer stamps the opening block, #16), so it CANNOT be used as a unix timestamp here —
+// doing so made `now - opened_at` ~56 years and inflated claimable to ~$178k,
 // burying the per-second tick. Instead the source anchors each position the first time it sees it
 // (live wall-clock); claimable then starts at the settled `accrued` (≈0) and counts up visibly. The
 // anchor lives only in memory, so a restart/reset cleanly restarts the ticker near zero.

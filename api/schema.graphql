@@ -147,7 +147,6 @@ type Position {
   id: ID!
   lastAccrualAt: DateTime!
   loanId: ID!
-  optimistic: Boolean!
   principal: BigIntStr!
 }
 
@@ -240,7 +239,6 @@ input TransferInput {
 type TxReceiptRef {
   blockNumber: BigIntStr
   hash: String!
-  position: Position
   reasonCode: ReasonCode
   state: TxState!
 }

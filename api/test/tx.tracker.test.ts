@@ -1,5 +1,5 @@
-// #23 tx-status tracking — PENDING -> CONFIRMED|REVERTED + optimistic write.
-// recordPending stamps a PENDING row (+ an optimistic position for an invest); the confirmation
+// #23 tx-status tracking — PENDING -> CONFIRMED|REVERTED.
+// recordPending stamps a PENDING row; the confirmation
 // watcher transitions it on a mocked receipt: success -> CONFIRMED with the block; reverted ->
 // REVERTED with a decoded ReasonCode (not a raw string). Every transition emits exactly one `tx`
 // SSE event. Uses a real seeded db + a mocked waitForTransactionReceipt (no chain).
@@ -38,12 +38,10 @@ function mockReceiptClient(byHash: Record<string, { status: "success" | "reverte
   };
 }
 
-test("recordPending inserts 1 PENDING tx + 1 optimistic position for an invest", async () => {
-  await recordPending(sql, { hash: HASH_OK, kind: "invest", holder: HOLDER, loanId: "1", amount: 5_000_000n });
+test("recordPending inserts 1 PENDING tx for an invest", async () => {
+  await recordPending(sql, { hash: HASH_OK, kind: "invest", holder: HOLDER, loanId: "1" });
   const tx = await sql<{ count: bigint }[]>`select count(*)::bigint as count from tx_status where hash = ${HASH_OK} and state = 'PENDING'`;
   expect(tx[0]?.count).toBe(1n);
-  const opt = await sql<{ count: bigint }[]>`select count(*)::bigint as count from optimistic_positions where hash = ${HASH_OK}`;
-  expect(opt[0]?.count).toBe(1n);
 });
 
 test("a success receipt -> CONFIRMED with block + exactly one tx SSE event", async () => {

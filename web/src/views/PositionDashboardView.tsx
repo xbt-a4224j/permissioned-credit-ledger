@@ -30,7 +30,7 @@ function expectedNetPerYear(positions: Position[], ratesByLoan: Record<string, b
 export const DEMO_HOLDER = (import.meta.env.VITE_DEMO_HOLDER ?? "0x70997970c51812dc3a010c7d01b50e0d17dc79c8") as IdentityAddr;
 
 interface PositionsRaw {
-  positions: { id: string; loanId: string; holder: string; principal: string; accrued: string; claimable: string; optimistic: boolean }[];
+  positions: { id: string; loanId: string; holder: string; principal: string; accrued: string; claimable: string }[];
 }
 
 function mapPositions(raw: PositionsRaw): Position[] {
@@ -41,7 +41,6 @@ function mapPositions(raw: PositionsRaw): Position[] {
     principal: BigInt(p.principal),
     accrued: BigInt(p.accrued),
     claimable: BigInt(p.claimable),
-    optimistic: p.optimistic,
   }));
 }
 

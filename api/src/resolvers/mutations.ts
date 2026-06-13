@@ -4,7 +4,7 @@
 // rows 9-10), then (b) simulateContract (which surfaces a typed custom-error revert for free,
 // no gas, no broadcast — rows 3, 5-6, 8) and (c) writeContract via the single server signer. A
 // caught revert is decoded to a typed ReasonCode and thrown as a ChainRevertError. On a clean
-// broadcast it records the PENDING tx + optimistic position (#23) and returns a PENDING ref.
+// broadcast it records the PENDING tx (#23) and returns a PENDING ref (the position lands via the indexer).
 import { GraphQLError } from "graphql";
 import type { Address } from "viem";
 import { isDistributionHalted } from "../recon/halt.ts";
@@ -14,7 +14,6 @@ import { ChainRevertError, ReconHaltError } from "../errors.ts";
 import { recordPending } from "../tx/tracker.ts";
 import type { ApiContext } from "../context.ts";
 import type { TxReceiptRefSource } from "../schema/types/tx.ts";
-import { optimisticPositionsFor } from "../tx/reconcile.ts";
 
 // #20 input shapes (post-scalar-validation: amount is a uint256 decimal string, wallets 0x-hex).
 interface InvestArgs {
@@ -74,15 +73,10 @@ async function broadcastGated(ctx: ApiContext, request: ContractRequest): Promis
   });
 }
 
-// #23 build the PENDING TxReceiptRef returned on a clean broadcast, attaching the optimistic
-// position for an invest (the dashboard shows it before the indexer catches up).
-async function pendingRef(ctx: ApiContext, hash: `0x${string}`, kind: "invest" | "transfer" | "claim", holder: string): Promise<TxReceiptRefSource> {
-  let position = null as TxReceiptRefSource["position"];
-  if (kind === "invest") {
-    const optimistic = await optimisticPositionsFor(ctx.db, holder);
-    position = optimistic.find((p) => p.id === `optimistic:${hash}`) ?? null;
-  }
-  return { hash, state: "PENDING", reasonCode: null, blockNumber: null, position };
+// #23 the PENDING TxReceiptRef returned on a clean broadcast. The position lands separately via the
+// indexer (#66 dropped the optimistic placeholder this used to attach).
+function pendingRef(hash: `0x${string}`): TxReceiptRefSource {
+  return { hash, state: "PENDING", reasonCode: null, blockNumber: null };
 }
 
 // #66 resolve a loan's CreditToken address from the loans read model — the single source of truth for
@@ -98,8 +92,8 @@ async function resolveTokenAddress(db: ApiContext["db"], loanId: string): Promis
   return addr as Address;
 }
 
-// #21/#23 invest: mint the loan token to a wallet (PositionOpened; rows 1-3). Records PENDING +
-// optimistic position, returns immediately (does NOT block on confirmation — the watcher settles).
+// #21/#23 invest: mint the loan token to a wallet (PositionOpened; rows 1-3). Records the PENDING tx
+// and returns immediately (does NOT block on confirmation — the watcher settles; the indexer projects).
 export async function resolveInvest(ctx: ApiContext, input: InvestArgs): Promise<TxReceiptRefSource> {
   const wallet = input.wallet.toLowerCase() as Address;
   const amount = BigInt(input.amount);
@@ -124,8 +118,8 @@ export async function resolveInvest(ctx: ApiContext, input: InvestArgs): Promise
 
   const request = investRequest(await resolveTokenAddress(ctx.db, input.loanId), input.loanId, wallet, amount);
   const hash = await broadcastGated(ctx, request);
-  await recordPending(ctx.db, { hash, kind: "invest", holder: wallet, loanId: input.loanId, amount });
-  return pendingRef(ctx, hash, "invest", wallet);
+  await recordPending(ctx.db, { hash, kind: "invest", holder: wallet, loanId: input.loanId });
+  return pendingRef(hash);
 }
 
 // #21/#23 transfer: a gauntleted transfer (rows 5-6). Single-signer caveat: the broadcast
@@ -139,7 +133,7 @@ export async function resolveTransfer(ctx: ApiContext, input: TransferArgs): Pro
   const request = transferRequest(await resolveTokenAddress(ctx.db, input.loanId), to, amount);
   const hash = await broadcastGated(ctx, request);
   await recordPending(ctx.db, { hash, kind: "transfer", holder: to, loanId: input.loanId });
-  return pendingRef(ctx, hash, "transfer", to);
+  return pendingRef(hash);
 }
 
 // #21/#23 claim: pay a holder's accrued interest from the reserve (rows 7-8; InsufficientReserve).
@@ -148,7 +142,7 @@ export async function resolveClaim(ctx: ApiContext, input: ClaimArgs): Promise<T
   const request = claimRequest(await resolveTokenAddress(ctx.db, input.loanId));
   const hash = await broadcastGated(ctx, request);
   await recordPending(ctx.db, { hash, kind: "claim", holder: wallet, loanId: input.loanId });
-  return pendingRef(ctx, hash, "claim", wallet);
+  return pendingRef(hash);
 }
 
 // #21 export the gate for direct unit testing (mock chain client + HALTED read model).

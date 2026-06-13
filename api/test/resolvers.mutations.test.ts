@@ -1,6 +1,6 @@
 // #21 mutation resolvers — the seam: HALT gate, typed reverts, real broadcasts.
 // The verify gate's core. Against the local anvil + seeded read model:
-//  • invest (accredited-US) broadcasts and returns a PENDING ref + an optimistic position (row 1).
+//  • invest (accredited-US) broadcasts and returns a PENDING ref (row 1).
 //  • claim (anchor holder) broadcasts (row 7).
 //  • each eligibility branch surfaces its TYPED ReasonCode via simulateContract, not an RPC string:
 //    unverified invest -> NotEligible/ReceiverNotVerified; transfer-to-frozen -> ReceiverFrozen;
@@ -59,17 +59,13 @@ afterAll(async () => {
 
 // --- happy paths (real broadcasts against anvil) ---
 
-test("invest (accredited-US, RegD loan 1) broadcasts + writes an optimistic position (row 1)", async () => {
+test("invest (accredited-US, RegD loan 1) broadcasts + records a PENDING tx (row 1)", async () => {
   const res = await resolveInvest(ctx, { loanId: "1", wallet: ACCREDITED_US_2, amount: "1000000000" });
   expect(res.state).toBe("PENDING");
   expect(res.hash).toMatch(/^0x[0-9a-f]{64}$/);
-  // optimistic position attached + persisted (count 1 for this hash).
-  expect(res.position?.optimistic).toBe(true);
-  expect(typeof res.position?.principal).toBe("string");
+  // #66 the PENDING tx is tracked; the position itself lands via the indexer, not an optimistic row.
   const txRows = await sql<{ count: bigint }[]>`select count(*)::bigint as count from tx_status where hash = ${res.hash} and state = 'PENDING'`;
   expect(txRows[0]?.count).toBe(1n);
-  const optRows = await sql<{ count: bigint }[]>`select count(*)::bigint as count from optimistic_positions where hash = ${res.hash}`;
-  expect(optRows[0]?.count).toBe(1n);
 });
 
 test("money round-trips as a string end to end — no IEEE-754 widening (2^53+1)", async () => {

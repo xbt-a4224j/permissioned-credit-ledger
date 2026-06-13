@@ -7,13 +7,13 @@
 // BigIntStr decimal strings end to end — no Number() coercion.
 import type { ReasonCode } from "./reasonCodes.ts";
 
-// #25 the TxReceiptRef fields the flows read (hash + state + optional optimistic position).
+// #25 the TxReceiptRef fields the flows read (hash + lifecycle state). The position lands separately
+// via the indexer (#66 removed the optimistic placeholder the invest used to return).
 export interface TxReceiptRef {
   hash: string;
   state: "PENDING" | "CONFIRMED" | "REVERTED";
   reasonCode: ReasonCode | null;
   blockNumber: string | null;
-  position: { id: string; loanId: string; holder: string; principal: string; accrued: string; claimable: string; optimistic: boolean } | null;
 }
 
 // #25 the discriminated mutation result the UI branches on. `code` is a typed ReasonCode on failure.
@@ -27,7 +27,6 @@ export const INVEST_MUTATION = /* GraphQL */ `
       state
       reasonCode
       blockNumber
-      position { id loanId holder principal accrued claimable optimistic }
     }
   }
 `;

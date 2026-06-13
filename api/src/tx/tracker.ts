@@ -1,14 +1,13 @@
-// Tx-status tracking — PENDING -> CONFIRMED|REVERTED + optimistic write · #23
-// recordPending stamps a PENDING tx the instant invest/transfer/claim broadcasts (#21) and, for
-// an invest, writes the optimistic position the dashboard shows before the indexer catches up.
+// Tx-status tracking — PENDING -> CONFIRMED|REVERTED · #23
+// recordPending stamps a PENDING tx the instant invest/transfer/claim broadcasts (#21).
 // startConfirmationWatcher waits for each receipt: success -> CONFIRMED (+ block); reverted ->
 // REVERTED with the on-chain reason decoded to a typed ReasonCode (#21), never a raw string. It
-// emits a `tx` SSE event at every transition so the UI lifecycle is push, not poll.
+// emits a `tx` SSE event at every transition so the UI lifecycle is push, not poll. (#66 removed
+// the optimistic-position write that used to ride here; the position now comes from the indexer.)
 import type { Address } from "viem";
 import type { Sql } from "@pcl/shared";
 import type { EventBus } from "../sse/bus.ts";
 import { decodeReason } from "../chain/errors.ts";
-import { reconcileOptimistic } from "./reconcile.ts";
 import type { TxReceiptRefSource } from "../schema/types/tx.ts";
 
 // #23 the minimal receipt-fetching surface the watcher needs (a viem PublicClient satisfies it,
@@ -24,11 +23,9 @@ export interface RecordPendingArgs {
   kind: TxKind;
   holder: Address;
   loanId: string;
-  amount?: bigint;
 }
 
-// #23 insert a PENDING tx_status row (idempotent on hash); for an invest also write the optimistic
-// position row so position(s) reflect it immediately (#21 merge).
+// #23 insert a PENDING tx_status row (idempotent on hash). The position itself is the indexer's job.
 export async function recordPending(sql: Sql, args: RecordPendingArgs): Promise<void> {
   const holder = args.holder.toLowerCase();
   await sql`
@@ -36,13 +33,6 @@ export async function recordPending(sql: Sql, args: RecordPendingArgs): Promise<
     values (${args.hash}, ${args.kind}, 'PENDING', ${holder}, ${args.loanId})
     on conflict (hash) do nothing
   `;
-  if (args.kind === "invest" && args.amount !== undefined) {
-    await sql`
-      insert into optimistic_positions (hash, holder, loan_id, principal)
-      values (${args.hash}, ${holder}, ${args.loanId}, ${args.amount.toString()})
-      on conflict (hash) do nothing
-    `;
-  }
 }
 
 // #23 build the TxReceiptRef SSE payload for a tx_status row (money/block as strings). reason_code
@@ -57,7 +47,6 @@ async function txEventPayload(sql: Sql, hash: string): Promise<TxReceiptRefSourc
     state: r?.state ?? "PENDING",
     reasonCode: (r?.reason_code ?? null) as TxReceiptRefSource["reasonCode"],
     blockNumber: r?.block_number !== null && r?.block_number !== undefined ? r.block_number.toString() : null,
-    position: null,
   };
 }
 
@@ -99,8 +88,7 @@ export async function settlePending(
   bus.publish({ type: "tx", data: await txEventPayload(sql, hash) });
 }
 
-// #23 the long-running watcher: drain PENDING txs, settle each, then reconcile optimistic rows so
-// a confirmed invest's optimistic placeholder is replaced by the canonical row once it lands.
+// #23 the long-running watcher: drain PENDING txs and settle each (success/revert -> tx_status + SSE).
 export function startConfirmationWatcher(
   sql: Sql,
   client: ReceiptClient,
@@ -116,7 +104,6 @@ export function startConfirmationWatcher(
         if (stopped) break;
         await settlePending(sql, client, bus, p.hash as `0x${string}`);
       }
-      await reconcileOptimistic(sql);
     } catch {
       // transient DB/RPC hiccup — the next tick retries (resumable, not corrupting).
     }

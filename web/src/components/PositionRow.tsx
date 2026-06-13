@@ -31,9 +31,6 @@ export function PositionRow(props: { position: Position; tick?: AccrualTick | un
         ) : (
           <Badge tone="positive">Accruing</Badge>
         )}
-        {position.optimistic ? (
-          <span className="ml-2"><Badge tone="warn" title="Pending confirmation">Pending</Badge></span>
-        ) : null}
       </td>
       <td className="px-3 py-3 text-right">{props.actionSlot}</td>
     </tr>

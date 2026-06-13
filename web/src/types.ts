@@ -30,7 +30,7 @@ export interface Loan {
 }
 
 // #24 a holder Position: principal is the token balance; accrued/claimable mirror on-chain
-// interest the recon engine (#18) bounds. `optimistic` flags a pre-confirmation row (#23).
+// interest the recon engine (#18) bounds. Indexer-projected (#66 removed the optimistic row).
 export interface Position {
   id: PositionId;
   holder: IdentityAddr;
@@ -38,5 +38,4 @@ export interface Position {
   principal: bigint;
   accrued: bigint;
   claimable: bigint;
-  optimistic: boolean;
 }

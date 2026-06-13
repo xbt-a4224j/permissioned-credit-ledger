@@ -82,7 +82,7 @@ describe("PositionDashboardView", () => {
   function positions(): { positions: unknown[] } {
     return {
       positions: [
-        { id: "1:0x70997970c51812dc3a010c7d01b50e0d17dc79c8", loanId: "1", holder, principal: "5000000", accrued: "1000000", claimable: "1000000", optimistic: false },
+        { id: "1:0x70997970c51812dc3a010c7d01b50e0d17dc79c8", loanId: "1", holder, principal: "5000000", accrued: "1000000", claimable: "1000000" },
       ],
     };
   }

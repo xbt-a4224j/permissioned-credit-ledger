@@ -3,7 +3,7 @@
 // reserve/recon_status/identities read models the indexer (#16) and reconciliation engine (#18)
 // populate. Every money column is numeric(78,0) -> a bigint (the #15 client parser) -> a decimal
 // string at the GraphQL boundary (the BigIntStr landmine). ratePerSecond comes from the deploy
-// manifest (#12). position(s) merge the optimistic pre-confirmation rows (#23).
+// manifest (#12). position(s) read the indexer-projected `positions` read model (#66).
 import type { ApiContext } from "../context.ts";
 import type { LoanSource } from "../schema/types/loan.ts";
 import type { PositionSource } from "../schema/types/position.ts";
@@ -11,7 +11,6 @@ import type { ReserveStateSource, ReserveLedgerEntrySource } from "../schema/typ
 import type { ReconciliationStatusSource } from "../schema/types/reconciliation.ts";
 import type { NavReadingSource } from "../schema/types/navReading.ts";
 import type { ChainEventSource } from "../schema/types/chainEvent.ts";
-import { optimisticPositionsFor } from "../tx/reconcile.ts";
 
 // #21 read-model loan status -> the GraphQL LoanStatus enum. DEFAULT == Matured (no accrual);
 // a NAV-frozen loan shows Frozen; everything else is Active.
@@ -101,35 +100,28 @@ function canonicalPosition(r: { id: string; loan_id: string; holder: string; pri
     accrued: r.accrued.toString(),
     claimable: r.accrued.toString(),
     lastAccrualAt: new Date(Number(r.opened_at ?? 0n) * 1000),
-    optimistic: false,
   };
 }
 
-// #21/#23 one holder's position on a loan: the canonical row, or — before the indexer catches up
-// — a synthesized optimistic row (optimistic=true). Holder is lowercased to match the read model.
+// #21 one holder's position on a loan — the canonical, indexer-projected row (null if none yet).
+// Holder is lowercased to match the read model. (#66 dropped the optimistic pre-confirmation row.)
 export async function resolvePosition(ctx: ApiContext, holder: string, loanId: string): Promise<PositionSource | null> {
   const h = holder.toLowerCase();
   const rows = await ctx.db<{ id: string; loan_id: string; holder: string; principal: bigint; accrued: bigint; opened_at: bigint | null }[]>`
     select id, loan_id, holder, principal::text as principal, accrued::text as accrued, opened_at
     from positions where holder = ${h} and loan_id = ${loanId} and principal > 0
   `;
-  if (rows[0] !== undefined) return canonicalPosition(rows[0]);
-  const optimistic = await optimisticPositionsFor(ctx.db, h);
-  return optimistic.find((p) => p.loanId === loanId) ?? null;
+  return rows[0] !== undefined ? canonicalPosition(rows[0]) : null;
 }
 
-// #21/#23 all of a holder's positions: canonical (principal > 0) plus un-reconciled optimistic
-// rows whose canonical counterpart has not yet landed (#23).
+// #21 all of a holder's positions — the canonical (principal > 0) rows from the indexer.
 export async function resolvePositions(ctx: ApiContext, holder: string): Promise<PositionSource[]> {
   const h = holder.toLowerCase();
   const rows = await ctx.db<{ id: string; loan_id: string; holder: string; principal: bigint; accrued: bigint; opened_at: bigint | null }[]>`
     select id, loan_id, holder, principal::text as principal, accrued::text as accrued, opened_at
     from positions where holder = ${h} and principal > 0 order by loan_id::int
   `;
-  const canonical = rows.map(canonicalPosition);
-  const canonicalLoans = new Set(canonical.map((p) => p.loanId));
-  const optimistic = (await optimisticPositionsFor(ctx.db, h)).filter((p) => !canonicalLoans.has(p.loanId));
-  return [...canonical, ...optimistic];
+  return rows.map(canonicalPosition);
 }
 
 // #21 the reserve coverage: the single-row balance + the engine-snapshotted aggregate on-chain

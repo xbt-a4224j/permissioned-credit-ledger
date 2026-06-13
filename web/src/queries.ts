@@ -65,7 +65,8 @@ export const BOOK_ANALYTICS_QUERY = /* GraphQL */ `
 `;
 
 // #24 the position dashboard query (per holder). principal is the token balance; accrued/claimable
-// mirror on-chain interest; optimistic flags a pre-confirmation row (#23).
+// mirror on-chain interest. Positions are the indexer-projected read model (#66 removed the
+// optimistic pre-confirmation row — a fresh invest appears within a block + an index cycle).
 export const POSITIONS_QUERY = /* GraphQL */ `
   query Positions($holder: Address!) {
     positions(holder: $holder) {
@@ -75,7 +76,6 @@ export const POSITIONS_QUERY = /* GraphQL */ `
       principal
       accrued
       claimable
-      optimistic
     }
   }
 `;

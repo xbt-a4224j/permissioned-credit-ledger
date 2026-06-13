@@ -70,7 +70,6 @@ test("the anchor holder has the seeded position on loan 1", async () => {
   expect(onLoan1).toBeDefined();
   expect(typeof onLoan1?.principal).toBe("string");
   expect(BigInt(onLoan1!.principal)).toBe(100_000_000_000n); // 100_000e6 anchor
-  expect(onLoan1?.optimistic).toBe(false);
 });
 
 test("reconciliationStatus returns the 4 named invariants", async () => {

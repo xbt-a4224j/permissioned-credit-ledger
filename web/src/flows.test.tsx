@@ -62,7 +62,6 @@ const position: Position = {
   principal: 5_000_000n,
   accrued: 1_000_000n,
   claimable: 1_000_000n,
-  optimistic: false,
 };
 
 // #25 make gql throw a typed revert (the extensions.code path).

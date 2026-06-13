@@ -3,7 +3,7 @@
 // + KYC (submitKyc). Field signatures frozen here (#20); the resolver bodies (#21) gate on
 // the reconciliation status FIRST (a HALTED engine refuses to broadcast — matrix rows 9-10),
 // then simulate (surfacing typed custom-error reverts for free — rows 3, 5-6, 8) and write via the
-// single server signer, recording the PENDING tx + optimistic position (#23).
+// single server signer, recording the PENDING tx (#23; the position lands via the indexer).
 import { builder } from "./builder.ts";
 import { TxReceiptRef } from "./types/tx.ts";
 import { ReconciliationStatus } from "./types/reconciliation.ts";

@@ -44,7 +44,7 @@ builder.queryType({
       args: { id: t.arg.id({ required: true }) },
       resolve: (_root, args, ctx) => resolveLoan(ctx, String(args.id)),
     }),
-    // #20/#21/#23 one holder's position on a loan (merges the optimistic row pre-catch-up).
+    // #20/#21 one holder's position on a loan (the indexer-projected canonical row).
     position: t.field({
       type: Position,
       nullable: true,
@@ -54,7 +54,7 @@ builder.queryType({
       },
       resolve: (_root, args, ctx) => resolvePosition(ctx, args.holder, String(args.loanId)),
     }),
-    // #20/#21/#23 all of a holder's positions (canonical + un-reconciled optimistic).
+    // #20/#21 all of a holder's positions (the indexer-projected canonical rows).
     positions: t.field({
       type: [Position],
       nullable: false,

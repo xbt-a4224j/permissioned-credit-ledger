@@ -1,7 +1,7 @@
 // The claim panel — pay accrued interest from the reserve · #25
 // Shows the position's claimable and a Claim button (gated on a connected wallet). On success it
 // confirms InterestClaimed + a debited-reserve hint (row 7); on InsufficientReserve it renders the
-// ReasonBadge and leaves accrued intact (row 8 — the optimistic value is NOT reset). Money is bigint.
+// ReasonBadge and leaves accrued intact (row 8 — accrued is engine-owned, never mutated here). Money is bigint.
 import type { Position } from "../types.ts";
 import type { WalletApi } from "../lib/wallet.ts";
 import { useWallet } from "../lib/wallet.ts";
