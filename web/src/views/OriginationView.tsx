@@ -12,7 +12,7 @@ import { gql } from "../lib/graphqlClient.ts";
 import { fmtLtv, fmtDscr } from "../lib/format.ts";
 import { logAction } from "../lib/actionLog.ts";
 import { ServicingTicker } from "../components/ServicingTicker.tsx";
-import { Card, DataTable, Button, Banner, StatPill, LoadingState, ErrorState } from "../components/primitives.tsx";
+import { Card, DataTable, Button, Badge, Banner, StatPill, LoadingState, ErrorState } from "../components/primitives.tsx";
 import type { Column } from "../components/primitives.tsx";
 
 interface BookWeights { credit: number; ret: number; duration: number; portfolio: number }
@@ -60,7 +60,9 @@ function BarList(props: { title: string; buckets: Bucket[]; format?: (n: number)
 const fmtExposure = (m: number): string => (m >= 1000 ? `$${(m / 1000).toFixed(1)}B` : `$${m.toLocaleString()}M`);
 
 export function OriginationView(): JSX.Element {
-  const book = useQuery<BookRaw, BookRaw["book"]>(BOOK_QUERY, (r) => r.book, { limit: 12, offset: 0 });
+  // #66 includeTokenized so a loan stays in the book table after it's tokenized (shown with a
+  // "Tokenized" badge instead of dropping out); it just graduates from a Tokenize action to live.
+  const book = useQuery<BookRaw, BookRaw["book"]>(BOOK_QUERY, (r) => r.book, { limit: 12, offset: 0, includeTokenized: true });
   const analytics = useQuery<AnalyticsRaw, AnalyticsRaw["bookAnalytics"]>(BOOK_ANALYTICS_QUERY, (r) => r.bookAnalytics);
   const [tokenizing, setTokenizing] = useState<string | null>(null);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
@@ -117,16 +119,19 @@ export function OriginationView(): JSX.Element {
       key: "action",
       header: "",
       align: "right",
-      render: (l) => (
-        <Button
-          variant="primary"
-          disabled={tokenizing !== null}
-          title="Deploy a real CreditToken for this loan on-chain"
-          onClick={() => { void tokenize(l.loanId); }}
-        >
-          {tokenizing === l.loanId ? "Deploying…" : "Tokenize"}
-        </Button>
-      ),
+      render: (l) =>
+        l.tokenized ? (
+          <Badge tone="positive" title="Already deployed on-chain — live in the Marketplace">Tokenized</Badge>
+        ) : (
+          <Button
+            variant="primary"
+            disabled={tokenizing !== null}
+            title="Deploy a real CreditToken for this loan on-chain"
+            onClick={() => { void tokenize(l.loanId); }}
+          >
+            {tokenizing === l.loanId ? "Deploying…" : "Tokenize"}
+          </Button>
+        ),
     },
   ];
 

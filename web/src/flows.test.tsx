@@ -46,6 +46,7 @@ const wallet: WalletApi = {
 
 const loan: Loan = {
   id: "1" as Loan["id"],
+  originId: null,
   principal: 1_000_000n,
   subscribed: 0n,
   ratePerSecond: 1000n,

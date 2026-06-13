@@ -8,7 +8,7 @@
 // reserve and the local feed are fixtures, and these must never run against Fuji (same posture as
 // scripts/demo_reset.ts NonLocalRpcRefused).
 import { GraphQLError } from "graphql";
-import { loanId as toLoanId, unixSeconds, bps, reportReserveBalance } from "@pcl/shared";
+import { loanId as toLoanId, unixSeconds, bps, reportReserveBalance, ratePerSecondFromBps } from "@pcl/shared";
 import { ingestNav } from "../nav/gate.ts";
 import type { SnapshotManifest } from "../recon/snapshot.ts";
 import { runReconCycle } from "../recon/engine.ts";
@@ -19,10 +19,8 @@ import CreditTokenArtifact from "../abi/CreditToken.json";
 
 const LOCAL_CHAIN_ID = 31337;
 
-// #66 runtime-deploy constants. RATE_SCALE mirrors CreditToken.RATE_SCALE; RESERVE_FUNDING mirrors
-// Deploy.s.sol so funded claims on the new loan succeed.
-const RATE_SCALE = 10n ** 18n;
-const SECONDS_PER_YEAR = 31_536_000n;
+// #66 runtime-deploy constants. RESERVE_FUNDING mirrors Deploy.s.sol so funded claims on the new
+// loan succeed. The bps->ratePerSecond conversion is the shared ratePerSecondFromBps helper.
 const RESERVE_FUNDING = 1_000_000_000_000n; // 1,000,000e6
 const RESERVE_MINT_ABI = [
   { type: "function", name: "mint", stateMutability: "nonpayable", inputs: [{ type: "address" }, { type: "uint256" }], outputs: [] },
@@ -113,7 +111,7 @@ export async function resolveTokenizeLoan(ctx: ApiContext, warehouseLoanId: stri
 
   // wh_book.principal is dollars; on-chain principalCap + loans.principal are 6-decimal base units.
   const principalBase = BigInt(Math.round(Number(wl.principal))) * 1_000_000n;
-  const ratePerSecond = (BigInt(wl.coupon_bps) * RATE_SCALE) / (10_000n * SECONDS_PER_YEAR);
+  const ratePerSecond = ratePerSecondFromBps(wl.coupon_bps);
   const collateral = wl.property_type === "Residential" ? "RESIDENTIAL" : "CRE";
   const maxRows = await ctx.db<{ max: number }[]>`select coalesce(max(id::int), 0) as max from loans`;
   const newId = String((maxRows[0]?.max ?? 0) + 1);
@@ -168,8 +166,10 @@ export async function resolveTokenizeLoan(ctx: ApiContext, warehouseLoanId: stri
   const appraised = (principalBase * 10_000n) / BigInt(wl.ltv_bps);
   await ctx.db`insert into properties (id, address_label, appraised_value, lien_position)
     values (${newId}, ${"Tokenized series #" + newId}, ${appraised.toString()}, 1) on conflict (id) do nothing`;
-  await ctx.db`insert into loans (id, principal, rate_bps, status, started_at, collateral_type, property_id, ltv_bps, dscr_bps, token_address)
-    values (${newId}, ${principalBase.toString()}, ${wl.coupon_bps}, 'PERFORMING', 0, ${collateral}, ${newId}, ${wl.ltv_bps}, ${wl.dscr_bps}, ${tokenAddress.toLowerCase()})`;
+  // #66 origin_id = the warehouse string id (e.g. "L03857") so the marketplace can show it instead
+  // of the numeric loans.id; the 6 seeded loans leave it NULL and keep displaying "#1".."#6".
+  await ctx.db`insert into loans (id, origin_id, principal, rate_bps, status, started_at, collateral_type, property_id, ltv_bps, dscr_bps, token_address)
+    values (${newId}, ${warehouseLoanId}, ${principalBase.toString()}, ${wl.coupon_bps}, 'PERFORMING', 0, ${collateral}, ${newId}, ${wl.ltv_bps}, ${wl.dscr_bps}, ${tokenAddress.toLowerCase()})`;
   await ctx.db`insert into nav_readings (loan_id, nav_bps, observed_at, source, accepted)
     values (${newId}, 10000, ${unixSeconds(Math.floor(Date.now() / 1000))}, 'tokenize', true)`;
 

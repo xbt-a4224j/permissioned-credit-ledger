@@ -28,6 +28,7 @@ interface ReserveRaw {
 interface LoansRaw {
   loans: {
     id: string;
+    originId: string | null;
     principal: string;
     subscribed: string;
     ratePerSecond: string;
@@ -42,6 +43,7 @@ interface LoansRaw {
 function mapLoans(raw: LoansRaw): Loan[] {
   return raw.loans.map((l) => ({
     id: l.id as LoanId,
+    originId: l.originId,
     principal: BigInt(l.principal),
     subscribed: BigInt(l.subscribed),
     ratePerSecond: BigInt(l.ratePerSecond),

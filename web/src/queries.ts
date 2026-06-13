@@ -10,6 +10,7 @@ export const LOANS_QUERY = /* GraphQL */ `
   query Loans {
     loans {
       id
+      originId
       principal
       subscribed
       ratePerSecond
@@ -24,8 +25,8 @@ export const LOANS_QUERY = /* GraphQL */ `
 // #70 the warehouse ranked book (score desc, paginated), proxied through the API (#64). The score +
 // its four contributions make the ranking auditable; weights ship so the UI can show what drives it.
 export const BOOK_QUERY = /* GraphQL */ `
-  query Book($limit: Int!, $offset: Int!) {
-    book(limit: $limit, offset: $offset) {
+  query Book($limit: Int!, $offset: Int!, $includeTokenized: Boolean) {
+    book(limit: $limit, offset: $offset, includeTokenized: $includeTokenized) {
       weights { credit ret duration portfolio }
       total
       loans {

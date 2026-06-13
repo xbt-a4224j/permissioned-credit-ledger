@@ -19,6 +19,7 @@ export type CollateralType = "CRE" | "RESIDENTIAL";
 // subscribed = principal already taken by investors; principal − subscribed = unsubscribed capacity.
 export interface Loan {
   id: LoanId;
+  originId: string | null;
   principal: bigint;
   subscribed: bigint;
   ratePerSecond: bigint;

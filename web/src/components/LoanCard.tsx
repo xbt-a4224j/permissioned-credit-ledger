@@ -32,7 +32,7 @@ export function LoanCard(props: { loan: Loan; actionSlot?: ReactNode }): JSX.Ele
       <div className="flex items-start justify-between">
         <div>
           <div className="text-xs uppercase tracking-wide text-slate-500">Loan series</div>
-          <div className="font-tabular text-lg font-semibold text-navy-900">#{loan.id}</div>
+          <div className="font-tabular text-lg font-semibold text-navy-900">{loan.originId ?? `#${loan.id}`}</div>
         </div>
         <div className="flex gap-2">
           <Badge tone={collateral === "RESIDENTIAL" ? "warn" : "navy"} title={`${collateral} collateral`}>
@@ -97,7 +97,7 @@ export function LoanCard(props: { loan: Loan; actionSlot?: ReactNode }): JSX.Ele
       {activeDoc !== null ? (
         <Modal title={activeDoc} onClose={() => setActiveDoc(null)}>
           <p className="text-sm text-slate-600">
-            Sample document for loan series #{loan.id}. In production the data room serves the gated{" "}
+            Sample document for loan series {loan.originId ?? `#${loan.id}`}. In production the data room serves the gated{" "}
             <span className="font-medium text-slate-800">{activeDoc.toLowerCase()}</span> to verified, eligible
             investors only; here it is a stub to demonstrate the flow.
           </p>

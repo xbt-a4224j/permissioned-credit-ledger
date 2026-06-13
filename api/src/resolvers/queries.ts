@@ -4,6 +4,7 @@
 // populate. Every money column is numeric(78,0) -> a bigint (the #15 client parser) -> a decimal
 // string at the GraphQL boundary (the BigIntStr landmine). ratePerSecond comes from the deploy
 // manifest (#12). position(s) read the indexer-projected `positions` read model (#66).
+import { ratePerSecondFromBps } from "@pcl/shared";
 import type { ApiContext } from "../context.ts";
 import type { LoanSource } from "../schema/types/loan.ts";
 import type { PositionSource } from "../schema/types/position.ts";
@@ -40,53 +41,52 @@ async function frozenLoanIds(ctx: ApiContext): Promise<Set<string>> {
 // on-chain (mint reverts ExceedsPrincipal past principalCap, #46) — this is display.
 export async function resolveLoans(ctx: ApiContext): Promise<LoanSource[]> {
   const frozen = await frozenLoanIds(ctx);
-  const rows = await ctx.db<{ id: string; principal: bigint; subscribed: bigint; status: string; ltv_bps: number; dscr_bps: number }[]>`
-    select l.id, l.principal::text as principal, l.status, l.ltv_bps, l.dscr_bps,
+  const rows = await ctx.db<{ id: string; origin_id: string | null; principal: bigint; subscribed: bigint; rate_bps: number; status: string; ltv_bps: number; dscr_bps: number }[]>`
+    select l.id, l.origin_id, l.principal::text as principal, l.rate_bps, l.status, l.ltv_bps, l.dscr_bps,
            coalesce(sum(p.principal) filter (where p.principal > 0), 0)::text as subscribed
     from loans l
     left join positions p on p.loan_id = l.id
-    group by l.id, l.principal, l.status, l.ltv_bps, l.dscr_bps
+    group by l.id, l.origin_id, l.principal, l.rate_bps, l.status, l.ltv_bps, l.dscr_bps
     order by l.id::int
   `;
-  return rows.map((r) => {
-    const manifestLoan = ctx.manifest.loans[r.id];
-    return {
-      id: r.id,
-      principal: r.principal.toString(),
-      subscribed: r.subscribed.toString(),
-      ratePerSecond: manifestLoan?.ratePerSecond ?? "0",
-      ltvBps: r.ltv_bps,
-      dscrBps: r.dscr_bps,
-      status: loanStatus(r.status, frozen.has(r.id)),
-      dataRoomUri: manifestLoan ? `ipfs://dataroom/${r.id}` : null,
-    };
-  });
+  return rows.map((r) => toLoanSource(r, frozen, ctx.manifest.loans[r.id]));
+}
+
+// #66 map a loans row -> the GraphQL Loan source. ratePerSecond falls back to a value computed from
+// loans.rate_bps when the loan is absent from the static deploy manifest — i.e. a loan tokenized at
+// runtime (#75), whose rate the manifest never learned. Seeded loans keep using the manifest verbatim.
+function toLoanSource(
+  r: { id: string; origin_id: string | null; principal: bigint; subscribed: bigint; rate_bps: number; status: string; ltv_bps: number; dscr_bps: number },
+  frozen: ReadonlySet<string>,
+  manifestLoan?: { ratePerSecond: string },
+): LoanSource {
+  return {
+    id: r.id,
+    originId: r.origin_id,
+    principal: r.principal.toString(),
+    subscribed: r.subscribed.toString(),
+    ratePerSecond: manifestLoan?.ratePerSecond ?? ratePerSecondFromBps(r.rate_bps).toString(),
+    ltvBps: r.ltv_bps,
+    dscrBps: r.dscr_bps,
+    status: loanStatus(r.status, frozen.has(r.id)),
+    dataRoomUri: `ipfs://dataroom/${r.id}`,
+  };
 }
 
 // #21 one loan by id (null if unknown). Same subscribed aggregation as resolveLoans.
 export async function resolveLoan(ctx: ApiContext, id: string): Promise<LoanSource | null> {
   const frozen = await frozenLoanIds(ctx);
-  const rows = await ctx.db<{ id: string; principal: bigint; subscribed: bigint; status: string; ltv_bps: number; dscr_bps: number }[]>`
-    select l.id, l.principal::text as principal, l.status, l.ltv_bps, l.dscr_bps,
+  const rows = await ctx.db<{ id: string; origin_id: string | null; principal: bigint; subscribed: bigint; rate_bps: number; status: string; ltv_bps: number; dscr_bps: number }[]>`
+    select l.id, l.origin_id, l.principal::text as principal, l.rate_bps, l.status, l.ltv_bps, l.dscr_bps,
            coalesce(sum(p.principal) filter (where p.principal > 0), 0)::text as subscribed
     from loans l
     left join positions p on p.loan_id = l.id
     where l.id = ${id}
-    group by l.id, l.principal, l.status, l.ltv_bps, l.dscr_bps
+    group by l.id, l.origin_id, l.principal, l.rate_bps, l.status, l.ltv_bps, l.dscr_bps
   `;
   const r = rows[0];
   if (r === undefined) return null;
-  const manifestLoan = ctx.manifest.loans[r.id];
-  return {
-    id: r.id,
-    principal: r.principal.toString(),
-    subscribed: r.subscribed.toString(),
-    ratePerSecond: manifestLoan?.ratePerSecond ?? "0",
-    ltvBps: r.ltv_bps,
-    dscrBps: r.dscr_bps,
-    status: loanStatus(r.status, frozen.has(r.id)),
-    dataRoomUri: manifestLoan ? `ipfs://dataroom/${r.id}` : null,
-  };
+  return toLoanSource(r, frozen, ctx.manifest.loans[r.id]);
 }
 
 // #21 map a canonical positions row -> the GraphQL Position source. claimable is the off-chain

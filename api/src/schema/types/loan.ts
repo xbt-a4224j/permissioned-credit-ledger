@@ -11,6 +11,7 @@ import { LoanStatus } from "../enums.ts";
 // principal − subscribed is the series' unsubscribed capacity the marketplace renders.
 export interface LoanSource {
   id: string;
+  originId: string | null;
   principal: string;
   subscribed: string;
   ratePerSecond: string;
@@ -23,6 +24,7 @@ export interface LoanSource {
 export const Loan = builder.simpleObject("Loan", {
   fields: (t) => ({
     id: t.id({ nullable: false }),
+    originId: t.string({ nullable: true }),
     principal: t.field({ type: "BigIntStr", nullable: false }),
     subscribed: t.field({ type: "BigIntStr", nullable: false }),
     ratePerSecond: t.field({ type: "BigIntStr", nullable: false }),

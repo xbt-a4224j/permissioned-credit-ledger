@@ -9,3 +9,5 @@ export * from "./schemas.ts";
 export * from "./db/index.ts";
 // #82 reserve append-only ledger helpers (balance kept as a maintained cache).
 export * from "./reserve-ledger.ts";
+// #66 bps coupon -> on-chain ratePerSecond (single source of truth for the rate conversion).
+export * from "./rate.ts";
