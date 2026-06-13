@@ -68,8 +68,17 @@ export async function resolveSubmitKyc(ctx: ApiContext, input: KycInputArgs): Pr
     account: ctx.chain.account,
     chain: ctx.chain.walletClient.chain,
   });
-  // wait for the claim to land so a follow-up invest sees the verified wallet.
-  await ctx.chain.publicClient.waitForTransactionReceipt({ hash: txHash });
+  // #39 wait for the claim to land AND confirm it succeeded. A reverted setClaims (signer lost
+  // ISSUER_ROLE, nonce/gas, a stale-deploy registry) must NOT be reported as APPROVED: the wallet
+  // stays unverified on-chain, so a follow-up invest reverts ReceiverNotVerified at the simulate
+  // stage and never broadcasts — surfacing as a silent "position never opened, never accrues" bug.
+  // Surface it instead of writing an off-chain mirror that disagrees with the chain.
+  const receipt = await ctx.chain.publicClient.waitForTransactionReceipt({ hash: txHash });
+  if (receipt.status !== "success") {
+    throw new GraphQLError("Identity claim write reverted on-chain; wallet is not verified.", {
+      extensions: { code: "ChainRevertError" },
+    });
+  }
 
   // #39 mirror the on-chain claim into the off-chain identities read-model. The indexer projects
   // token events (PositionOpened/Transfer/…) but NOT identity-claim changes, so without this the
