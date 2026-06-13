@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.7.0...v1.8.0) (2026-06-13)
+
+
+### Features
+
+* **warehouse:** tokenized-subset servicing drives the reserve, halt-gated ([#80](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/80)) ([27c34c6](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/27c34c606cf8c1ffb16c3f7311ee3846e7045375))
+
 # [1.7.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.6.0...v1.7.0) (2026-06-13)
 
 
