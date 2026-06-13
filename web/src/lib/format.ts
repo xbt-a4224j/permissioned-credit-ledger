@@ -50,8 +50,22 @@ export function fmtBps(bps: number): string {
 const SECONDS_PER_YEAR = 31_536_000n;
 const RATE_SCALE = 10n ** 18n;
 export function fmtApy(ratePerSecond: bigint): string {
-  const bpsApy = (ratePerSecond * SECONDS_PER_YEAR * 10_000n) / RATE_SCALE;
-  return fmtBps(Number(bpsApy));
+  return fmtBps(apyBps(ratePerSecond));
+}
+
+// #81 the gross loan coupon as annualized basis points (numeric, for the net-yield split below).
+export function apyBps(ratePerSecond: bigint): number {
+  return Number((ratePerSecond * SECONDS_PER_YEAR * 10_000n) / RATE_SCALE);
+}
+
+// #81 the investor's share of the coupon — the rest is the originator/servicer/platform spread. A
+// single relative coefficient (the #80 reserve credit uses the same share). 8000 bps = 80% to the
+// investor. The token represents the investor's NET position; the spread lives above it.
+export const INVESTOR_SHARE_BPS = 8000;
+
+// #81 net yield to the investor = gross coupon * investor share. The headline number on the card.
+export function fmtNetApy(ratePerSecond: bigint): string {
+  return fmtBps(Math.round((apyBps(ratePerSecond) * INVESTOR_SHARE_BPS) / 10_000));
 }
 
 // #24 fmtLtv: loan-to-value, stored as basis points (7500 bps = 75.0% LTV).

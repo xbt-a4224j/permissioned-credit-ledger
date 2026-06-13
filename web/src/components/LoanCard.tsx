@@ -7,7 +7,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import type { Loan } from "../types.ts";
 import { collateralTypeFor } from "../lib/collateral.ts";
-import { fmtApy, fmtDscr, fmtLtv, fmtUsd6 } from "../lib/format.ts";
+import { fmtApy, fmtNetApy, fmtDscr, fmtLtv, fmtUsd6, INVESTOR_SHARE_BPS } from "../lib/format.ts";
 import { Badge, Card, Modal, StatPill } from "./primitives.tsx";
 
 // #24 loan status -> badge tone. Frozen is the row-9 NavAnomaly surface (accrual stopped).
@@ -44,7 +44,15 @@ export function LoanCard(props: { loan: Loan; actionSlot?: ReactNode }): JSX.Ele
 
       <div className="grid grid-cols-2 gap-4">
         <StatPill label="Principal" value={fmtUsd6(loan.principal)} tone="navy" />
-        <StatPill label="APY" value={fmtApy(loan.ratePerSecond)} />
+        <StatPill
+          label={
+            <abbr title={`Net yield to you = ${fmtApy(loan.ratePerSecond)} gross loan coupon less the ${(10000 - INVESTOR_SHARE_BPS) / 100}% originator/servicer/platform spread`}>
+              Net yield
+            </abbr>
+          }
+          value={fmtNetApy(loan.ratePerSecond)}
+          tone="navy"
+        />
         <StatPill label={<abbr title="Loan-to-Value — loan amount as a % of the property's appraised value; lower is safer">LTV</abbr>} value={fmtLtv(loan.ltvBps)} />
         <StatPill label={<abbr title="Debt-Service Coverage Ratio — net operating income ÷ annual debt payments; above 1.0x means the property covers its own payments">DSCR</abbr>} value={fmtDscr(loan.dscrBps)} />
         <div className="col-span-2">

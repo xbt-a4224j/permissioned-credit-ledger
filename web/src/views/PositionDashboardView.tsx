@@ -6,11 +6,24 @@
 // fills with Claim/Transfer. Clean loading/error/empty states.
 import type { ReactNode } from "react";
 import type { IdentityAddr, LoanId, Position, PositionId } from "../types.ts";
-import { POSITIONS_QUERY } from "../queries.ts";
+import { POSITIONS_QUERY, LOANS_QUERY } from "../queries.ts";
 import { useQuery } from "../lib/useQuery.ts";
 import { useAccrualStream } from "../lib/sse.ts";
+import { apyBps, fmtUsd6, INVESTOR_SHARE_BPS } from "../lib/format.ts";
 import { PositionRow } from "../components/PositionRow.tsx";
-import { Banner, Card, EmptyState, ErrorState, LoadingState } from "../components/primitives.tsx";
+import { Banner, Card, EmptyState, ErrorState, LoadingState, StatPill } from "../components/primitives.tsx";
+
+// #81 the holder's projected net distributions per year across their positions: for each position,
+// principal * (gross coupon * investor share). The token is the investor's net position, so this is
+// the income they'd actually receive — the "expected cash flows" of their sub-participation.
+function expectedNetPerYear(positions: Position[], ratesByLoan: Record<string, bigint>): bigint {
+  return positions.reduce((sum, p) => {
+    const rate = ratesByLoan[p.loanId];
+    if (rate === undefined) return sum;
+    const netBps = Math.round((apyBps(rate) * INVESTOR_SHARE_BPS) / 10_000);
+    return sum + (p.principal * BigInt(netBps)) / 10_000n;
+  }, 0n);
+}
 
 // #24 the demo holder the dashboard reads when no wallet is connected (#25 swaps in the live
 // wallet address). A seeded accredited-US identity so row-1 positions render on first load.
@@ -44,6 +57,14 @@ export function PositionDashboardView(props: {
     mapPositions,
     { holder },
   );
+  // #81 loan coupons (id -> ratePerSecond) to project the holder's expected net distributions.
+  const rates = useQuery<{ loans: { id: string; ratePerSecond: string }[] }, Record<string, bigint>>(
+    LOANS_QUERY,
+    (raw) => Object.fromEntries(raw.loans.map((l) => [l.id, BigInt(l.ratePerSecond)])),
+  );
+  const expectedNet = data !== null && data.length > 0 && rates.data !== null
+    ? expectedNetPerYear(data, rates.data)
+    : null;
 
   return (
     <section>
@@ -51,6 +72,20 @@ export function PositionDashboardView(props: {
         <h2 className="text-xl font-semibold text-navy-900">My positions</h2>
         <p className="text-sm text-slate-500">Claimable interest accrues per second, streamed from the reconciliation engine.</p>
       </div>
+      {/* #81 the holder's projected net cash flows across their positions (net of the platform spread). */}
+      {expectedNet !== null ? (
+        <div className="mb-4 inline-flex rounded-lg border border-slate-200 bg-white px-5 py-3">
+          <StatPill
+            label={
+              <abbr title="Projected annual distributions on your current positions — net coupon (after the originator/servicer/platform spread). Bridge loans are interest-only; principal returns at payoff.">
+                Expected net distributions
+              </abbr>
+            }
+            value={`${fmtUsd6(expectedNet)} / yr`}
+            tone="navy"
+          />
+        </div>
+      ) : null}
       {/* #26 row-9 inline halt hint: the accrual ticker is frozen by a NAV anomaly. */}
       {props.globalFrozen === true ? (
         <div className="mb-4">
