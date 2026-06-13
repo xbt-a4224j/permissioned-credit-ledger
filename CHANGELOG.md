@@ -1,3 +1,11 @@
+## [1.11.1](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.11.0...v1.11.1) (2026-06-13)
+
+
+### Bug Fixes
+
+* **api:** fail KYC when the on-chain claim write reverts ([afafcc6](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/afafcc6696c34e114373a6d5b0dfafc55883d35a))
+* **db:** serialize concurrent migrations with an advisory lock ([cc712f5](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/cc712f5f6269521a3c3f6e21deb166770734ff22))
+
 # [1.11.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.10.0...v1.11.0) (2026-06-13)
 
 
