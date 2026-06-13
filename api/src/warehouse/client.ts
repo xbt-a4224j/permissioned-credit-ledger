@@ -43,12 +43,17 @@ export interface AnalyticsBucketDto {
 export interface AnalyticsDto {
   total: number;
   tokenized: number;
+  totalPrincipalM: number;
+  tokenizedPrincipalM: number;
   avgLtvBps: number;
   avgDscrBps: number;
+  avgCouponBps: number;
   byState: Record<string, number>;
   byPropertyType: Record<string, number>;
   byOriginator: Record<string, number>;
+  exposureByType: Record<string, number>;
   ltvDistribution: AnalyticsBucketDto[];
+  scoreDistribution: AnalyticsBucketDto[];
 }
 
 async function getJson<T>(path: string): Promise<T> {

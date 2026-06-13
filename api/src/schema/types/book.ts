@@ -52,11 +52,16 @@ export const BookAnalytics = builder.simpleObject("BookAnalytics", {
   fields: (t) => ({
     total: t.int({ nullable: false }),
     tokenized: t.int({ nullable: false }),
+    totalPrincipalM: t.int({ nullable: false }), // whole-book $ exposure, millions
+    tokenizedPrincipalM: t.int({ nullable: false }), // tokenized-on-chain $ exposure, millions
     avgLtvBps: t.float({ nullable: false }),
     avgDscrBps: t.float({ nullable: false }),
+    avgCouponBps: t.float({ nullable: false }),
     byState: t.field({ type: [BookBucket], nullable: false }),
     byPropertyType: t.field({ type: [BookBucket], nullable: false }),
     byOriginator: t.field({ type: [BookBucket], nullable: false }),
+    exposureByType: t.field({ type: [BookBucket], nullable: false }), // $ millions by property type
     ltvDistribution: t.field({ type: [BookBucket], nullable: false }),
+    scoreDistribution: t.field({ type: [BookBucket], nullable: false }), // loan count by score band
   }),
 });

@@ -36,8 +36,25 @@ public class BookGenerator implements ApplicationRunner {
         {"TX", "Austin"}, {"FL", "Miami"}, {"IL", "Chicago"}, {"WA", "Seattle"},
         {"MA", "Boston"}, {"GA", "Atlanta"}, {"CO", "Denver"}, {"AZ", "Phoenix"}
     };
-    private static final String[] PROPERTY_TYPES = {
-        "Office", "Multifamily", "Retail", "Industrial", "Hospitality", "Mixed-Use", "Residential"
+
+    // #58 per-property-type risk + size PROFILE — a real CRE book is NOT uniform. Each type carries a
+    // characteristic ticket size, leverage (LTV), coverage (DSCR), and coupon, so the book-level
+    // analytics (concentration by $, risk by segment, score distribution) actually vary and tell a
+    // story: Multifamily/Industrial dominate by count and underwrite healthy; Office is fewer loans
+    // but big tickets, high leverage, thin coverage, distressed coupon → outsized $ exposure and the
+    // worst scores. weights sum to 100 (a cumulative roulette pick). principal $M lo..hi (skewed),
+    // ltv/dscr/coupon in basis points.
+    record Profile(String type, int weight, double minPrincipalM, double maxPrincipalM,
+        int ltvLo, int ltvHi, int dscrLo, int dscrHi, int couponLo, int couponHi) {}
+
+    private static final Profile[] PROFILES = {
+        new Profile("Multifamily", 26, 3, 18, 5800, 7000, 1300, 1600, 800, 1000),
+        new Profile("Industrial", 18, 5, 28, 5500, 6800, 1350, 1650, 800, 980),
+        new Profile("Office", 16, 8, 50, 6800, 8000, 1000, 1250, 1080, 1320),
+        new Profile("Retail", 15, 2, 14, 6000, 7200, 1150, 1400, 950, 1180),
+        new Profile("Hospitality", 10, 6, 42, 6200, 7800, 1080, 1380, 1020, 1280),
+        new Profile("Mixed-Use", 9, 3, 20, 6000, 7400, 1180, 1450, 920, 1120),
+        new Profile("Residential", 6, 1, 6, 6500, 8000, 1120, 1420, 850, 1050),
     };
 
     private static final String INSERT = """
@@ -66,25 +83,40 @@ public class BookGenerator implements ApplicationRunner {
         jdbc.batchUpdate(INSERT, rows);
     }
 
-    // one synthetic CRE bridge loan, deterministic in its index. Distributions chosen to look like a
-    // real tape: principal skewed to the $5-20M range, LTV 50-80%, DSCR 1.0-1.6x, coupon 8-12%.
+    // one synthetic CRE bridge loan, deterministic in its index. The property type is a weighted pick,
+    // and ticket size + LTV/DSCR/coupon are drawn from THAT type's profile — so the book has real
+    // structure (a concentrated, distressed-office tail; a healthy multifamily/industrial core).
     static BookRow generate(int i) {
         var rng = new Random(SEED ^ i);
-        long principal = Math.round(1_000_000d + Math.pow(rng.nextDouble(), 2) * 49_000_000d);
+        var p = pickProfile(rng);
+        // ticket size skewed toward the smaller end of the type's range (a few big-ticket whales).
+        double principalM = p.minPrincipalM() + Math.pow(rng.nextDouble(), 1.8) * (p.maxPrincipalM() - p.minPrincipalM());
+        long principal = Math.round(principalM * 1_000_000d);
         var orig = ANCHOR.minusDays(rng.nextInt(720));        // originated within ~24 months
         var maturity = orig.plusMonths(6 + rng.nextInt(31));  // 6-36mo bridge
         var metro = METROS[rng.nextInt(METROS.length)];
         return new BookRow(
             "L%05d".formatted(i),
             BigDecimal.valueOf(principal),
-            5_000 + rng.nextInt(3_001),   // LTV 50-80%
-            10_000 + rng.nextInt(6_001),  // DSCR 1.00-1.60x
-            800 + rng.nextInt(401),       // coupon 8.00-12.00%
+            p.ltvLo() + rng.nextInt(p.ltvHi() - p.ltvLo() + 1),
+            p.dscrLo() + rng.nextInt(p.dscrHi() - p.dscrLo() + 1),
+            p.couponLo() + rng.nextInt(p.couponHi() - p.couponLo() + 1),
             orig, maturity,
             metro[0], metro[0] + "-" + metro[1],
-            PROPERTY_TYPES[rng.nextInt(PROPERTY_TYPES.length)],
+            p.type(),
             ORIGINATORS[rng.nextInt(ORIGINATORS.length)],
             (int) ChronoUnit.MONTHS.between(orig, ANCHOR));
+    }
+
+    // #58 weighted roulette pick over the property-type profiles (weights sum to 100).
+    private static Profile pickProfile(Random rng) {
+        int roll = rng.nextInt(100);
+        int acc = 0;
+        for (var p : PROFILES) {
+            acc += p.weight();
+            if (roll < acc) return p;
+        }
+        return PROFILES[PROFILES.length - 1];
     }
 
     private static Object[] toArgs(BookRow r) {

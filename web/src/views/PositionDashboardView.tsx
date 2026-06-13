@@ -105,6 +105,7 @@ export function PositionDashboardView(props: {
             <thead>
               <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
                 <th className="px-3 py-2 text-left font-medium">Loan</th>
+                <th className="px-3 py-2 text-left font-medium">Collateral</th>
                 <th className="px-3 py-2 text-right font-medium">Principal</th>
                 <th className="px-3 py-2 text-right font-medium">Claimable</th>
                 <th className="px-3 py-2 text-left font-medium">Status</th>

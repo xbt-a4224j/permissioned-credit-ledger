@@ -118,7 +118,8 @@ export async function resolveTokenizeLoan(ctx: ApiContext, warehouseLoanId: stri
   const maxRows = await ctx.db<{ max: number }[]>`select coalesce(max(id::int), 0) as max from loans`;
   const newId = String((maxRows[0]?.max ?? 0) + 1);
 
-  // #66 deploy a real CreditToken — identical constructor wiring to the seeded 6 (RegD offering).
+  // #66 deploy a real CreditToken — identical constructor wiring to the seeded 6 (verified-only:
+  // admin, identityRegistry, reserve, ratePerSecond, principalCap — no compliance param after #66).
   const deployHash = await ctx.chain.walletClient.deployContract({
     abi: CreditTokenArtifact.abi,
     bytecode: CreditTokenArtifact.bytecode.object as `0x${string}`,
@@ -127,7 +128,6 @@ export async function resolveTokenizeLoan(ctx: ApiContext, warehouseLoanId: stri
     args: [
       ctx.chain.account.address,
       ctx.manifest.identityRegistry as `0x${string}`,
-      ctx.manifest.complianceRegistryRegD as `0x${string}`,
       ctx.manifest.reserve as `0x${string}`,
       ratePerSecond,
       principalBase,

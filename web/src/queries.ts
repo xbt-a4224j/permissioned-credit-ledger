@@ -55,10 +55,13 @@ export const BOOK_ANALYTICS_QUERY = /* GraphQL */ `
     bookAnalytics {
       total
       tokenized
+      totalPrincipalM
+      tokenizedPrincipalM
       avgLtvBps
       avgDscrBps
-      byPropertyType { label count }
-      byState { label count }
+      avgCouponBps
+      exposureByType { label count }
+      scoreDistribution { label count }
       ltvDistribution { label count }
     }
   }

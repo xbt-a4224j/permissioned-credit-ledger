@@ -3,14 +3,19 @@ scalar Address
 scalar BigIntStr
 
 type BookAnalytics {
+  avgCouponBps: Float!
   avgDscrBps: Float!
   avgLtvBps: Float!
   byOriginator: [BookBucket!]!
   byPropertyType: [BookBucket!]!
   byState: [BookBucket!]!
+  exposureByType: [BookBucket!]!
   ltvDistribution: [BookBucket!]!
+  scoreDistribution: [BookBucket!]!
   tokenized: Int!
+  tokenizedPrincipalM: Int!
   total: Int!
+  totalPrincipalM: Int!
 }
 
 type BookBucket {

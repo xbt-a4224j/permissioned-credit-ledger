@@ -46,7 +46,36 @@ async function ensureLedger(sql: Sql): Promise<void> {
   `;
 }
 
+// #15 a fixed key for the migration advisory lock. dev.sh starts the indexer and api
+// concurrently and both run applyMigrations against a fresh DB; without serialization their
+// `create table if not exists applied_migrations` race on the pg_type catalog (23505), and the
+// apply loop could double-run a file. A session advisory lock makes the second migrator wait,
+// then find every file already recorded and skip it.
+const MIGRATION_LOCK_KEY = 4_815_162_342;
+
 export async function applyMigrations(sql: Sql, migrationsDir: string = MIGRATIONS_DIR): Promise<{ applied: string[] }> {
+  // #15 dev.sh starts the indexer and api concurrently and both run this against a fresh DB; without
+  // serialization their `create table if not exists applied_migrations` race on the pg_type catalog
+  // (23505) and the apply loop can double-run a file. A pg_advisory_lock is session-scoped, so it
+  // must be held on a single pinned connection — reserve one out of the pool (max: 8) purely to hold
+  // the lock, and run the migration work on the pooled `sql` (which, unlike a reserved connection,
+  // supports `.begin` for the per-file transactions). The lock still serializes the two processes:
+  // the second to arrive blocks on pg_advisory_lock until the first releases, then finds every file
+  // already recorded and skips it.
+  const lockConn = await sql.reserve();
+  try {
+    await lockConn.unsafe(`select pg_advisory_lock(${MIGRATION_LOCK_KEY})`);
+    try {
+      return await applyMigrationsLocked(sql, migrationsDir);
+    } finally {
+      await lockConn.unsafe(`select pg_advisory_unlock(${MIGRATION_LOCK_KEY})`);
+    }
+  } finally {
+    lockConn.release();
+  }
+}
+
+async function applyMigrationsLocked(sql: Sql, migrationsDir: string): Promise<{ applied: string[] }> {
   await ensureLedger(sql);
 
   // #15 lexicographic order == numeric order given the 0001_/0002_ prefixes.

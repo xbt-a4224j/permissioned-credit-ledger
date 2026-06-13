@@ -94,15 +94,47 @@ public class BookRepository {
                 return new Analytics.Bucket("%d-%d%%".formatted(lo / 100, (lo + 500) / 100), n);
             })
             .toList();
+        // #58 $ exposure ($M) by property type — where the book's capital actually sits.
+        var exposureByType = all.stream().collect(Collectors.groupingBy(
+            Loan::propertyType, Collectors.summingLong(l -> l.principal().longValue())))
+            .entrySet().stream()
+            .collect(Collectors.toMap(Map.Entry::getKey, e -> Math.round(e.getValue() / 1_000_000d)));
+
+        // #58 score distribution — the tokenization-ready tail (bands of the 0..100 composite).
+        var scoreDistribution = scoreBands(db.sql("select score from wh_loan_scores").query(Double.class).list());
+
         return new Analytics(
             all.size(),
             all.stream().filter(Loan::tokenized).count(),
+            millions(all.stream()),
+            millions(all.stream().filter(Loan::tokenized)),
             round(all.stream().mapToInt(Loan::ltvBps).average().orElse(0)),
             round(all.stream().mapToInt(Loan::dscrBps).average().orElse(0)),
+            round(all.stream().mapToInt(Loan::couponBps).average().orElse(0)),
             all.stream().collect(Collectors.groupingBy(Loan::state, Collectors.counting())),
             all.stream().collect(Collectors.groupingBy(Loan::propertyType, Collectors.counting())),
             all.stream().collect(Collectors.groupingBy(Loan::originator, Collectors.counting())),
-            ltvDistribution);
+            exposureByType,
+            ltvDistribution,
+            scoreDistribution);
+    }
+
+    // #58 total principal ($ millions) over a loan stream.
+    private static long millions(java.util.stream.Stream<Loan> loans) {
+        return Math.round(loans.mapToLong(l -> l.principal().longValue()).sum() / 1_000_000d);
+    }
+
+    // #58 score histogram — banded where the composite actually lives (a bridge book clusters in the
+    // 50s-60s; the high tail is the tokenization-ready cream the desk puts on-chain). Fine 5-pt bands
+    // so the distribution reads as a shape, not one dominant bar.
+    private static List<Analytics.Bucket> scoreBands(List<Double> scores) {
+        String[] labels = {"<50", "50–54", "55–59", "60–64", "65–69", "70+"};
+        long[] counts = new long[labels.length];
+        for (double s : scores) {
+            int b = s < 50 ? 0 : s < 55 ? 1 : s < 60 ? 2 : s < 65 ? 3 : s < 70 ? 4 : 5;
+            counts[b]++;
+        }
+        return IntStream.range(0, labels.length).mapToObj(b -> new Analytics.Bucket(labels[b], counts[b])).toList();
     }
 
     private static double round(double x) {

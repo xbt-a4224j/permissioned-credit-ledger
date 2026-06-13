@@ -24,8 +24,9 @@ interface BookLoanRaw {
 interface BookRaw { book: { weights: BookWeights; total: number; loans: BookLoanRaw[] } }
 interface Bucket { label: string; count: number }
 interface AnalyticsRaw {
-  bookAnalytics: { total: number; tokenized: number; avgLtvBps: number; avgDscrBps: number;
-    byPropertyType: Bucket[]; byState: Bucket[]; ltvDistribution: Bucket[] };
+  bookAnalytics: { total: number; tokenized: number; totalPrincipalM: number; tokenizedPrincipalM: number;
+    avgLtvBps: number; avgDscrBps: number; avgCouponBps: number;
+    exposureByType: Bucket[]; ltvDistribution: Bucket[]; scoreDistribution: Bucket[] };
 }
 
 const fmtM = (n: number): string => (n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M` : `$${Math.round(n / 1000)}k`);
@@ -34,7 +35,8 @@ const pct = (w: number): string => `${Math.round(w * 100)}%`;
 const scoreTone = (s: number): string => (s >= 85 ? "bg-emerald-500" : s >= 70 ? "bg-amber-400" : "bg-slate-400");
 
 // a compact horizontal bar list for the concentration / distribution panels (#72).
-function BarList(props: { title: string; buckets: Bucket[] }): JSX.Element {
+function BarList(props: { title: string; buckets: Bucket[]; format?: (n: number) => string }): JSX.Element {
+  const fmt = props.format ?? ((n: number): string => n.toLocaleString());
   const max = Math.max(...props.buckets.map((b) => b.count), 1);
   return (
     <div>
@@ -42,17 +44,20 @@ function BarList(props: { title: string; buckets: Bucket[] }): JSX.Element {
       <div className="space-y-1.5">
         {props.buckets.map((b) => (
           <div key={b.label} className="flex items-center gap-2 text-xs">
-            <span className="w-28 shrink-0 truncate text-slate-600">{b.label}</span>
+            <span className="w-24 shrink-0 truncate text-slate-600">{b.label}</span>
             <div className="h-2 flex-1 overflow-hidden rounded bg-slate-100">
               <div className="h-full bg-navy-600" style={{ width: `${(b.count / max) * 100}%` }} />
             </div>
-            <span className="w-12 text-right font-tabular tabular-nums text-slate-500">{b.count.toLocaleString()}</span>
+            <span className="w-16 text-right font-tabular tabular-nums text-slate-500">{fmt(b.count)}</span>
           </div>
         ))}
       </div>
     </div>
   );
 }
+
+// #58 $ millions -> a compact "$280M" / "$1.4B" exposure label for the book-admin bars.
+const fmtExposure = (m: number): string => (m >= 1000 ? `$${(m / 1000).toFixed(1)}B` : `$${m.toLocaleString()}M`);
 
 export function OriginationView(): JSX.Element {
   const book = useQuery<BookRaw, BookRaw["book"]>(BOOK_QUERY, (r) => r.book, { limit: 12, offset: 0 });
@@ -138,9 +143,11 @@ export function OriginationView(): JSX.Element {
       {analytics.data !== null && (
         <div className="mb-6 flex flex-wrap items-center gap-6 rounded-lg border border-slate-200 bg-white px-5 py-4">
           <StatPill label="Pipeline" value={`${analytics.data.total.toLocaleString()} loans`} tone="navy" />
-          <StatPill label="Tokenized on-chain" value={analytics.data.tokenized} />
+          <StatPill label="Book exposure" value={fmtExposure(analytics.data.totalPrincipalM)} tone="navy" />
+          <StatPill label="Tokenized on-chain" value={`${analytics.data.tokenized} · ${fmtExposure(analytics.data.tokenizedPrincipalM)}`} />
           <StatPill label="Avg LTV" value={fmtLtv(Math.round(analytics.data.avgLtvBps))} />
           <StatPill label="Avg DSCR" value={fmtDscr(Math.round(analytics.data.avgDscrBps))} />
+          <StatPill label="Avg coupon" value={fmtPct(analytics.data.avgCouponBps)} />
         </div>
       )}
 
@@ -177,7 +184,8 @@ export function OriginationView(): JSX.Element {
           <div className="text-sm font-semibold text-navy-900">Book analytics</div>
           {analytics.data !== null ? (
             <>
-              <BarList title="By property type" buckets={analytics.data.byPropertyType} />
+              <BarList title="$ exposure by property type" buckets={analytics.data.exposureByType} format={fmtExposure} />
+              <BarList title="Score distribution (tokenization-ready)" buckets={analytics.data.scoreDistribution} />
               <BarList title="LTV distribution" buckets={analytics.data.ltvDistribution} />
             </>
           ) : (

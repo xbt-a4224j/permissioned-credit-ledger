@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 import type { Position } from "../types.ts";
 import type { AccrualTick } from "../lib/sse.ts";
 import { fmtUsd6 } from "../lib/format.ts";
+import { collateralTypeFor } from "../lib/collateral.ts";
 import { Badge } from "./primitives.tsx";
 
 export function PositionRow(props: { position: Position; tick?: AccrualTick | undefined; frozen?: boolean; actionSlot?: ReactNode }): JSX.Element {
@@ -20,6 +21,11 @@ export function PositionRow(props: { position: Position; tick?: AccrualTick | un
       <td className="px-3 py-3 text-left">
         <div className="font-tabular font-semibold text-navy-900">#{position.loanId}</div>
         <div className="text-xs text-slate-400">{position.holder.slice(0, 10)}…</div>
+      </td>
+      <td className="px-3 py-3 text-left">
+        <Badge tone={collateralTypeFor(position.loanId) === "RESIDENTIAL" ? "warn" : "navy"}>
+          {collateralTypeFor(position.loanId)}
+        </Badge>
       </td>
       <td className="px-3 py-3 text-right font-tabular tabular-nums">{fmtUsd6(position.principal)}</td>
       <td className="px-3 py-3 text-right font-tabular tabular-nums" aria-live="polite">

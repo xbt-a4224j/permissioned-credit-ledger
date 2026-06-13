@@ -24,8 +24,6 @@ export interface ManifestLoan {
 export interface Manifest {
   chainId: number;
   identityRegistry: string;
-  complianceRegistryRegD: string;
-  complianceRegistryRegS: string;
   reserve: string;
   loans: Record<string, ManifestLoan>;
 }

@@ -10,6 +10,7 @@ import { DeltaTable } from "../components/DeltaTable.tsx";
 import { DemoControls } from "../components/DemoControls.tsx";
 import { ChainActivity } from "../components/ChainActivity.tsx";
 import { ActionLog } from "../components/ActionLog.tsx";
+import { ResourcesPanel } from "../components/ResourcesPanel.tsx";
 import { Card, LoadingState } from "../components/primitives.tsx";
 
 // #26 status comes from App's single shared recon stream (one EventSource for the whole shell) so
@@ -48,6 +49,7 @@ export function HealthView(props: { status: ReconStatus | undefined }): JSX.Elem
 
       <ChainActivity />
       <ActionLog />
+      <ResourcesPanel />
 
       <footer className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
         <span>
