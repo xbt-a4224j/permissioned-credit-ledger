@@ -2,6 +2,40 @@ scalar Address
 
 scalar BigIntStr
 
+type BookAnalytics {
+  avgDscrBps: Float!
+  avgLtvBps: Float!
+  byOriginator: [BookBucket!]!
+  byPropertyType: [BookBucket!]!
+  byState: [BookBucket!]!
+  ltvDistribution: [BookBucket!]!
+  tokenized: Int!
+  total: Int!
+}
+
+type BookBucket {
+  count: Int!
+  label: String!
+}
+
+type BookLoan {
+  couponBps: Int!
+  creditScore: Float!
+  dscrBps: Int!
+  durationScore: Float!
+  loanId: ID!
+  ltvBps: Int!
+  originator: String!
+  portfolioScore: Float!
+  principal: Float!
+  propertyType: String!
+  returnScore: Float!
+  score: Float!
+  state: String!
+  termMonths: Int!
+  tokenized: Boolean!
+}
+
 type ChainEvent {
   blockNumber: Int!
   id: ID!
@@ -118,6 +152,8 @@ type Position {
 }
 
 type Query {
+  book(includeTokenized: Boolean = false, limit: Int = 50, offset: Int = 0): RankedBook!
+  bookAnalytics: BookAnalytics!
   chainEvents(limit: Int = 20): [ChainEvent!]!
   currentBlock: Int!
   kycStatus(wallet: Address!): KycStatus!
@@ -129,6 +165,12 @@ type Query {
   reconciliationStatus: ReconciliationStatus!
   reserve: ReserveState!
   txStatus(hash: String!): TxReceiptRef
+}
+
+type RankedBook {
+  loans: [BookLoan!]!
+  total: Int!
+  weights: ScoreWeights!
 }
 
 """
@@ -162,6 +204,13 @@ type ReconciliationStatus {
 type ReserveState {
   balance: BigIntStr!
   totalClaimable: BigIntStr!
+}
+
+type ScoreWeights {
+  credit: Float!
+  duration: Float!
+  portfolio: Float!
+  ret: Float!
 }
 
 type TokenizeResult {

@@ -7,12 +7,14 @@ import { builder } from "./builder.ts";
 import { Loan } from "./types/loan.ts";
 import { Position } from "./types/position.ts";
 import { ReserveState } from "./types/reserve.ts";
+import { RankedBook, BookAnalytics } from "./types/book.ts";
 import { ReconciliationStatus } from "./types/reconciliation.ts";
 import { TxReceiptRef } from "./types/tx.ts";
 import { NavReading } from "./types/navReading.ts";
 import { ChainEvent } from "./types/chainEvent.ts";
 import { KycStatus } from "./types/kyc.ts";
 import { resolveKycStatus } from "../kyc/resolve.ts";
+import { resolveBook, resolveBookAnalytics } from "../resolvers/book.ts";
 import {
   resolveLoan,
   resolveLoans,
@@ -102,6 +104,23 @@ builder.queryType({
       nullable: false,
       args: { wallet: t.arg({ type: "Address", required: true }) },
       resolve: (_root, args, ctx) => resolveKycStatus(ctx, args.wallet),
+    }),
+    // #64 the warehouse's ranked book (score desc, paginated) — proxied from the Java sidecar (#63).
+    book: t.field({
+      type: RankedBook,
+      nullable: false,
+      args: {
+        limit: t.arg.int({ required: false, defaultValue: 50 }),
+        offset: t.arg.int({ required: false, defaultValue: 0 }),
+        includeTokenized: t.arg.boolean({ required: false, defaultValue: false }),
+      },
+      resolve: (_root, args) => resolveBook(args.limit ?? 50, args.offset ?? 0, args.includeTokenized ?? false),
+    }),
+    // #64 book-level analytics (concentration + LTV distribution) from the warehouse.
+    bookAnalytics: t.field({
+      type: BookAnalytics,
+      nullable: false,
+      resolve: () => resolveBookAnalytics(),
     }),
   }),
 });
