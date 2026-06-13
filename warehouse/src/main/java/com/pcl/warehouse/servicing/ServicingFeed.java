@@ -68,9 +68,9 @@ public class ServicingFeed {
         var loanId = loanIds.get(rng.nextInt(loanIds.size()));
         var kind = randomKind();
         var amount = switch (kind) {
-            case PAYMENT_POSTED -> money(20_000, 250_000);
-            case ESCROW_DRAW -> money(5_000, 50_000);
-            case PAYOFF -> money(1_000_000, 30_000_000);
+            case PAYMENT_POSTED -> randomMoney(20_000, 250_000);
+            case ESCROW_DRAW -> randomMoney(5_000, 50_000);
+            case PAYOFF -> randomMoney(1_000_000, 30_000_000);
             case NAV_MARK, DELINQUENCY_FLIP -> null;
         };
         return new ServicingEvent(seq.incrementAndGet(), loanId, kind, amount, Instant.now());
@@ -85,7 +85,7 @@ public class ServicingFeed {
         return ServicingKind.PAYOFF;
     }
 
-    private BigDecimal money(int lo, int hi) {
+    private BigDecimal randomMoney(int lo, int hi) {
         return BigDecimal.valueOf(lo + rng.nextInt(hi - lo));
     }
 
