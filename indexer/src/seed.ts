@@ -6,7 +6,11 @@
 // claim mix from contracts/script/config/Identities.sol), so the off-chain reference matches
 // the on-chain world without re-reading every claim over RPC.
 import type { Sql } from "@pcl/shared";
+import { seedReserveLedger } from "@pcl/shared";
 import type { Manifest } from "./manifest.ts";
+
+// #16/#82 mirrors Deploy.s.sol RESERVE_FUNDING = 1_000_000e6 (the on-chain MockUSDC funding).
+const RESERVE_FUNDING_USDC6 = 1_000_000_000_000n;
 
 // #16 the 6 canonical identities (addresses + claims) — mirrors Identities.sol exactly:
 // 2 accredited-US, 2 accredited Reg-S non-US, 1 unverified, 1 frozen.
@@ -68,7 +72,9 @@ export async function seedReference(sql: Sql, m: Manifest): Promise<void> {
   // = 1_000_000e6). The off-chain `collected cash` the recon I2 invariant (claimable <= collected)
   // compares against must reflect the funded reserve — otherwise on-chain accrual outruns a 0 row and
   // the engine HALTs on its own. InterestClaimed projections debit this; reportCash overrides it.
-  await sql`insert into reserve (id, balance, updated_at) values (1, 1000000000000, 0) on conflict (id) do update set balance = 1000000000000`;
+  await sql`insert into reserve (id, balance, updated_at) values (1, ${RESERVE_FUNDING_USDC6.toString()}, 0) on conflict (id) do update set balance = ${RESERVE_FUNDING_USDC6.toString()}`;
+  // #82 reset the append-only ledger to a single genesis funding entry so balance == sum(ledger).
+  await seedReserveLedger(sql, RESERVE_FUNDING_USDC6);
 }
 
 // #17 demo-world fixture: give every loan an accepted par (10000 bps = 100%) NAV baseline so the

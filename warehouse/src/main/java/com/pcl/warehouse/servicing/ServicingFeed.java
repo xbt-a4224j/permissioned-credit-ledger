@@ -76,7 +76,7 @@ public class ServicingFeed {
             return;
         }
         var events = new ArrayList<ServicingEvent>();
-        var credit = BigDecimal.ZERO;
+        var credits = new ArrayList<LoanCredit>();
         for (var loanId : tokenized) {
             var state = lifecycle.computeIfAbsent(loanId, k -> Lifecycle.PERFORMING);
             var kind = tokenizedKind(state);
@@ -88,21 +88,31 @@ public class ServicingFeed {
             var amount = amountFor(kind);
             events.add(new ServicingEvent(seq.incrementAndGet(), loanId, kind, amount, Instant.now(), true));
             if (kind == ServicingKind.PAYMENT_POSTED && amount != null) {
-                credit = credit.add(amount.multiply(SLICE_PER_DOLLAR));
+                var slice = amount.multiply(SLICE_PER_DOLLAR);
+                if (slice.signum() > 0) {
+                    credits.add(new LoanCredit(loanId, slice));
+                }
             }
         }
         if (events.isEmpty()) {
             return;
         }
         emit(events);
-        if (credit.signum() > 0) {
+        // #80 while halted, collections aren't recognized into the distributable pool (a deliberate halt
+        // persists). #82 otherwise each paying loan's investor slice is one attributed reserve_ledger credit.
+        if (!credits.isEmpty()) {
             if (repo.isHalted()) {
-                log.debug("#80 engine halted — pausing reserve credit ({} would-be)", credit);
+                log.debug("#80 engine halted — pausing reserve credit ({} entries)", credits.size());
             } else {
-                repo.creditReserve(credit);
+                for (var c : credits) {
+                    repo.creditReserve(c.loanId(), c.slice());
+                }
             }
         }
     }
+
+    // #82 a per-loan investor-slice credit queued during a tick, applied to the reserve ledger after emit.
+    private record LoanCredit(String loanId, BigDecimal slice) {}
 
     // #80 valid next event for a tokenized loan in a given state. Tokenized loans stay healthy and
     // paying (the reserve needs the cash flow); a small chance of a delinquency that cures next tick

@@ -10,6 +10,7 @@ import { REPORT_CASH_MUTATION } from "../lib/mutations.ts";
 import { fmtUsd6 } from "../lib/format.ts";
 import { useCallback, useEffect, useState } from "react";
 import { LoanOpsCard } from "../components/LoanOpsCard.tsx";
+import { ReserveLedgerPanel } from "../components/ReserveLedgerPanel.tsx";
 import { Badge, Button, Card, EmptyState, ErrorState, LoadingState, StatPill } from "../components/primitives.tsx";
 
 // #38 the reserve coverage shape (mirrors api/schema.graphql ReserveState).
@@ -171,6 +172,11 @@ export function LoansView(): JSX.Element {
           {cashError !== null && <p className="mt-1.5 text-xs font-medium text-halt">{cashError}</p>}
         </div>
       </Card>
+
+      {/* ---- Reserve ledger: the audit trail behind the coverage figure (#82) ---- */}
+      <div className="mb-6">
+        <ReserveLedgerPanel />
+      </div>
 
       {/* ---- Per-loan NAV gate ---- */}
       {loansLoading ? (

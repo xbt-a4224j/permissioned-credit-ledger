@@ -18,3 +18,29 @@ export const ReserveState = builder.simpleObject("ReserveState", {
     totalClaimable: t.field({ type: "BigIntStr", nullable: false }),
   }),
 });
+
+// #82 one row of the reserve append-only ledger of record. balance (above) is a maintained cache;
+// this is the authoritative audit trail: every credit (servicing collection, initial funding) and
+// debit (interest claim, operator report), with the running balanceAfter. Powers the Servicing
+// panel's "every dollar in and out of the reserve". Money fields are BigIntStr base units (USDC e6).
+export interface ReserveLedgerEntrySource {
+  id: string;
+  entryType: string; // 'credit' | 'debit' (the DB check constraint)
+  amount: string;
+  reason: string;
+  loanId: string | null;
+  balanceAfter: string | null;
+  at: Date;
+}
+
+export const ReserveLedgerEntry = builder.simpleObject("ReserveLedgerEntry", {
+  fields: (t) => ({
+    id: t.id({ nullable: false }),
+    entryType: t.string({ nullable: false }),
+    amount: t.field({ type: "BigIntStr", nullable: false }),
+    reason: t.string({ nullable: false }),
+    loanId: t.id({ nullable: true }),
+    balanceAfter: t.field({ type: "BigIntStr", nullable: true }),
+    at: t.field({ type: "DateTime", nullable: false }),
+  }),
+});

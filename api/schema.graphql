@@ -164,6 +164,7 @@ type Query {
   positions(holder: Address!): [Position!]!
   reconciliationStatus: ReconciliationStatus!
   reserve: ReserveState!
+  reserveLedger(limit: Int = 20): [ReserveLedgerEntry!]!
   txStatus(hash: String!): TxReceiptRef
 }
 
@@ -199,6 +200,16 @@ type ReconciliationStatus {
   haltReason: ReasonCode
   invariants: [InvariantResult!]!
   state: ReconState!
+}
+
+type ReserveLedgerEntry {
+  amount: BigIntStr!
+  at: DateTime!
+  balanceAfter: BigIntStr
+  entryType: String!
+  id: ID!
+  loanId: ID
+  reason: String!
 }
 
 type ReserveState {

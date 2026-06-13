@@ -37,7 +37,8 @@ describe("applyMigrations against a fresh database", () => {
     const names = tables.map((t) => t.table_name);
     // 7 read models (loans, identities, positions, chain_events, nav_readings, reserve,
     // recon_status) + properties (mortgage modeling) + applied_migrations + indexer_cursor (#16)
-    // + the tx-tracking tables tx_status + optimistic_positions (#23 GraphQL tx lifecycle).
+    // + the tx-tracking tables tx_status + optimistic_positions (#23 GraphQL tx lifecycle)
+    // + reserve_ledger (#82 the reserve as an append-only ledger of record).
     expect(names).toEqual(
       [
         "applied_migrations",
@@ -51,6 +52,7 @@ describe("applyMigrations against a fresh database", () => {
         "properties",
         "recon_status",
         "reserve",
+        "reserve_ledger",
         "tx_status",
       ].sort(),
     );

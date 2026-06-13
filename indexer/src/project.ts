@@ -10,7 +10,7 @@
 // ensures the position row exists and stamps opened_at — so a mint's paired Transfer +
 // PositionOpened never double-count principal, in any arrival order.
 import type { Sql } from "@pcl/shared";
-import { identityAddr, positionId, usdc6ToString, type ChainEvent, type IdentityAddr, type LoanId, type Usdc6 } from "@pcl/shared";
+import { identityAddr, positionId, usdc6ToString, appendReserveEntry, type ChainEvent, type IdentityAddr, type LoanId, type Usdc6 } from "@pcl/shared";
 
 // #16 the ERC20 mint source / burn sink sentinel (zero address), branded for comparison.
 const ZERO: IdentityAddr = identityAddr("0x0000000000000000000000000000000000000000");
@@ -58,7 +58,10 @@ export async function applyInterestClaimed(tx: Sql, ev: Extract<ChainEvent, { na
     insert into reserve (id, balance, updated_at) values (1, 0, ${Number(ev.blockNumber)})
     on conflict (id) do nothing
   `;
-  await tx`update reserve set balance = balance - ${amt}, updated_at = ${Number(ev.blockNumber)} where id = 1`;
+  // #82 record the claim as a debit on the append-only ledger; the helper maintains reserve.balance
+  // (the figure recon reads). updated_at is write-only metadata, kept fresh alongside.
+  await appendReserveEntry(tx, { kind: "debit", amount: BigInt(amt), reason: "interest claim", loanId: ev.loan });
+  await tx`update reserve set updated_at = ${Number(ev.blockNumber)} where id = 1`;
   await tx`update positions set accrued = 0 where id = ${positionId(ev.loan, ev.holder)}`;
 }
 

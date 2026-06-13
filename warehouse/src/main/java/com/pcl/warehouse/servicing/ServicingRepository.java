@@ -47,11 +47,21 @@ public class ServicingRepository {
         return !ok;
     }
 
-    // #80 credit the investor slice of a tokenized-loan payment into the reserve (base units). The
+    // #80/#82 credit the investor slice of a tokenized-loan payment into the reserve (base units). The
     // reserve is the investors' custodial pool that funds claims; only the investor coupon enters it.
-    public void creditReserve(java.math.BigDecimal baseUnits) {
-        jdbc.update("update reserve set balance = balance + ?, updated_at = extract(epoch from now())::bigint where id = 1",
-            baseUnits);
+    // #82 the credit is one append-only reserve_ledger row attributing the cash to the paying loan, and
+    // the balance cache is bumped in the SAME statement (a data-modifying CTE) so the two never diverge.
+    public void creditReserve(String loanId, java.math.BigDecimal baseUnits) {
+        jdbc.update(
+            """
+            with bumped as (
+              update reserve set balance = balance + ?, updated_at = extract(epoch from now())::bigint
+              where id = 1 returning balance
+            )
+            insert into reserve_ledger (entry_type, amount, reason, loan_id, balance_after)
+            select 'credit', ?, 'servicing collection', ?, balance from bumped
+            """,
+            baseUnits, baseUnits, loanId);
     }
 
     public void insert(List<ServicingEvent> events) {

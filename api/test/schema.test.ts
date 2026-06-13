@@ -25,7 +25,7 @@ describe("#20 GraphQL schema contract", () => {
   test("the core query fields (+ txStatus from #23) are present", () => {
     const query = schema.getQueryType() as GraphQLObjectType;
     const fields = Object.keys(query.getFields());
-    for (const f of ["loans", "loan", "position", "positions", "reserve", "reconciliationStatus"]) {
+    for (const f of ["loans", "loan", "position", "positions", "reserve", "reserveLedger", "reconciliationStatus"]) {
       expect(fields).toContain(f);
     }
     expect(fields).toContain("txStatus");

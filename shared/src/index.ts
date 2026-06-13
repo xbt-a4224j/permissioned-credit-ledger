@@ -7,3 +7,5 @@ export * from "./reasons.ts";
 export * from "./schemas.ts";
 // #15 the raw Postgres client + migration runner (no ORM).
 export * from "./db/index.ts";
+// #82 reserve append-only ledger helpers (balance kept as a maintained cache).
+export * from "./reserve-ledger.ts";

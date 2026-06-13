@@ -8,7 +8,7 @@
 // reserve and the local feed are fixtures, and these must never run against Fuji (same posture as
 // scripts/demo_reset.ts NonLocalRpcRefused).
 import { GraphQLError } from "graphql";
-import { loanId as toLoanId, unixSeconds, bps } from "@pcl/shared";
+import { loanId as toLoanId, unixSeconds, bps, reportReserveBalance } from "@pcl/shared";
 import { ingestNav } from "../nav/gate.ts";
 import type { SnapshotManifest } from "../recon/snapshot.ts";
 import { runReconCycle } from "../recon/engine.ts";
@@ -73,7 +73,9 @@ export async function resolveReportCash(ctx: ApiContext, loanIdInt: number, amou
       extensions: { code: "BadUserInput" },
     });
   }
-  await ctx.db`update reserve set balance = ${amountUsdc6} where id = 1`;
+  // #82 record the report as an adjusting entry against the append-only ledger, keeping
+  // reserve.balance (the figure recon reads) equal to the running ledger sum.
+  await reportReserveBalance(ctx.db, BigInt(amountUsdc6), "operator report");
   await runReconCycle(ctx.db, ctx.chain.publicClient, ctx.manifest as unknown as SnapshotManifest);
   return ctx.recon.read();
 }

@@ -6,7 +6,7 @@
 import { builder } from "./builder.ts";
 import { Loan } from "./types/loan.ts";
 import { Position } from "./types/position.ts";
-import { ReserveState } from "./types/reserve.ts";
+import { ReserveState, ReserveLedgerEntry } from "./types/reserve.ts";
 import { RankedBook, BookAnalytics } from "./types/book.ts";
 import { ReconciliationStatus } from "./types/reconciliation.ts";
 import { TxReceiptRef } from "./types/tx.ts";
@@ -22,6 +22,7 @@ import {
   resolvePositions,
   resolveReconciliationStatus,
   resolveReserve,
+  resolveReserveLedger,
   resolveNavReadings,
   resolveChainEvents,
   resolveCurrentBlock,
@@ -65,6 +66,13 @@ builder.queryType({
       type: ReserveState,
       nullable: false,
       resolve: (_root, _args, ctx) => resolveReserve(ctx),
+    }),
+    // #82 the reserve append-only ledger — recent credits/debits, newest first (cap 100).
+    reserveLedger: t.field({
+      type: [ReserveLedgerEntry],
+      nullable: false,
+      args: { limit: t.arg.int({ required: false, defaultValue: 20 }) },
+      resolve: (_root, args, ctx) => resolveReserveLedger(ctx, args.limit ?? 20),
     }),
     // #20/#21 the latest reconciliation cycle as a first-class query.
     reconciliationStatus: t.field({

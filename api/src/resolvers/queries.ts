@@ -7,7 +7,7 @@
 import type { ApiContext } from "../context.ts";
 import type { LoanSource } from "../schema/types/loan.ts";
 import type { PositionSource } from "../schema/types/position.ts";
-import type { ReserveStateSource } from "../schema/types/reserve.ts";
+import type { ReserveStateSource, ReserveLedgerEntrySource } from "../schema/types/reserve.ts";
 import type { ReconciliationStatusSource } from "../schema/types/reconciliation.ts";
 import type { NavReadingSource } from "../schema/types/navReading.ts";
 import type { ChainEventSource } from "../schema/types/chainEvent.ts";
@@ -145,6 +145,27 @@ export async function resolveReserve(ctx: ApiContext): Promise<ReserveStateSourc
     balance: (reserveRows[0]?.balance ?? 0n).toString(),
     totalClaimable: (reserveRows[0]?.total_claimable ?? 0n).toString(),
   };
+}
+
+// #82 the reserve as an append-only ledger — recent entries newest-first (capped at 100). Each
+// credit (servicing collection, initial funding) and debit (interest claim, operator report) with
+// the running balanceAfter: "every dollar in and out of the reserve." The balance the recon reads is
+// kept equal to sum(ledger), so this is the audit trail behind the single coverage figure.
+export async function resolveReserveLedger(ctx: ApiContext, limit: number): Promise<ReserveLedgerEntrySource[]> {
+  const cap = Math.min(Math.max(1, limit), 100);
+  const rows = await ctx.db<{ id: string; entry_type: string; amount: string; reason: string; loan_id: string | null; balance_after: string | null; created_at: Date }[]>`
+    select id::text as id, entry_type, amount::text as amount, reason, loan_id, balance_after::text as balance_after, created_at
+    from reserve_ledger order by created_at desc, id desc limit ${cap}
+  `;
+  return rows.map((r) => ({
+    id: r.id,
+    entryType: r.entry_type,
+    amount: r.amount,
+    reason: r.reason,
+    loanId: r.loan_id,
+    balanceAfter: r.balance_after,
+    at: r.created_at,
+  }));
 }
 
 // #21 the latest reconciliation cycle as the GraphQL status (#18 -> #20 shape).
