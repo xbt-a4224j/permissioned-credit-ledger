@@ -73,6 +73,14 @@ export const REPORT_CASH_MUTATION = /* GraphQL */ `
   }
 `;
 
+// #71 tokenize a warehouse loan: deploys a real CreditToken on-chain, returns the new loan id +
+// token address. The indexer (#75) watches it within a refresh, so it appears in the Marketplace.
+export const TOKENIZE_MUTATION = /* GraphQL */ `
+  mutation TokenizeLoan($warehouseLoanId: String!) {
+    tokenizeLoan(warehouseLoanId: $warehouseLoanId) { loanId tokenAddress txHash }
+  }
+`;
+
 // #38 NAV readings for a loan (newest first, up to 10). Used by the ops card to display the
 // gate's accept/reject history — the source + rejectReason columns make the gate's logic visible.
 export const NAV_READINGS_QUERY = /* GraphQL */ `

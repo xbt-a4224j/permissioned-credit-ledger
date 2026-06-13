@@ -8,6 +8,7 @@ import { MarketplaceView } from "./views/MarketplaceView.tsx";
 import { PositionDashboardView } from "./views/PositionDashboardView.tsx";
 import { HealthView } from "./views/HealthView.tsx";
 import { LoansView } from "./views/LoansView.tsx";
+import { OriginationView } from "./views/OriginationView.tsx";
 import { Badge } from "./components/primitives.tsx";
 import { useWallet } from "./lib/wallet.ts";
 import { DEMO_IDENTITIES } from "./lib/identities.ts";
@@ -21,8 +22,8 @@ import { KycBadge } from "./components/KycBadge.tsx";
 // #24 the network label (Fuji testnet vs the local anvil node), read from Vite env at build.
 const CHAIN_LABEL = (import.meta.env.VITE_CHAIN_LABEL ?? "Local") as "Fuji" | "Local";
 
-// #38 four views: investor-facing (marketplace, positions) + platform-facing (loans, health).
-type ViewKey = "marketplace" | "positions" | "loans" | "health";
+// #38/#69 views: investor-facing (marketplace, positions) + platform-facing (origination, loans, health).
+type ViewKey = "marketplace" | "positions" | "origination" | "loans" | "health";
 
 // #38 investor tabs and platform tabs are kept separate so the separator renders between groups.
 const INVESTOR_NAV: { key: ViewKey; label: string }[] = [
@@ -30,6 +31,7 @@ const INVESTOR_NAV: { key: ViewKey; label: string }[] = [
   { key: "positions", label: "My positions" },
 ];
 const PLATFORM_NAV: { key: ViewKey; label: string }[] = [
+  { key: "origination", label: "Origination" },
   { key: "loans", label: "Servicing" },
   { key: "health", label: "Health" },
 ];
@@ -152,6 +154,9 @@ export function App(): JSX.Element {
             globalFrozen={navFrozen}
             renderActions={(position) => <PositionActions position={position} wallet={wallet} />}
           />
+        ) : view === "origination" ? (
+          // #69 the data-platform view: score the book + tokenize the best candidates on-chain.
+          <OriginationView />
         ) : view === "loans" ? (
           // #38 the platform operator view: per-loan NAV gate + the global servicing-cash panel.
           <LoansView />

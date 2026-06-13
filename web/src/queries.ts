@@ -21,6 +21,49 @@ export const LOANS_QUERY = /* GraphQL */ `
   }
 `;
 
+// #70 the warehouse ranked book (score desc, paginated), proxied through the API (#64). The score +
+// its four contributions make the ranking auditable; weights ship so the UI can show what drives it.
+export const BOOK_QUERY = /* GraphQL */ `
+  query Book($limit: Int!, $offset: Int!) {
+    book(limit: $limit, offset: $offset) {
+      weights { credit ret duration portfolio }
+      total
+      loans {
+        loanId
+        principal
+        ltvBps
+        dscrBps
+        couponBps
+        termMonths
+        state
+        propertyType
+        originator
+        tokenized
+        score
+        creditScore
+        returnScore
+        durationScore
+        portfolioScore
+      }
+    }
+  }
+`;
+
+// #72 book-level analytics — totals + concentration + the LTV distribution (#64).
+export const BOOK_ANALYTICS_QUERY = /* GraphQL */ `
+  query BookAnalytics {
+    bookAnalytics {
+      total
+      tokenized
+      avgLtvBps
+      avgDscrBps
+      byPropertyType { label count }
+      byState { label count }
+      ltvDistribution { label count }
+    }
+  }
+`;
+
 // #24 the position dashboard query (per holder). principal is the token balance; accrued/claimable
 // mirror on-chain interest; optimistic flags a pre-confirmation row (#23).
 export const POSITIONS_QUERY = /* GraphQL */ `
