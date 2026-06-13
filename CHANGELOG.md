@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.4.0...v1.5.0) (2026-06-13)
+
+
+### Features
+
+* **api:** warehouse client + GraphQL book/analytics surface ([#63](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/63) [#64](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/64)) ([e39c4e1](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/e39c4e14e1e41652bb1146b9053de186ef636d01))
+
 # [1.4.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.3.0...v1.4.0) (2026-06-13)
 
 
