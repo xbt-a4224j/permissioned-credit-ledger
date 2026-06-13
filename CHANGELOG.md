@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.10.0...v1.11.0) (2026-06-13)
+
+
+### Features
+
+* **ui:** column-labelled data tables for the servicing feed + reserve activity ([1f1a432](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/1f1a432ec3179ac8c167a2e3a33f338204f6a5db)), closes [#24](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/24)
+
 # [1.10.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.9.0...v1.10.0) (2026-06-13)
 
 
