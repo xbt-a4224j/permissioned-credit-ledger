@@ -1,17 +1,13 @@
-// The typed reason-code bridge — never stringly · #25
-// The 9-member closed set == the GraphQL ReasonCode enum (#20), which itself mirrors the 7 Solidity
-// custom errors (the eligibility gauntlet + reserve + issuance cap, #14) plus the 2 off-chain engine
-// HALT states (#17/#18). The UI renders a typed ReasonBadge keyed off REASON_META; it NEVER renders a
-// raw error string. `tone: 'block'` = an on-chain eligibility/reserve/issuance revert (rows 3-6,8);
-// `tone: 'halt'` = an engine HALT (rows 9-10). reasonCodes.test.ts pins this set equal to the #20 SDL
-// enum snapshot (api/schema.graphql) so a renamed code fails the build rather than silently mis-rendering.
+// The typed reason-code bridge — never stringly · #25/#66
+// The 5-member closed set == the GraphQL ReasonCode enum (#20), which itself mirrors the 3 Solidity
+// custom errors (the verified-only permissioning check + reserve + issuance cap, #14) plus the 2
+// off-chain engine HALT states (#17/#18). The UI renders a typed ReasonBadge keyed off REASON_META;
+// it NEVER renders a raw error string. `tone: 'block'` = an on-chain revert (rows 3,8); `tone: 'halt'`
+// = an engine HALT (rows 9-10). reasonCodes.test.ts pins this set equal to the #20 SDL enum snapshot
+// (api/schema.graphql) so a renamed code fails the build rather than silently mis-rendering.
 
 export type ReasonCode =
-  | "SenderFrozen"
-  | "NotEligible"
-  | "ReceiverFrozen"
   | "ReceiverNotVerified"
-  | "AccreditationRequired"
   | "InsufficientReserve"
   | "ExceedsPrincipal"
   | "NavAnomaly"
@@ -19,11 +15,7 @@ export type ReasonCode =
 
 // #25 the closed set, for exhaustiveness checks and the SDL-enum drift guard.
 export const REASON_CODES: readonly ReasonCode[] = [
-  "SenderFrozen",
-  "NotEligible",
-  "ReceiverFrozen",
   "ReceiverNotVerified",
-  "AccreditationRequired",
   "InsufficientReserve",
   "ExceedsPrincipal",
   "NavAnomaly",
@@ -33,29 +25,9 @@ export const REASON_CODES: readonly ReasonCode[] = [
 // #25 single-sourced copy for every code: a short label + an explanatory blurb + the tone the
 // Badge/Banner primitives color by. `block` = compliance/reserve revert; `halt` = engine HALT.
 export const REASON_META: Record<ReasonCode, { label: string; blurb: string; tone: "block" | "halt" }> = {
-  SenderFrozen: {
-    label: "Sender frozen",
-    blurb: "The sending identity is frozen in the IdentityRegistry; a frozen holder cannot initiate any outbound transfer.",
-    tone: "block",
-  },
-  NotEligible: {
-    label: "Not eligible",
-    blurb: "The transfer failed the compliance gauntlet — the holder is not eligible to hold this loan series.",
-    tone: "block",
-  },
-  ReceiverFrozen: {
-    label: "Receiver frozen",
-    blurb: "The receiving identity is frozen in the IdentityRegistry; the transfer is blocked.",
-    tone: "block",
-  },
   ReceiverNotVerified: {
     label: "Receiver not verified",
-    blurb: "The receiving wallet has no verified identity claim; transfers to it are blocked.",
-    tone: "block",
-  },
-  AccreditationRequired: {
-    label: "Accreditation required",
-    blurb: "This Reg-D series requires an accredited US holder; the receiver is not accredited.",
+    blurb: "The receiving wallet has no verified identity claim — only KYC-verified wallets can hold the token.",
     tone: "block",
   },
   InsufficientReserve: {

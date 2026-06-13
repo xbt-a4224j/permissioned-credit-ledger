@@ -71,17 +71,14 @@ export async function applyLoanStatusChanged(tx: Sql, ev: Extract<ChainEvent, { 
   await tx`update loans set status = ${ev.status} where id = ${ev.loan}`;
 }
 
-// #47 KYC verdict -> the off-chain identities read model. This is the canonical, replayable path
-// that keeps I4 (IdentityValid) honest as wallets are verified/frozen at runtime (the resolver
-// also mirrors the claim synchronously for read-after-write immediacy; both converge to one row).
-// jurisdiction arrives already mapped to the seed spelling ('US' | 'nonUS' | 'Unknown') by decode.
+// #47/#66 KYC verdict -> the off-chain identities read model. This is the canonical, replayable path
+// that keeps I4 (IdentityValid) honest as wallets are verified at runtime (the resolver also mirrors
+// the claim synchronously for read-after-write immediacy; both converge to one row). #66 verified-only.
 export async function applyClaimsUpdated(tx: Sql, ev: Extract<ChainEvent, { name: "ClaimsUpdated" }>): Promise<void> {
   await tx`
-    insert into identities (addr, verified, accredited, jurisdiction, frozen)
-    values (${ev.account}, ${ev.verified}, ${ev.accredited}, ${ev.jurisdiction}, ${ev.frozen})
-    on conflict (addr) do update set
-      verified = excluded.verified, accredited = excluded.accredited,
-      jurisdiction = excluded.jurisdiction, frozen = excluded.frozen
+    insert into identities (addr, verified)
+    values (${ev.account}, ${ev.verified})
+    on conflict (addr) do update set verified = excluded.verified
   `;
 }
 

@@ -5,11 +5,9 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IdentityRegistry} from "../src/IdentityRegistry.sol";
-import {ComplianceRegistry} from "../src/ComplianceRegistry.sol";
 import {CreditToken} from "../src/CreditToken.sol";
 import {MockUSDC} from "../src/MockUSDC.sol";
 import {ICreditToken} from "../src/interfaces/ICreditToken.sol";
-import {IComplianceRegistry} from "../src/interfaces/IComplianceRegistry.sol";
 import {IIdentityRegistry} from "../src/interfaces/IIdentityRegistry.sol";
 import {InsufficientReserve} from "../src/Errors.sol";
 
@@ -47,7 +45,6 @@ contract MaliciousReserve is ERC20 {
 // (funded claim), 8 (InsufficientReserve), 9 (frozen accrual stops).
 contract AccrualTest is Test {
     IdentityRegistry internal id;
-    ComplianceRegistry internal compliance;
     CreditToken internal token;
     MockUSDC internal reserve;
 
@@ -59,12 +56,11 @@ contract AccrualTest is Test {
 
     function setUp() public {
         id = new IdentityRegistry(admin);
-        compliance = new ComplianceRegistry(admin, address(id), IComplianceRegistry.Offering.RegD);
         reserve = new MockUSDC();
-        token = new CreditToken(admin, address(id), address(compliance), address(reserve), RATE, type(uint256).max);
+        token = new CreditToken(admin, address(id), address(reserve), RATE, type(uint256).max);
 
         vm.prank(admin);
-        id.setClaims(holder, IIdentityRegistry.Claims(true, true, IIdentityRegistry.Jurisdiction.US, false));
+        id.setClaims(holder, IIdentityRegistry.Claims(true));
         vm.prank(admin);
         token.mint(holder, LOAN_ID, 100_000e6);
     }
@@ -220,7 +216,7 @@ contract AccrualTest is Test {
     // repelled by nonReentrant — the whole claim reverts.
     function test_claim_reentrancy_repelled() public {
         MaliciousReserve evil = new MaliciousReserve();
-        CreditToken t = new CreditToken(admin, address(id), address(compliance), address(evil), RATE, type(uint256).max);
+        CreditToken t = new CreditToken(admin, address(id), address(evil), RATE, type(uint256).max);
         evil.setToken(t);
 
         vm.prank(admin);

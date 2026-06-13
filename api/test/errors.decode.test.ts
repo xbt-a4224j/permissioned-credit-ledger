@@ -16,21 +16,15 @@ function revertData(errorName: string, args: readonly unknown[]): `0x${string}` 
   return encodeErrorResult({ abi: COMBINED_ERROR_ABI, errorName, args });
 }
 
-describe("#21 decodeReason maps the 5 on-chain custom errors", () => {
-  test("NotEligible -> NotEligible", () => {
-    expect(decodeReason(revertData("NotEligible", [ADDR]))).toBe("NotEligible");
-  });
-  test("ReceiverFrozen -> ReceiverFrozen", () => {
-    expect(decodeReason(revertData("ReceiverFrozen", [ADDR]))).toBe("ReceiverFrozen");
-  });
+describe("#21 decodeReason maps the 3 on-chain custom errors", () => {
   test("ReceiverNotVerified -> ReceiverNotVerified", () => {
     expect(decodeReason(revertData("ReceiverNotVerified", [ADDR]))).toBe("ReceiverNotVerified");
   });
-  test("AccreditationRequired -> AccreditationRequired", () => {
-    expect(decodeReason(revertData("AccreditationRequired", [ADDR]))).toBe("AccreditationRequired");
-  });
   test("InsufficientReserve -> InsufficientReserve", () => {
     expect(decodeReason(revertData("InsufficientReserve", [1000n, 500n]))).toBe("InsufficientReserve");
+  });
+  test("ExceedsPrincipal -> ExceedsPrincipal", () => {
+    expect(decodeReason(revertData("ExceedsPrincipal", [1000n, 500n]))).toBe("ExceedsPrincipal");
   });
 
   test("an unknown selector returns null (not a guess)", () => {
@@ -50,11 +44,9 @@ describe("#21 decodeReason maps the 5 on-chain custom errors", () => {
 
   test("property: decodeReason is total over arbitrary revert bytes (256 runs)", () => {
     const REASONS = new Set([
-      "NotEligible",
-      "ReceiverFrozen",
       "ReceiverNotVerified",
-      "AccreditationRequired",
       "InsufficientReserve",
+      "ExceedsPrincipal",
     ]);
     fc.assert(
       fc.property(fc.uint8Array({ minLength: 0, maxLength: 100 }), (bytes) => {

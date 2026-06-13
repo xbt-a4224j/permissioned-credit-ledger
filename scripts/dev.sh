@@ -139,13 +139,10 @@ cat <<BANNER
    Postgres      postgres://postgres:postgres@localhost:${PG_PORT}/pcl
    Local EVM     ${LOCAL_RPC}  (chain id 31337)
 
-   Seeded demo accounts (anvil mnemonic-index 1..6):
-     ACCREDITED_US_1  0x7099…79C8   verified · accredited · US
-     ACCREDITED_US_2  0x3C44…93BC   verified · accredited · US
-     REG_S_NONUS_1    0x90F7…b906   verified · Reg-S non-US
-     REG_S_NONUS_2    0x15d3…6A65   verified · Reg-S non-US
-     UNVERIFIED       0x9965…A4dc   not verified (row 3)
-     FROZEN           0x976E…0aa9   verified · frozen   (row 4)
+   Seeded demo accounts (anvil mnemonic-index 1,2,5):
+     VERIFIED_1   0x7099…79C8   KYC-verified · can hold the token
+     VERIFIED_2   0x3C44…93BC   KYC-verified · can hold the token
+     UNVERIFIED   0x9965…A4dc   not verified — investing reverts ReceiverNotVerified (row 3)
 
    Verify the matrix:  bun run scripts/verify_matrix.ts
    Tear it all down:   ./scripts/stop.sh

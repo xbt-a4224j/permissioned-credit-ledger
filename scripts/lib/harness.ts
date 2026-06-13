@@ -5,19 +5,16 @@
 // clean read model each pass), applies migrations (#15) + seeds reference rows (#16) + backfills
 // CreditToken logs from the live node, (b) boots the real graphql-yoga API server (#21) in-process
 // over that DB and a wallet client, and (c) exposes a MatrixContext whose row drivers go THROUGH
-// the GraphQL HTTP surface (rows 1-3, 5-8), a holder-simulated eth_call (row 4), and the NAV
-// feed / reconciliation engine (rows 9-10). All
+// the GraphQL HTTP surface (rows 1-5) and the NAV
+// feed / reconciliation engine (rows 6-7). All
 // correctness is asserted against the local node only (the Fuji-flakiness landmine).
 import postgres from "postgres";
 import {
-  BaseError,
-  ContractFunctionRevertedError,
   createPublicClient,
   createTestClient,
   createWalletClient,
   http,
   publicActions,
-  type Abi,
   type Account,
   type PublicClient,
   type WalletClient,
@@ -37,7 +34,6 @@ import {
 import { createYoga } from "graphql-yoga";
 import { schema } from "../../api/src/schema/index.ts";
 import { formatError } from "../../api/src/errors.ts";
-import { COMBINED_ERROR_ABI, CREDIT_TOKEN_ABI, IDENTITY_ABI } from "../../api/src/chain/abi.ts";
 import type { ApiContext } from "../../api/src/context.ts";
 import { readReconStatus } from "../../api/src/recon-reader.ts";
 import { simulateFeed } from "../../api/src/nav/index.ts";
@@ -51,28 +47,25 @@ const LOCAL_RPC = process.env.LOCAL_RPC ?? "http://127.0.0.1:18545";
 const ADMIN_DB_URL = process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:55432/pcl";
 const CHAIN_ID = 31337;
 
-// #27 anvil well-known keys: account 0 is the deploy admin/issuer (the server signer; invest/
-// transfer originate here). ACCREDITED_US_1 is anvil account 1 — the anchor holder whose key
+// #27 anvil well-known keys: account 0 is the deploy admin/issuer (the server signer; invest
+// originates here). VERIFIED_1 is anvil account 1 — the anchor holder whose key
 // signs claim (claim is msg.sender-driven; the UI signs it on Fuji).
 const ISSUER_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" as const;
 const ANCHOR_HOLDER_KEY = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d" as const;
 
 // #27 a generous off-chain collected balance so the seeded read model satisfies recon I2
-// (onchainClaimable <= collected) and no SPURIOUS recon HALT gates rows 1-8. The genuine
-// shortfall HALT is injected deliberately in row 10.
+// (onchainClaimable <= collected) and no SPURIOUS recon HALT gates rows 1-5. The genuine
+// shortfall HALT is injected deliberately in row 7.
 const RESERVE_FUNDING = 1_000_000_000_000n; // 1,000,000 USDC (6dp)
 
-// #27 the driver surface each scenario row calls. invest/transfer/claim* go through the live
-// GraphQL server; transferAs simulates on-chain as the holder; nav*/cashMismatch drive the NAV feed + engine then read the HALT back
+// #27 the driver surface each scenario row calls. invest/claim* go through the live GraphQL
+// server; navSpike/cashMismatch drive the NAV feed + engine then read the HALT back
 // through GraphQL — proving the seam, not poking internals to fake a verdict.
 export interface MatrixContext {
   apiUrl: string;
   rpcUrl: string;
   manifest: Manifest;
   invest: (loanId: string, wallet: `0x${string}`, amount: string) => Promise<Actual>;
-  transfer: (loanId: string, from: `0x${string}`, to: `0x${string}`, amount: string) => Promise<Actual>;
-  transferAs: (loanId: string, from: `0x${string}`, to: `0x${string}`, amount: string) => Promise<Actual>;
-  transferToNonAccredited: (loanId: string) => Promise<Actual>;
   claimFunded: (loanId: string, wallet: `0x${string}`) => Promise<Actual>;
   claimUnderfunded: (loanId: string, wallet: `0x${string}`) => Promise<Actual>;
   navSpike: (loanId: string) => Promise<Actual>;
@@ -141,12 +134,11 @@ async function gqlFetch(apiUrl: string, query: string, variables: Record<string,
   return (await res.json()) as { data: unknown; errors?: { extensions?: { code?: string } }[] };
 }
 
-// #27 the three write mutations as GraphQL documents (the real client surface, #20).
+// #27 the write mutations as GraphQL documents (the real client surface, #20).
 const INVEST = `mutation($input: InvestInput!) { invest(input: $input) { hash state } }`;
-const TRANSFER = `mutation($input: TransferInput!) { transfer(input: $input) { hash state } }`;
 const CLAIM = `mutation($input: ClaimInput!) { claim(input: $input) { hash state } }`;
 
-// #27 read the reconciliation status through GraphQL (rows 9-10 assert the HALT here).
+// #27 read the reconciliation status through GraphQL (rows 6-7 assert the HALT here).
 const RECON = `query { reconciliationStatus { state haltReason } }`;
 
 // #27 turn a GraphQL response into a typed Actual. An error with a known engine-state code is a
@@ -157,14 +149,7 @@ function actualFromGql(
 ): Actual {
   const code = resp.errors?.[0]?.extensions?.code;
   if (code === "NavAnomaly" || code === "ReconMismatch") return { kind: "halt", state: code };
-  if (
-    code === "SenderFrozen" ||
-    code === "NotEligible" ||
-    code === "ReceiverFrozen" ||
-    code === "ReceiverNotVerified" ||
-    code === "AccreditationRequired" ||
-    code === "InsufficientReserve"
-  ) {
+  if (code === "ReceiverNotVerified" || code === "InsufficientReserve" || code === "ExceedsPrincipal") {
     return { kind: "revert", reason: code };
   }
   if (resp.errors !== undefined && resp.errors.length > 0) {
@@ -174,12 +159,7 @@ function actualFromGql(
   return { kind: "ok", event: okEvent };
 }
 
-// #27 the CreditToken ABI with the union error set: a sender-side gauntlet revert is raised
-// inside ComplianceRegistry, so decoding it needs the combined error fragments from all three
-// contracts (the ABI-drift landmine — CreditToken's own artifact only carries its own errors).
-const GAUNTLET_ABI: Abi = [...CREDIT_TOKEN_ABI.filter((i) => i.type !== "error"), ...COMBINED_ERROR_ABI];
-
-// #27 a viem test client for time warps (rows 7/8/10 need on-chain accrual to accumulate).
+// #27 a viem test client for time warps (rows 4/5/7 need on-chain accrual to accumulate).
 type TestClient = ReturnType<typeof createTestClient> & PublicClient;
 
 // #27 wait for a broadcast tx to MINE (bounded), so a clean OK row's claimable/position effects
@@ -191,7 +171,7 @@ async function waitMined(chain: PublicClient, hash: `0x${string}`): Promise<"suc
 
 // #27 build the fixture: throwaway db -> migrate -> seed -> backfill -> fund off-chain reserve ->
 // boot the API server in-process on a unique port. Two API contexts back the writes: the issuer
-// signer (invest/transfer) and the anchor-holder signer (claim is msg.sender-driven).
+// signer (invest) and the anchor-holder signer (claim is msg.sender-driven).
 export async function setupFixture(): Promise<Fixture> {
   const { manifest, chain } = await assertStackUp();
 
@@ -202,7 +182,7 @@ export async function setupFixture(): Promise<Fixture> {
   await seedReference(sql, manifest);
   const latest = await chain.getBlockNumber();
   await backfill(sql, chain, tokenAddresses(manifest), tokenToLoanMap(manifest), 0n, latest);
-  // off-chain collected cash high enough that recon I2 holds for rows 1-8 (no spurious HALT).
+  // off-chain collected cash high enough that recon I2 holds for rows 1-5 (no spurious HALT).
   await sql`update reserve set balance = ${RESERVE_FUNDING.toString()} where id = 1`;
 
   // --- chain clients ---
@@ -216,11 +196,11 @@ export async function setupFixture(): Promise<Fixture> {
   ) as unknown as TestClient;
 
   // --- the REAL graphql-yoga server (schema #20 + typed formatError #21), in-process ---
-  // Two servers because the on-chain claim is msg.sender-driven: invest/transfer originate from
+  // Two servers because the on-chain claim is msg.sender-driven: invest originates from
   // the issuer signer, claim from the anchor-holder signer. Each owns its OWN db pool on the same
   // throwaway db. We build a LEAN yoga (no SSE/accrual/tx-watcher loops, #22/#23) so a disposed
   // fixture leaves no background timer querying a closed pool — the verifier exercises the GraphQL
-  // resolver + typed-error seam (#21), which is exactly the contract rows 1-8 assert against.
+  // resolver + typed-error seam (#21), which is exactly the contract rows 1-5 assert against.
   const holderSql = makeSql(dbHandle.url);
   const issuerCtx: ApiContext = {
     db: sql,
@@ -267,7 +247,8 @@ export async function setupFixture(): Promise<Fixture> {
     apiUrl: issuerUrl,
     rpcUrl: LOCAL_RPC,
     manifest,
-    // rows 1-3: invest = issuer mint through GraphQL. OK rows wait for the tx to mine.
+    // rows 1-3: invest = issuer mint through GraphQL. OK rows wait for the tx to mine; an
+    // unverified receiver reverts ReceiverNotVerified.
     invest: async (ln, wallet, amount) => {
       const resp = await gqlFetch(issuerUrl, INVEST, { input: { loanId: ln, wallet, amount } });
       const actual = actualFromGql(resp, "PositionOpened");
@@ -278,69 +259,7 @@ export async function setupFixture(): Promise<Fixture> {
       }
       return actual;
     },
-    // row 5: transfer through GraphQL — simulateContract surfaces the typed gauntlet revert.
-    // (`from` is advisory on this path: the single server signer originates the broadcast, so
-    // only RECEIVER-side gauntlet failures are reachable here.)
-    transfer: async (ln, _from, to, amount) => {
-      const resp = await gqlFetch(issuerUrl, TRANSFER, { input: { loanId: ln, from: _from, to, amount } });
-      return actualFromGql(resp, "PositionOpened");
-    },
-    // row 4: a holder-ORIGINATED transfer. Every GraphQL write is signed by the single server
-    // signer, so a SENDER-side gauntlet failure (SenderFrozen) cannot be produced through HTTP —
-    // the on-chain sender would be the issuer, not the holder. Simulate the transfer AS the
-    // holder via eth_call instead (no key needed) and decode the typed revert: this proves the
-    // contract gauntlet's step 0 directly — the same drive-the-mechanism pattern rows 9-10 use.
-    transferAs: async (ln, from, to, amount) => {
-      const token = manifest.loans[ln]?.token as `0x${string}` | undefined;
-      if (token === undefined) throw new Error(`transferAs: unknown loanId ${ln}`);
-      try {
-        await publicClient.simulateContract({
-          address: token,
-          abi: GAUNTLET_ABI,
-          functionName: "transfer",
-          args: [to, BigInt(amount)],
-          account: from,
-        });
-      } catch (err) {
-        const revert = err instanceof BaseError ? err.walk((e) => e instanceof ContractFunctionRevertedError) : null;
-        const name = revert instanceof ContractFunctionRevertedError ? revert.data?.errorName : undefined;
-        if (
-          name === "SenderFrozen" ||
-          name === "ReceiverFrozen" ||
-          name === "ReceiverNotVerified" ||
-          name === "NotEligible" ||
-          name === "AccreditationRequired" ||
-          name === "InsufficientReserve"
-        ) {
-          return { kind: "revert", reason: name };
-        }
-        throw new Error(`transferAs: expected a typed gauntlet revert, got ${String(err)}`);
-      }
-      throw new Error("transferAs: simulation unexpectedly succeeded (expected a gauntlet revert)");
-    },
-    // row 6: seed an ephemeral verified, NON-accredited, US identity ON-CHAIN via the issuer
-    // (the server signer holds ISSUER_ROLE on the IdentityRegistry), then transfer a Reg-D token
-    // to it through GraphQL — the Reg-D gauntlet branch reverts the typed AccreditationRequired.
-    transferToNonAccredited: async (ln) => {
-      const receiver = "0x00000000000000000000000000000000000000a6" as `0x${string}`;
-      // Claims tuple: { verified: true, accredited: false, jurisdiction: US(1), frozen: false }.
-      const setHash = await issuerWallet.writeContract({
-        address: manifest.identityRegistry as `0x${string}`,
-        abi: IDENTITY_ABI,
-        functionName: "setClaims",
-        args: [receiver, { verified: true, accredited: false, jurisdiction: 1, frozen: false }],
-        account: issuer,
-        chain: anvilLocal,
-      });
-      await waitMined(publicClient, setHash);
-      // `from` is advisory — transferRequest (#21) originates from the server signer; the gauntlet
-      // gates on the recipient. Use the anchor holder as the nominal source.
-      const resp = await gqlFetch(issuerUrl, TRANSFER, {
-        input: { loanId: ln, from: "0x70997970c51812dc3a010c7d01b50e0d17dc79c8", to: receiver, amount: "1000" },
-      });
-      return actualFromGql(resp, "PositionOpened");
-    },
-    // row 7: warp so the anchor accrues a little on-chain claimable, then claim (funded reserve).
+    // row 4: warp so the anchor accrues a little on-chain claimable, then claim (funded reserve).
     claimFunded: async (ln, wallet) => {
       await testClient.increaseTime({ seconds: 7 * 24 * 3600 });
       await testClient.mine({ blocks: 1 });
@@ -353,7 +272,7 @@ export async function setupFixture(): Promise<Fixture> {
       }
       return actual;
     },
-    // row 8: warp far enough that owed exceeds the on-chain reserve -> InsufficientReserve.
+    // row 5: warp far enough that owed exceeds the on-chain reserve -> InsufficientReserve.
     claimUnderfunded: async (ln, wallet) => {
       const snap = await testClient.snapshot();
       try {
@@ -365,16 +284,16 @@ export async function setupFixture(): Promise<Fixture> {
         await testClient.revert({ id: snap });
       }
     },
-    // row 9: push a +40% NAV spike through the feed -> NavAnomaly HALT + accrual frozen; assert
+    // row 6: push a +40% NAV spike through the feed -> NavAnomaly HALT + accrual frozen; assert
     // the HALT back through the GraphQL reconciliationStatus surface.
     navSpike: async (ln) => {
       await simulateFeed(sql as SharedSql, loanId(ln), "row9Spike");
       const resp = await gqlFetch(issuerUrl, RECON, {});
       const status = (resp.data as { reconciliationStatus: { state: string; haltReason: string | null } }).reconciliationStatus;
       if (status.state === "HALTED" && status.haltReason === "NavAnomaly") return { kind: "halt", state: "NavAnomaly" };
-      throw new Error(`row 9 expected NavAnomaly HALT, got ${JSON.stringify(status)}`);
+      throw new Error(`row 6 expected NavAnomaly HALT, got ${JSON.stringify(status)}`);
     },
-    // row 10: warp so on-chain claimable > 0, inject off-chain collected BELOW it, run a recon
+    // row 7: warp so on-chain claimable > 0, inject off-chain collected BELOW it, run a recon
     // cycle -> ReconMismatch (I2). Assert the HALT through GraphQL AND that a gated claim refuses.
     cashMismatch: async (ln, wallet) => {
       await testClient.increaseTime({ seconds: 30 * 24 * 3600 });
@@ -385,7 +304,7 @@ export async function setupFixture(): Promise<Fixture> {
       const shortfall = (snap.onchainClaimableTotal - usdc6(1n)) as bigint;
       await sql`update reserve set balance = ${shortfall.toString()} where id = 1`;
       const res = await runReconCycle(sql, publicClient, manifest);
-      if (res.ok) throw new Error("row 10 expected a ReconMismatch HALT, recon cycle passed");
+      if (res.ok) throw new Error("row 7 expected a ReconMismatch HALT, recon cycle passed");
       const resp = await gqlFetch(issuerUrl, RECON, {});
       const status = (resp.data as { reconciliationStatus: { state: string; haltReason: string | null } }).reconciliationStatus;
       // distribution must actually be blocked now: a claim through GraphQL must refuse.
@@ -394,7 +313,7 @@ export async function setupFixture(): Promise<Fixture> {
       if (status.state === "HALTED" && status.haltReason === "ReconMismatch" && claimActual.kind === "halt") {
         return { kind: "halt", state: "ReconMismatch" };
       }
-      throw new Error(`row 10 expected ReconMismatch HALT + blocked claim, got ${JSON.stringify({ status, claimActual })}`);
+      throw new Error(`row 7 expected ReconMismatch HALT + blocked claim, got ${JSON.stringify({ status, claimActual })}`);
     },
   };
 

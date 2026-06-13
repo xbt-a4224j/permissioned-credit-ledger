@@ -34,12 +34,12 @@ export async function loadSnapshot(sql: Sql, chain: PublicClient, _manifest: Sna
     select loan_id, holder, principal::text as principal from positions where principal > 0
   `;
   const reserveRow = await sql<{ balance: bigint }[]>`select balance::text as balance from reserve where id = 1`;
-  const identityRows = await sql<{ addr: string; verified: boolean; frozen: boolean }[]>`select addr, verified, frozen from identities`;
+  const identityRows = await sql<{ addr: string; verified: boolean }[]>`select addr, verified from identities`;
 
   const identities = new Map<IdentityAddr, IdentityFacts>();
   for (const r of identityRows) {
     const addr = identityAddr(r.addr);
-    identities.set(addr, { addr, verified: r.verified, frozen: r.frozen });
+    identities.set(addr, { addr, verified: r.verified });
   }
 
   // #66 the loan→token set from the loans read model — every tokenized loan (seeded + runtime), the

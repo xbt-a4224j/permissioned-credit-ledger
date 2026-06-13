@@ -1,18 +1,14 @@
-// Typed reason taxonomy — Solidity custom errors mirrored as a TS union · #14
-// Correctness is typed, not stringly: the 6 reason codes mirror the 6 on-chain custom
-// errors (ComplianceRegistry gauntlet + CreditToken reserve), and the 2 engine states have
-// no on-chain analog — they are the off-chain HALTs the NAV gate (#17) and recon engine
-// (#18) raise. An exhaustive switch over DomainError['kind'] with no `default` compiles,
-// proving union closure.
+// Typed reason taxonomy — Solidity custom errors mirrored as a TS union · #14/#66
+// Correctness is typed, not stringly: the 3 reason codes mirror the 3 on-chain custom errors
+// (CreditToken: the verified-only permissioning check + reserve + issuance cap), and the 2
+// engine states have no on-chain analog — they are the off-chain HALTs the NAV gate (#17) and
+// recon engine (#18) raise. An exhaustive switch over DomainError['kind'] with no `default`
+// compiles, proving union closure.
 
-// #14 the 7 reason codes == the 7 Solidity custom errors (matrix rows 3-6, 8, sender-freeze,
-// + the issuance cap ExceedsPrincipal).
+// #14/#66 the 3 reason codes == the 3 Solidity custom errors. (#66 collapsed compliance to
+// verified-only, dropping SenderFrozen / ReceiverFrozen / NotEligible / AccreditationRequired.)
 export type ReasonCode =
-  | "SenderFrozen"
-  | "NotEligible"
-  | "ReceiverFrozen"
   | "ReceiverNotVerified"
-  | "AccreditationRequired"
   | "InsufficientReserve"
   | "ExceedsPrincipal";
 
@@ -34,11 +30,7 @@ export const SOLIDITY_ERROR_SELECTORS: Record<`0x${string}`, ReasonCode> = {};
 
 // #14 the full closed set, for exhaustiveness tests and the API error enum.
 export const REASON_CODES: readonly ReasonCode[] = [
-  "SenderFrozen",
-  "NotEligible",
-  "ReceiverFrozen",
   "ReceiverNotVerified",
-  "AccreditationRequired",
   "InsufficientReserve",
   "ExceedsPrincipal",
 ] as const;

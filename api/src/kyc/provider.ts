@@ -1,35 +1,28 @@
-// The KYC provider seam — build-vs-buy made explicit · #39
+// The KYC provider seam — build-vs-buy made explicit · #39/#66
 // KYC/KYB document verification is a regulated, commodity capability: in production you integrate a
 // vendor (Persona, Parallel Markets, iComply, Jumio) — you do NOT build OCR + liveness + sanctions
 // screening yourself. So this is an INTERFACE with a mock implementation: the anti-corruption layer.
 // Swapping in a real provider is a one-file change. Crucially, the provider holds the PII and the
-// document bytes; the platform only ever receives a VERDICT + the claims to write on-chain. The
-// interesting (worth-building) part is downstream: the verdict becomes an IdentityRegistry claim that
-// the transfer gauntlet enforces — compliance-as-code.
-
-export type Jurisdiction = "US" | "NonUS";
+// document bytes; the platform only ever receives a VERDICT + the claim to write on-chain. The
+// interesting (worth-building) part is downstream: the verdict becomes an IdentityRegistry `verified`
+// claim that the permissioning check enforces — compliance-as-code. (#66 collapsed to verified-only.)
 
 // #39 what the applicant submits. `doc` is METADATA ONLY — the bytes never leave the browser; the UI
 // hashes the file client-side and sends {filename,size,sha256}. We never custody PII or documents.
 export interface KycSubmission {
   wallet: string;
   fullName: string;
-  jurisdiction: Jurisdiction;
-  accredited: boolean;
   doc: { filename: string; size: number; sha256: string };
 }
 
 export interface KycClaims {
   verified: boolean;
-  accredited: boolean;
-  jurisdiction: Jurisdiction;
-  frozen: boolean;
 }
 
 export interface KycVerdict {
   status: "APPROVED" | "REJECTED";
   reason: string | null;
-  /** the claims to write on-chain when APPROVED; null when REJECTED */
+  /** the claim to write on-chain when APPROVED; null when REJECTED */
   claims: KycClaims | null;
 }
 
@@ -48,11 +41,7 @@ export class MockKycProvider implements KycProvider {
     if (/reject|sanction|deny/i.test(s.fullName)) {
       return { status: "REJECTED", reason: "Identity/sanctions screening failed (mock provider).", claims: null };
     }
-    return {
-      status: "APPROVED",
-      reason: null,
-      claims: { verified: true, accredited: s.accredited, jurisdiction: s.jurisdiction, frozen: false },
-    };
+    return { status: "APPROVED", reason: null, claims: { verified: true } };
   }
 }
 

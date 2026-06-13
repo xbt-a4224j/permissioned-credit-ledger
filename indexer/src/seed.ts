@@ -12,15 +12,12 @@ import type { Manifest } from "./manifest.ts";
 // #16/#82 mirrors Deploy.s.sol RESERVE_FUNDING = 1_000_000e6 (the on-chain MockUSDC funding).
 const RESERVE_FUNDING_USDC6 = 1_000_000_000_000n;
 
-// #16 the 6 canonical identities (addresses + claims) — mirrors Identities.sol exactly:
-// 2 accredited-US, 2 accredited Reg-S non-US, 1 unverified, 1 frozen.
-export const SEEDED_IDENTITIES: { addr: string; verified: boolean; accredited: boolean; jurisdiction: "US" | "nonUS"; frozen: boolean }[] = [
-  { addr: "0x70997970c51812dc3a010c7d01b50e0d17dc79c8", verified: true, accredited: true, jurisdiction: "US", frozen: false },
-  { addr: "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc", verified: true, accredited: true, jurisdiction: "US", frozen: false },
-  { addr: "0x90f79bf6eb2c4f870365e785982e1f101e93b906", verified: true, accredited: true, jurisdiction: "nonUS", frozen: false },
-  { addr: "0x15d34aaf54267db7d7c367839aaf71a00a2c6a65", verified: true, accredited: true, jurisdiction: "nonUS", frozen: false },
-  { addr: "0x9965507d1a55bcc2695c58ba16fb37d819b0a4dc", verified: false, accredited: false, jurisdiction: "nonUS", frozen: false },
-  { addr: "0x976ea74026e726554db657fa54763abd0c3a0aa9", verified: true, accredited: true, jurisdiction: "US", frozen: true },
+// #16/#66 the 3 canonical identities (addresses + the verified claim) — mirrors Identities.sol:
+// 2 verified holders + 1 unverified.
+export const SEEDED_IDENTITIES: { addr: string; verified: boolean }[] = [
+  { addr: "0x70997970c51812dc3a010c7d01b50e0d17dc79c8", verified: true },
+  { addr: "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc", verified: true },
+  { addr: "0x9965507d1a55bcc2695c58ba16fb37d819b0a4dc", verified: false },
 ];
 
 const SECONDS_PER_YEAR = 31_536_000n;
@@ -41,11 +38,9 @@ export async function seedReference(sql: Sql, m: Manifest): Promise<void> {
   // identities first (positions FK references them).
   for (const id of SEEDED_IDENTITIES) {
     await sql`
-      insert into identities (addr, verified, accredited, jurisdiction, frozen)
-      values (${id.addr}, ${id.verified}, ${id.accredited}, ${id.jurisdiction}, ${id.frozen})
-      on conflict (addr) do update set
-        verified = excluded.verified, accredited = excluded.accredited,
-        jurisdiction = excluded.jurisdiction, frozen = excluded.frozen
+      insert into identities (addr, verified)
+      values (${id.addr}, ${id.verified})
+      on conflict (addr) do update set verified = excluded.verified
     `;
   }
 

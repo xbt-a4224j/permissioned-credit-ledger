@@ -15,7 +15,7 @@ import {
   type IdentityAddr,
   type LoanId,
 } from "@pcl/shared";
-import { CREDIT_TOKEN_EVENTS, IDENTITY_EVENTS, JURISDICTION_BY_INDEX, LOAN_STATUS_BY_INDEX } from "./abi.ts";
+import { CREDIT_TOKEN_EVENTS, IDENTITY_EVENTS, LOAN_STATUS_BY_INDEX } from "./abi.ts";
 
 // #16 a log carrying the fields the projection needs (viem getLogs/watch provide these).
 export type RawLog = Log & {
@@ -54,9 +54,6 @@ function decodeIdentityEvent(log: RawLog): ChainEvent | null {
     name: "ClaimsUpdated",
     account: identityAddr(a["account"] as string),
     verified: a["verified"] as boolean,
-    accredited: a["accredited"] as boolean,
-    jurisdiction: JURISDICTION_BY_INDEX[Number(a["jurisdiction"] as bigint | number)] ?? "Unknown",
-    frozen: a["frozen"] as boolean,
   };
 }
 

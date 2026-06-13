@@ -3,10 +3,8 @@ pragma solidity 0.8.28;
 
 import {Test} from "forge-std/Test.sol";
 import {IdentityRegistry} from "../src/IdentityRegistry.sol";
-import {ComplianceRegistry} from "../src/ComplianceRegistry.sol";
 import {CreditToken} from "../src/CreditToken.sol";
 import {MockUSDC} from "../src/MockUSDC.sol";
-import {IComplianceRegistry} from "../src/interfaces/IComplianceRegistry.sol";
 import {IIdentityRegistry} from "../src/interfaces/IIdentityRegistry.sol";
 
 // #11 fuzz suite — accrual is monotonic non-decreasing in elapsed time while
@@ -15,7 +13,6 @@ import {IIdentityRegistry} from "../src/interfaces/IIdentityRegistry.sol";
 // (foundry.toml fuzz.runs = 256). Every fuzzed input is bound().
 contract CreditTokenFuzzTest is Test {
     IdentityRegistry internal id;
-    ComplianceRegistry internal compliance;
     MockUSDC internal reserve;
 
     address internal admin = address(0xA11CE);
@@ -24,15 +21,14 @@ contract CreditTokenFuzzTest is Test {
 
     function setUp() public {
         id = new IdentityRegistry(admin);
-        compliance = new ComplianceRegistry(admin, address(id), IComplianceRegistry.Offering.RegD);
         reserve = new MockUSDC();
         vm.prank(admin);
-        id.setClaims(holder, IIdentityRegistry.Claims(true, true, IIdentityRegistry.Jurisdiction.US, false));
+        id.setClaims(holder, IIdentityRegistry.Claims(true));
     }
 
     // #11 deploy a token with a chosen per-second rate + mint a position to holder.
     function _tokenWith(uint256 ratePerSecond, uint256 principal) internal returns (CreditToken t) {
-        t = new CreditToken(admin, address(id), address(compliance), address(reserve), ratePerSecond, principal);
+        t = new CreditToken(admin, address(id), address(reserve), ratePerSecond, principal);
         vm.prank(admin);
         t.mint(holder, LOAN_ID, principal);
     }

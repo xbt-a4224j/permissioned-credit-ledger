@@ -37,12 +37,12 @@ export function I3_navInBounds(s: ReconSnapshot): InvariantResult {
   return { ok: false, failed: "NavInBounds", detail: { anomalousLoans: s.anomalousLoans } };
 }
 
-// #18 I4 — every current holder is verified and not frozen (compliance-eligible). A frozen or
-// unverified holder on the book is an identity break the gauntlet should never have allowed.
+// #18/#66 I4 — every current holder is verified. An unverified holder on the book is an identity
+// break the permissioning check should never have allowed (#66 collapsed compliance to verified-only).
 export function I4_identityValid(s: ReconSnapshot): InvariantResult {
   for (const h of s.holders) {
     const id = s.identities.get(h.holder);
-    if (id === undefined || !id.verified || id.frozen) {
+    if (id === undefined || !id.verified) {
       return { ok: false, failed: "IdentityValid", detail: { holder: h.holder, loan: h.loan, claims: id ?? null } };
     }
   }

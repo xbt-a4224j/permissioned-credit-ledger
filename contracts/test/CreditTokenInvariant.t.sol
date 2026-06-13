@@ -4,10 +4,8 @@ pragma solidity 0.8.28;
 import {Test} from "forge-std/Test.sol";
 import {StdInvariant} from "forge-std/StdInvariant.sol";
 import {IdentityRegistry} from "../src/IdentityRegistry.sol";
-import {ComplianceRegistry} from "../src/ComplianceRegistry.sol";
 import {CreditToken} from "../src/CreditToken.sol";
 import {MockUSDC} from "../src/MockUSDC.sol";
-import {IComplianceRegistry} from "../src/interfaces/IComplianceRegistry.sol";
 import {IIdentityRegistry} from "../src/interfaces/IIdentityRegistry.sol";
 import {ClaimHandler} from "./handlers/ClaimHandler.sol";
 
@@ -17,7 +15,6 @@ import {ClaimHandler} from "./handlers/ClaimHandler.sol";
 // ordering). Runs >=256 invariant runs at depth 64 (foundry.toml).
 contract CreditTokenInvariantTest is StdInvariant, Test {
     IdentityRegistry internal id;
-    ComplianceRegistry internal compliance;
     CreditToken internal token;
     MockUSDC internal reserve;
     ClaimHandler internal handler;
@@ -27,20 +24,14 @@ contract CreditTokenInvariantTest is StdInvariant, Test {
 
     function setUp() public {
         id = new IdentityRegistry(admin);
-        compliance = new ComplianceRegistry(admin, address(id), IComplianceRegistry.Offering.RegD);
         reserve = new MockUSDC();
-        token = new CreditToken(admin, address(id), address(compliance), address(reserve), RATE, type(uint256).max);
+        token = new CreditToken(admin, address(id), address(reserve), RATE, type(uint256).max);
 
-        // Seed the 6 canonical identities (the bounded actor set).
-        address[6] memory holders =
-            [address(0x11), address(0x12), address(0x21), address(0x22), address(0x31), address(0x41)];
+        // #66 bounded actor set: the 2 verified holders (the set the token admits).
+        address[2] memory holders = [address(0x11), address(0x12)];
         vm.startPrank(admin);
-        id.setClaims(holders[0], IIdentityRegistry.Claims(true, true, IIdentityRegistry.Jurisdiction.US, false));
-        id.setClaims(holders[1], IIdentityRegistry.Claims(true, true, IIdentityRegistry.Jurisdiction.US, false));
-        id.setClaims(holders[2], IIdentityRegistry.Claims(true, false, IIdentityRegistry.Jurisdiction.NonUS, false));
-        id.setClaims(holders[3], IIdentityRegistry.Claims(true, false, IIdentityRegistry.Jurisdiction.NonUS, false));
-        // holders[4] unverified, holders[5] frozen.
-        id.setClaims(holders[5], IIdentityRegistry.Claims(true, false, IIdentityRegistry.Jurisdiction.US, true));
+        id.setClaims(holders[0], IIdentityRegistry.Claims(true));
+        id.setClaims(holders[1], IIdentityRegistry.Claims(true));
         vm.stopPrank();
 
         handler = new ClaimHandler(token, reserve, admin, holders);

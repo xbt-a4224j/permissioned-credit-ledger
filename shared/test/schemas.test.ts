@@ -48,7 +48,7 @@ describe("arktype schemas round-trip valid fixtures", () => {
   });
 
   test("Identity", () => {
-    const i = IdentitySchema.assert({ addr: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", verified: true, accredited: true, jurisdiction: "US", frozen: false });
+    const i = IdentitySchema.assert({ addr: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", verified: true });
     expect(i.addr).toBe("0x70997970c51812dc3a010c7d01b50e0d17dc79c8"); // lowercased
   });
 
@@ -83,12 +83,11 @@ describe("arktype schemas round-trip valid fixtures", () => {
       name: "ClaimsUpdated", blockNumber: 9n, logIndex: 1,
       token: "0x5FbDB2315678afecb367f032d93F642f64180aa3", // the IdentityRegistry that emitted it
       account: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-      verified: true, accredited: true, jurisdiction: "US", frozen: false,
+      verified: true,
     });
     if (e.name === "ClaimsUpdated") {
       expect(e.account).toBe("0x70997970c51812dc3a010c7d01b50e0d17dc79c8"); // lowercased
       expect(e.verified).toBe(true);
-      expect(e.jurisdiction).toBe("US");
     }
   });
 
@@ -109,7 +108,7 @@ describe("arktype schemas reject malformed fixtures", () => {
     expect(() => LoanSchema.assert({ id: 1, principal: "1", rateBps: 1, status: "PERFORMING", startedAt: 1, collateralType: "AUTO", propertyId: 1, ltvBps: 1, dscrBps: 1 })).toThrow();
   });
   test("Identity rejects bad address", () => {
-    expect(() => IdentitySchema.assert({ addr: "0xnothex", verified: true, accredited: true, jurisdiction: "US", frozen: false })).toThrow();
+    expect(() => IdentitySchema.assert({ addr: "0xnothex", verified: true })).toThrow();
   });
   test("Usdc6 rejects a decimal string (the dollars-vs-base-units landmine)", () => {
     expect(() => ReserveStateSchema.assert({ balance: "1000.50", updatedAt: 1 })).toThrow();
@@ -135,11 +134,7 @@ test("Usdc6 round-trips above 2^53 without precision loss", () => {
 test("DomainError union is closed (exhaustive switch compiles)", () => {
   const classify = (e: DomainError): string => {
     switch (e.kind) {
-      case "SenderFrozen":
-      case "NotEligible":
-      case "ReceiverFrozen":
       case "ReceiverNotVerified":
-      case "AccreditationRequired":
       case "InsufficientReserve":
       case "ExceedsPrincipal":
         return "revert";
@@ -150,7 +145,7 @@ test("DomainError union is closed (exhaustive switch compiles)", () => {
         return assertNever(e);
     }
   };
-  expect(classify({ kind: "NotEligible" })).toBe("revert");
+  expect(classify({ kind: "ReceiverNotVerified" })).toBe("revert");
   expect(classify({ kind: "ReconMismatch" })).toBe("halt");
 });
 

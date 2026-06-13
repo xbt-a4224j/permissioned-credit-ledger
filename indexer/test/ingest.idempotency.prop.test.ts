@@ -50,7 +50,7 @@ async function seedIdentities(sql: Sql): Promise<void> {
   await sql`insert into properties (id, address_label, appraised_value, lien_position) values ('1', 'x', 1, 1)`;
   await sql`insert into loans (id, principal, rate_bps, status, started_at, collateral_type, property_id, ltv_bps, dscr_bps) values ('1', 0, 1, 'PERFORMING', 0, 'CRE', '1', 6500, 14000)`;
   for (let i = 0; i < MAX_HOLDERS; i++) {
-    await sql`insert into identities (addr, verified, accredited, jurisdiction, frozen) values (${identityAddr(holderAddr(i))}, true, true, 'US', false)`;
+    await sql`insert into identities (addr, verified) values (${identityAddr(holderAddr(i))}, true)`;
   }
 }
 

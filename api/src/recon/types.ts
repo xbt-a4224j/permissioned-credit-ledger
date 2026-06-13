@@ -16,11 +16,10 @@ export interface HolderFacts {
   onchainClaimable: Usdc6; // on-chain CreditToken.claimable(holder)
 }
 
-// #18 one identity's compliance claims (the I4 check reads these).
+// #18/#66 one identity's claim (the I4 check reads this — verified-only after the compliance collapse).
 export interface IdentityFacts {
   addr: IdentityAddr;
   verified: boolean;
-  frozen: boolean;
 }
 
 // #18 the immutable input to every invariant — snapshot in, verdict out (pure).

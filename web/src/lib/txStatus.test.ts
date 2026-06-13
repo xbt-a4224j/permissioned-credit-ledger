@@ -36,12 +36,12 @@ describe("useTxLifecycle", () => {
   });
 
   it("settles to reverted when the tracker reports REVERTED with a reasonCode", async () => {
-    const poll = async (): Promise<{ state: TxReceiptRef["state"]; reasonCode: "NotEligible" }> => ({ state: "REVERTED", reasonCode: "NotEligible" });
+    const poll = async (): Promise<{ state: TxReceiptRef["state"]; reasonCode: "ReceiverNotVerified" }> => ({ state: "REVERTED", reasonCode: "ReceiverNotVerified" });
     const { result } = renderHook(() => useTxLifecycle({ poll, attempts: 2, delayMs: 0, sleep: async () => {} }));
     await act(async () => {
       await result.current.run(async () => okResult());
     });
     await waitFor(() => expect(result.current.phase).toBe("reverted"));
-    expect(result.current.reason).toBe("NotEligible");
+    expect(result.current.reason).toBe("ReceiverNotVerified");
   });
 });

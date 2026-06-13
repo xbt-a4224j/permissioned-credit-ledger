@@ -82,9 +82,7 @@ interface Row {
 const ROWS: Row[] = [
   { row: 1, kind: "invest" },
   { row: 2, kind: "invest" },
-  { row: 3, kind: "invest", code: "NotEligible" },
-  { row: 6, kind: "invest", code: "AccreditationRequired" },
-  { row: 4, kind: "transfer", code: "ReceiverFrozen" },
+  { row: 3, kind: "invest", code: "ReceiverNotVerified" },
   { row: 5, kind: "transfer", code: "ReceiverNotVerified" },
   { row: 7, kind: "claim" },
   { row: 8, kind: "claim", code: "InsufficientReserve" },

@@ -33,7 +33,7 @@ describe("indexer projection", () => {
     db = await freshMigratedDb("pcl_proj");
     sql = db.sql;
     // seed the FK targets the projection writes against.
-    await sql`insert into identities (addr, verified, accredited, jurisdiction, frozen) values (${HOLDER}, true, true, 'US', false), (${HOLDER2}, true, true, 'US', false)`;
+    await sql`insert into identities (addr, verified) values (${HOLDER}, true), (${HOLDER2}, true)`;
     await sql`insert into properties (id, address_label, appraised_value, lien_position) values ('1', 'x', 1, 1)`;
     await sql`insert into loans (id, principal, rate_bps, status, started_at, collateral_type, property_id, ltv_bps, dscr_bps) values ('1', 0, 1, 'PERFORMING', 0, 'CRE', '1', 6500, 14000)`;
     await sql`insert into reserve (id, balance, updated_at) values (1, 1000000, 0)`;
@@ -96,22 +96,22 @@ describe("indexer projection", () => {
     const REGISTRY = identityAddr("0x5fbdb2315678afecb367f032d93f642f64180aa3");
     await ingestEvent(sql, {
       id: eventId(txh(9), 0), name: "ClaimsUpdated", blockNumber: 8n, logIndex: 0, token: REGISTRY,
-      account: NEWBIE, verified: true, accredited: true, jurisdiction: "US", frozen: false,
+      account: NEWBIE, verified: true,
     });
-    const row = (await sql<{ verified: boolean; accredited: boolean; jurisdiction: string; frozen: boolean }[]>`
-      select verified, accredited, jurisdiction, frozen from identities where addr = ${NEWBIE}`)[0];
-    expect(row).toEqual({ verified: true, accredited: true, jurisdiction: "US", frozen: false });
+    const row = (await sql<{ verified: boolean }[]>`
+      select verified from identities where addr = ${NEWBIE}`)[0];
+    expect(row).toEqual({ verified: true });
     // it lands in chain_events (the activity-feed source) with booleans intact.
     const ev = (await sql<{ name: string; payload: Record<string, unknown> }[]>`
       select name, payload from chain_events where name = 'ClaimsUpdated'`)[0];
     expect(ev?.name).toBe("ClaimsUpdated");
     expect(ev?.payload["verified"]).toBe(true);
 
-    // a later verdict (freeze) updates the same row.
+    // a later verdict (un-verify) updates the same row.
     await ingestEvent(sql, {
       id: eventId(txh(10), 0), name: "ClaimsUpdated", blockNumber: 9n, logIndex: 0, token: REGISTRY,
-      account: NEWBIE, verified: true, accredited: true, jurisdiction: "US", frozen: true,
+      account: NEWBIE, verified: false,
     });
-    expect((await sql<{ frozen: boolean }[]>`select frozen from identities where addr = ${NEWBIE}`)[0]?.frozen).toBe(true);
+    expect((await sql<{ verified: boolean }[]>`select verified from identities where addr = ${NEWBIE}`)[0]?.verified).toBe(false);
   });
 });

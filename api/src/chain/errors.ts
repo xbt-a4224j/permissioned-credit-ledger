@@ -1,10 +1,9 @@
-// Typed revert decoding — custom error -> ReasonCode · #21
+// Typed revert decoding — custom error -> ReasonCode · #21/#66
 // The whole matrix asserts a specific typed failure per branch; this is where an opaque RPC
-// revert becomes one of the 6 on-chain ReasonCodes. decodeReason walks a viem error chain (or
+// revert becomes one of the 3 on-chain ReasonCodes. decodeReason walks a viem error chain (or
 // takes raw revert `data`) and decodes the custom error name against the COMBINED error ABI
-// (#21 abi) — so a gauntlet revert thrown in ComplianceRegistry still resolves even though the
-// tx entered through CreditToken. It is TOTAL: any input (arbitrary bytes, a non-error) returns
-// a ReasonCode or null, never throws — the property the #21 fast-check test pins.
+// (#21 abi). It is TOTAL: any input (arbitrary bytes, a non-error) returns a ReasonCode or null,
+// never throws — the property the #21 fast-check test pins.
 import {
   BaseError,
   ContractFunctionRevertedError,
@@ -14,14 +13,10 @@ import {
 import type { ReasonCode } from "@pcl/shared";
 import { COMBINED_ERROR_ABI } from "./abi.ts";
 
-// #21 the 6 Solidity custom-error names that map 1:1 onto a ReasonCode (the matrix branches).
+// #21/#66 the 3 Solidity custom-error names that map 1:1 onto a ReasonCode (the matrix branches).
 // AccessControl/ERC20/Reentrancy reverts are NOT reason codes — they fall through to null.
 const ERROR_NAME_TO_REASON: Record<string, ReasonCode> = {
-  SenderFrozen: "SenderFrozen",
-  NotEligible: "NotEligible",
-  ReceiverFrozen: "ReceiverFrozen",
   ReceiverNotVerified: "ReceiverNotVerified",
-  AccreditationRequired: "AccreditationRequired",
   InsufficientReserve: "InsufficientReserve",
   ExceedsPrincipal: "ExceedsPrincipal",
 };

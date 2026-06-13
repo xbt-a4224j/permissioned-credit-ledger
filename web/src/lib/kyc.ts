@@ -16,7 +16,7 @@ export interface KycResult {
   decision: "APPROVED" | "REJECTED";
   reason: string | null;
   txHash: string | null;
-  claims: { verified: boolean; accredited: boolean; jurisdiction: string; frozen: boolean } | null;
+  claims: { verified: boolean } | null;
 }
 
 export const SUBMIT_KYC = /* GraphQL */ `
@@ -25,13 +25,13 @@ export const SUBMIT_KYC = /* GraphQL */ `
       decision
       reason
       txHash
-      claims { verified accredited jurisdiction frozen }
+      claims { verified }
     }
   }
 `;
 
 export const KYC_STATUS = /* GraphQL */ `
   query KycStatus($wallet: Address!) {
-    kycStatus(wallet: $wallet) { verified accredited jurisdiction frozen }
+    kycStatus(wallet: $wallet) { verified }
   }
 `;

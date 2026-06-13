@@ -33,15 +33,8 @@ function serializePayload(ev: ChainEvent): Record<string, string | number | bool
     case "LoanStatusChanged":
       return { ...common, loan: ev.loan, status: ev.status };
     case "ClaimsUpdated":
-      // #47 booleans stored natively (jsonb) so the feed's truthy checks read them correctly.
-      return {
-        ...common,
-        account: ev.account,
-        verified: ev.verified,
-        accredited: ev.accredited,
-        jurisdiction: ev.jurisdiction,
-        frozen: ev.frozen,
-      };
+      // #47 the verified boolean stored natively (jsonb) so the feed's truthy checks read it.
+      return { ...common, account: ev.account, verified: ev.verified };
   }
 }
 

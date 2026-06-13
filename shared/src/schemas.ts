@@ -34,10 +34,6 @@ const IdentityAddrSchema = type("string").pipe((v) => identityAddr(v));
 export const LoanStatusSchema = type("'PERFORMING' | 'DELINQUENT' | 'DEFAULT'");
 export type LoanStatus = typeof LoanStatusSchema.infer;
 
-// #14 jurisdiction mirrors IdentityRegistry.Jurisdiction (US / non-US gating).
-export const JurisdictionSchema = type("'US' | 'nonUS'");
-export type Jurisdiction = typeof JurisdictionSchema.infer;
-
 // #14 collateral type — the mortgage-general seam: CRE-first, residential plugs in.
 export const CollateralTypeSchema = type("'CRE' | 'RESIDENTIAL'");
 export type CollateralType = typeof CollateralTypeSchema.infer;
@@ -66,13 +62,10 @@ export const LoanSchema = type({
 });
 export type Loan = typeof LoanSchema.infer;
 
-// #14 Identity: the claims the eligibility gauntlet (#7) and recon I4 (#18) read.
+// #14/#66 Identity: the claim recon I4 (#18) reads — verified-only after the compliance collapse.
 export const IdentitySchema = type({
   addr: IdentityAddrSchema,
   verified: "boolean",
-  accredited: "boolean",
-  jurisdiction: JurisdictionSchema,
-  frozen: "boolean",
 });
 export type Identity = typeof IdentitySchema.infer;
 
@@ -145,9 +138,6 @@ export const ChainEventSchema = type({
     name: "'ClaimsUpdated'",
     account: IdentityAddrSchema,
     verified: "boolean",
-    accredited: "boolean",
-    jurisdiction: "string",
-    frozen: "boolean",
   });
 export type ChainEvent = typeof ChainEventSchema.infer;
 export type ChainEventName = ChainEvent["name"];

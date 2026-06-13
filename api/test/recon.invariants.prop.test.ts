@@ -26,10 +26,9 @@ const snapshotArb = fc
     collected: fc.bigInt({ min: 0n, max: 10n ** 12n }),
     anomalous: fc.boolean(),
     verified: fc.boolean(),
-    frozen: fc.boolean(),
   })
   .map((r): ReconSnapshot => {
-    const identities = new Map<IdentityAddr, IdentityFacts>([[A, { addr: A, verified: r.verified, frozen: r.frozen }]]);
+    const identities = new Map<IdentityAddr, IdentityFacts>([[A, { addr: A, verified: r.verified }]]);
     return {
       onchainTotalSupply: usdc6(r.supply),
       offchainBackedPrincipal: usdc6(r.backed),
@@ -63,13 +62,13 @@ test("a single broken invariant always yields ok === false (soundness)", () => {
         onchainClaimableTotal: usdc6(10n),
         offchainCollected: usdc6(10n),
         anomalousLoans: [],
-        identities: new Map([[A, { addr: A, verified: true, frozen: false }]]),
+        identities: new Map([[A, { addr: A, verified: true }]]),
       };
       let broken: ReconSnapshot;
       if (which === 0) broken = { ...valid, onchainTotalSupply: usdc6(101n) };
       else if (which === 1) broken = { ...valid, onchainClaimableTotal: usdc6(11n) }; // > collected
       else if (which === 2) broken = { ...valid, anomalousLoans: [LOAN] };
-      else broken = { ...valid, identities: new Map([[A, { addr: A, verified: true, frozen: true }]]) };
+      else broken = { ...valid, identities: new Map([[A, { addr: A, verified: false }]]) };
 
       const r = evaluateInvariants(broken);
       return r.ok === false;

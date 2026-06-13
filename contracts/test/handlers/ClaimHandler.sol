@@ -15,15 +15,15 @@ contract ClaimHandler is Test {
     MockUSDC public reserve;
     address public admin;
 
-    // #11 bounded actor set: the 6 seeded identities the matrix uses.
-    address[6] public holders;
+    // #11/#66 bounded actor set: the 2 verified holders the token admits.
+    address[2] public holders;
 
     // #11 ghost accounting for conservation invariants.
     uint256 public ghostTotalFunded; // total mock-USDC ever put in the reserve
     uint256 public ghostTotalClaimed; // total ever paid out via claim()
     uint256 public callCount; // proves the handler was exercised
 
-    constructor(CreditToken token_, MockUSDC reserve_, address admin_, address[6] memory holders_) {
+    constructor(CreditToken token_, MockUSDC reserve_, address admin_, address[2] memory holders_) {
         token = token_;
         reserve = reserve_;
         admin = admin_;
@@ -41,14 +41,11 @@ contract ClaimHandler is Test {
         return holders[seed % holders.length];
     }
 
-    // #11 mint a bounded position to a holder the Reg-D token actually admits.
-    // Only the 2 accredited-US holders [0,1] pass the Reg-D gauntlet on mint —
-    // minting to the Reg-S non-US holders [2,3] correctly reverts
-    // AccreditationRequired (matrix row 6), so restrict mints to the eligible set
-    // to keep handler actions effective rather than no-op reverts.
+    // #11/#66 mint a bounded position to a verified holder the token admits. Both
+    // holders are verified, so every mint lands rather than reverting.
     function mint(uint256 actorSeed, uint256 amount) external {
         callCount++;
-        address to = holders[actorSeed % 2]; // accredited-US only
+        address to = _actor(actorSeed);
         amount = bound(amount, 1e6, 1_000_000e6);
         vm.prank(admin);
         token.mint(to, 1, amount);

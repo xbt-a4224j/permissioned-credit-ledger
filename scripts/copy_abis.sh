@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Single-source-of-truth ABI export (contracts -> off-chain) · #13
-# Copies the Foundry build artifacts for the on-chain layer (CreditToken + the identity /
-# compliance registries) out of contracts/out into the indexer and the API. The indexer
+# Single-source-of-truth ABI export (contracts -> off-chain) · #13/#66
+# Copies the Foundry build artifacts for the on-chain layer (CreditToken + the IdentityRegistry)
+# out of contracts/out into the indexer and the API. The indexer
 # (#16) decodes CreditToken events and the GraphQL resolvers (#21) encode txs against these
 # ABIs; copying the COMPILED artifact (not a hand-kept copy) is what stops ABI drift — the
 # landmine where a stale ABI silently mis-parses events or turns a typed revert opaque.
@@ -14,7 +14,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 OUT="${REPO_ROOT}/contracts/out"
 
 # #13 the on-chain layer contracts the off-chain layer binds to.
-CONTRACTS=(CreditToken IdentityRegistry ComplianceRegistry)
+CONTRACTS=(CreditToken IdentityRegistry)
 
 # #13 both consumers get their own copy under src/abi/.
 DESTS=("${REPO_ROOT}/indexer/src/abi" "${REPO_ROOT}/api/src/abi")

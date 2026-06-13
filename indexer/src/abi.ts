@@ -71,16 +71,10 @@ export const IDENTITY_EVENTS = [
     inputs: [
       { name: "account", type: "address", indexed: true },
       { name: "verified", type: "bool", indexed: false },
-      { name: "accredited", type: "bool", indexed: false },
-      { name: "jurisdiction", type: "uint8", indexed: false },
-      { name: "frozen", type: "bool", indexed: false },
     ],
     anonymous: false,
   },
 ] as const;
-
-// #47 IdentityRegistry.Jurisdiction enum order -> off-chain string (matches the seed spelling).
-export const JURISDICTION_BY_INDEX = ["Unknown", "US", "nonUS"] as const;
 
 // #16 on-chain LoanStatus enum order (ICreditToken.LoanStatus) -> off-chain string. The
 // uint8 in LoanStatusChanged indexes this array; out-of-range is a hard error (ABI drift).

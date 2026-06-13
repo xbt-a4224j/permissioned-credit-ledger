@@ -21,10 +21,9 @@ flowchart LR
   subgraph CHAIN["⛓️ On-chain (Avalanche / anvil)"]
     direction TB
     IR[IdentityRegistry]
-    CR[ComplianceRegistry]
     CT[CreditToken]
     USDC[MockUSDC reserve]
-    CT -->|gauntlet| CR -->|claims| IR
+    CT -->|"verified? (_update)"| IR
     CT -->|claim pays| USDC
   end
 
@@ -72,7 +71,7 @@ flowchart LR
 
 ## 2. On-chain class diagram (L1 + L2)
 
-ERC-3643-lite: every transfer routes through `_update` → the compliance gauntlet → identity claims. Reverts are **typed custom errors**, never strings.
+Verified-only permissioned token: every transfer routes through `_update`, which reverts if the receiver is not verified (#66). Reverts are **typed custom errors**, never strings.
 
 ```mermaid
 classDiagram
@@ -80,15 +79,8 @@ classDiagram
 
   class IIdentityRegistry {
     <<interface>>
-    +claimsOf(addr) Claims
-    +isFrozen(addr) bool
-    +jurisdictionOf(addr) Jurisdiction
-    +setClaims(addr, Claims)
-  }
-  class IComplianceRegistry {
-    <<interface>>
-    +checkTransfer(from, to, amount)
-    +canTransfer(from, to, amount) bool
+    +isVerified(addr) bool
+    +setVerified(addr, bool)
   }
   class ICreditToken {
     <<interface>>
@@ -99,17 +91,11 @@ classDiagram
   }
 
   class IdentityRegistry {
-    +mapping~addr→Claims~ _claims
-    +setVerified/Accredited/Jurisdiction/Frozen()
-  }
-  class ComplianceRegistry {
-    +IIdentityRegistry identity
-    +Offering offering
-    +_firstFailure() gauntlet
+    +mapping~addr→bool~ _verified
+    +setVerified()
   }
   class CreditToken {
     +IIdentityRegistry identity
-    +IComplianceRegistry compliance
     +IERC20 reserve
     +uint256 ratePerSecond
     +mapping~addr→Accrual~ _accrual
@@ -121,47 +107,34 @@ classDiagram
   }
   class Errors {
     <<library>>
-    SenderFrozen · ReceiverFrozen
-    ReceiverNotVerified · NotEligible
-    AccreditationRequired · InsufficientReserve
+    ReceiverNotVerified
+    InsufficientReserve · ExceedsPrincipal
   }
 
   AccessControl <|-- IdentityRegistry
-  AccessControl <|-- ComplianceRegistry
   AccessControl <|-- CreditToken
   ERC20 <|-- CreditToken
   ERC20 <|-- MockUSDC
   ReentrancyGuard <|-- CreditToken
 
   IIdentityRegistry <|.. IdentityRegistry
-  IComplianceRegistry <|.. ComplianceRegistry
   ICreditToken <|.. CreditToken
 
-  ComplianceRegistry --> IIdentityRegistry : reads claims
-  CreditToken --> IComplianceRegistry : gauntlet on _update
-  CreditToken --> IIdentityRegistry : freeze/verify checks
+  CreditToken --> IIdentityRegistry : verified check on _update
   CreditToken --> MockUSDC : claim() debits reserve
   CreditToken ..> Errors : reverts
-  ComplianceRegistry ..> Errors : reverts
 ```
 
-**The gauntlet (fixed order, first failure reverts):**
+**The permissioning check (in `_update`, first failure reverts):**
 
 ```mermaid
 flowchart TB
-  A[transfer/mint] --> S0{sender frozen?}
-  S0 -- yes --> E0([revert SenderFrozen])
-  S0 -- no --> S1{receiver frozen?}
-  S1 -- yes --> E1([revert ReceiverFrozen])
-  S1 -- no --> S2{receiver verified?}
+  A[transfer/mint] --> S2{receiver verified?}
   S2 -- no --> E2([revert ReceiverNotVerified])
-  S2 -- yes --> S3{eligible for offering?}
-  S3 -- "RegD &amp; not accredited" --> E3([revert AccreditationRequired])
-  S3 -- "RegS &amp; US" --> E4([revert NotEligible])
-  S3 -- ok --> OK([transfer proceeds])
+  S2 -- yes --> OK([transfer proceeds])
 
   classDef rev fill:#7f1d1d,stroke:#fca5a5,color:#fee2e2;
-  class E0,E1,E2,E3,E4 rev;
+  class E2 rev;
 ```
 
 ---
@@ -292,9 +265,6 @@ erDiagram
   IDENTITIES {
     text     addr PK
     boolean  verified
-    boolean  accredited
-    text     jurisdiction "US|nonUS"
-    boolean  frozen
   }
   POSITIONS {
     text     id PK
@@ -383,7 +353,7 @@ sequenceDiagram
   U->>API: mutation invest(loan, amount)
   API->>API: assertCanDistribute (read latest recon_status)
   API->>CT: writeContract mint(to, amount)
-  CT->>CT: _update → gauntlet (frozen/verified/eligible)
+  CT->>CT: _update → receiver verified?
   CT-->>API: tx hash (PENDING)
   API->>DB: tx_status + optimistic_position
   CT-->>IDX: PositionOpened + Transfer events
@@ -448,7 +418,7 @@ flowchart TB
   I2 -- no --> H2[["ReconMismatch · ClaimableCovered"]]
   I2 -- yes --> I3{"I3 NavInBounds?<br/>no loan under NavAnomaly"}
   I3 -- no --> H3[["NavAnomaly · NavInBounds"]]
-  I3 -- yes --> I4{"I4 IdentityValid?<br/>every holder verified, not frozen"}
+  I3 -- yes --> I4{"I4 IdentityValid?<br/>every holder verified"}
   I4 -- no --> H4[["ReconMismatch · IdentityValid"]]
   I4 -- yes --> OK[["ok = true"]]
   H1 --> W
@@ -470,11 +440,11 @@ flowchart TB
 **The four invariants, in fixed order, short-circuiting on the first failure:**
 
 - **I1 `SupplyBacked`** — `onchainTotalSupply == offchainBackedPrincipal`. Sum of every token's `totalSupply()` must equal the sum of `positions.principal` in the book. If they disagree, the projection is wrong — the book thinks a different number of tokens exist than actually do. This is an *integrity* break (the ledger is miscounting) — typically the indexer's projection drifting from the chain.
-- **I2 `ClaimableCovered`** — `sum(claimable(holder)) ≤ offchainCollected`. Aggregate on-chain claimable must be covered by the cash the servicer actually collected (the reserve balance). This is the *solvency* gate — the single most important comparison in the system. If it breaks, holders could claim money that was never collected. Matrix row 10 breaks it on purpose by reporting collected cash below claimable (`reportCash`).
+- **I2 `ClaimableCovered`** — `sum(claimable(holder)) ≤ offchainCollected`. Aggregate on-chain claimable must be covered by the cash the servicer actually collected (the reserve balance). This is the *solvency* gate — the single most important comparison in the system. If it breaks, holders could claim money that was never collected. Matrix row 7 breaks it on purpose by reporting collected cash below claimable (`reportCash`).
 - **I3 `NavInBounds`** — no active loan is sitting under a `NavAnomaly` halt. This is the one invariant whose engine `state` is `NavAnomaly` rather than `ReconMismatch`, because its cause is a bad mark, not a cash/supply divergence.
-- **I4 `IdentityValid`** — every current holder is verified and not frozen. A frozen or unverified holder on the book is a compliance break the gauntlet should never have permitted; finding one means something bypassed the front door.
+- **I4 `IdentityValid`** — every current holder is `verified` (#66). An unverified holder on the book is a permissioning break the `_update` check should never have permitted; finding one means something bypassed the front door.
 
-**Why fixed order matters.** `evaluateInvariants` returns the *first* failure. If the order were nondeterministic, the recorded `failed_invariant` could flip between runs on a state that breaks two invariants at once — and matrix row 10 would flake in CI. Determinism of the *verdict*, not just the *value*, is the property.
+**Why fixed order matters.** `evaluateInvariants` returns the *first* failure. If the order were nondeterministic, the recorded `failed_invariant` could flip between runs on a state that breaks two invariants at once — and matrix row 7 would flake in CI. Determinism of the *verdict*, not just the *value*, is the property.
 
 ## 7. Deterministic replay and the `stateHash`
 
@@ -568,11 +538,11 @@ sequenceDiagram
   CT->>CT: owed = accruals[holder].accrued
   CT->>R: reserve.balanceOf(this)
   alt owed > reserve balance
-    CT-->>H: revert InsufficientReserve(owed, bal)   — matrix row 8
+    CT-->>H: revert InsufficientReserve(owed, bal)   — matrix row 5
   else funded
     CT->>CT: accrued = 0          — EFFECT (before interaction)
     CT->>R: safeTransfer(holder, owed)   — INTERACTION (last)
-    CT-->>H: emit InterestClaimed(holder, loan, owed)   — matrix row 7
+    CT-->>H: emit InterestClaimed(holder, loan, owed)   — matrix row 4
   end
 ```
 
@@ -584,35 +554,28 @@ sequenceDiagram
 
 **Reentrancy: belt and suspenders.** `claim()` is `nonReentrant` *and* follows checks-effects-interactions: it zeroes `accrued` (the effect) **before** `safeTransfer` (the interaction). Even if the reserve token had a malicious transfer hook, the holder's claimable is already zero by the time control could re-enter — there's nothing left to double-claim. The forge invariant test asserts total claimed never exceeds total accrued-minus-reserve under adversarial ordering.
 
-## 10. The transfer gauntlet × offering type
+## 10. The permissioning check — verified-only
 
-The gauntlet's first three steps (frozen sender → frozen receiver → unverified receiver) are universal. Step 4 — eligibility — branches on the token's **offering type**, the dimension that encodes US securities law. Here's where each seeded identity lands, by offering:
+The permissioning model is a single `verified` boolean per address (#66). `_update` performs exactly one check: a transfer/mint to a non-verified receiver reverts `ReceiverNotVerified`. Here's where each seeded identity lands:
 
-| Seeded identity | claims | Reg-D token (accredited-gated) | Reg-S token (non-US-gated) |
-|---|---|---|---|
-| `ACCREDITED_US_1/2` | verified, accredited, US | ✅ OK | ❌ `NotEligible` (US holder) |
-| `REG_S_NONUS_1/2` | verified, non-accredited, non-US | ❌ `AccreditationRequired` | ✅ OK |
-| `UNVERIFIED` | not verified | ❌ `ReceiverNotVerified` | ❌ `ReceiverNotVerified` |
-| `FROZEN` (as receiver) | verified, frozen | ❌ `ReceiverFrozen` | ❌ `ReceiverFrozen` |
-| `FROZEN` (as sender) | verified, frozen | ❌ `SenderFrozen` | ❌ `SenderFrozen` |
+| Seeded identity | claims | mint/transfer to this receiver |
+|---|---|---|
+| `VERIFIED_1/2` | verified | ✅ OK |
+| `UNVERIFIED` | not verified | ❌ `ReceiverNotVerified` |
 
 ```mermaid
 flowchart TB
-  T["transfer/mint reaches step 4 (eligibility)"] --> O{token offering?}
-  O -- "Reg D" --> D{receiver accredited?}
-  D -- yes --> OKd([OK])
-  D -- no --> Ad([revert AccreditationRequired])
-  O -- "Reg S" --> S{receiver non-US?}
-  S -- yes --> OKs([OK])
-  S -- no --> Ns([revert NotEligible])
+  T["transfer/mint reaches _update"] --> S2{receiver verified?}
+  S2 -- yes --> OK([OK])
+  S2 -- no --> E2([revert ReceiverNotVerified])
 
   classDef rev fill:#7f1d1d,stroke:#fca5a5,color:#fee2e2;
-  class Ad,Ns rev;
+  class E2 rev;
 ```
 
-**Why offering type is the right seam.** Reg D and Reg S are the two exemptions under which a real private security actually trades: Reg D restricts to accredited US investors, Reg S to non-US persons. By making `Offering` an immutable property of each `ComplianceRegistry` (and thus each token), the same identity legitimately holds one token and is correctly rejected from another — the compliance logic is *per-offering*, not per-wallet. The grid above is the scenario matrix's rows 1–6: it's not arbitrary test data, it's the cross-product of {identity archetype} × {offering} that a real cap-table must enforce.
+**Why `verified` is the seam.** The single boolean is the minimal permissioning predicate: a holder either passed KYC or didn't, and only verified holders can receive the token. Jurisdiction/accreditation/offering gating (Reg-D/Reg-S) was collapsed out (#66) — the per-offering cap-table logic is a named extension point that hangs off this same `_update` check, not built. The two rows above are scenario-matrix rows 1–3.
 
-**Eligibility is by construction, not by check-after.** The gauntlet runs inside `_update`, the OZ chokepoint every balance change funnels through. There is no code path that moves a token without passing it. `super._update` runs *last*, so a reverting check never mutates balances — the failure is atomic. This is "compliance enforced by construction" made literal.
+**Permissioning is by construction, not by check-after.** The check runs inside `_update`, the OZ chokepoint every balance change funnels through. There is no code path that moves a token without passing it. `super._update` runs *last*, so a reverting check never mutates balances — the failure is atomic. This is "permissioning enforced by construction" made literal.
 
 ## 11. Optimistic positions — converging the pending write to truth
 
@@ -620,7 +583,7 @@ flowchart TB
 stateDiagram-v2
   [*] --> PENDING : invest() writes tx + optimistic_positions row
   PENDING --> CONFIRMED : receipt mined, block_number set
-  PENDING --> REVERTED : gauntlet reverted on-chain
+  PENDING --> REVERTED : permissioning check reverted on-chain
   CONFIRMED --> RECONCILED : indexer projects canonical positions row, opened_at >= tx block
   RECONCILED --> [*] : optimistic row deleted
   REVERTED --> [*] : optimistic row dropped (cascade)
@@ -658,7 +621,7 @@ flowchart LR
 
 If you can draw and narrate these five edges, you own the system:
 
-1. **`_update` → `checkTransfer`** — compliance by construction; nothing moves without the gauntlet.
+1. **`_update` → `verified` check** — permissioning by construction; nothing moves to a non-verified receiver.
 2. **chain events → indexer → `positions`** — the projection that *might* drift.
 3. **recon engine → `claimable()` vs `reserve.balance`** — I2, the solvency gate that catches the drift.
 4. **input log → sorted fold → `stateHash`** — determinism that makes the halt auditable.

@@ -53,9 +53,6 @@ input ClaimInput {
 scalar DateTime
 
 type Identity {
-  accredited: Boolean!
-  frozen: Boolean!
-  jurisdiction: Jurisdiction!
   verified: Boolean!
   wallet: Address!
 }
@@ -74,18 +71,11 @@ input InvestInput {
   wallet: Address!
 }
 
-enum Jurisdiction {
-  NonUS
-  US
-}
-
 input KycInput {
-  accredited: Boolean!
   docFilename: String!
   docSha256: String!
   docSize: Int!
   fullName: String!
-  jurisdiction: String!
   wallet: Address!
 }
 
@@ -97,9 +87,6 @@ type KycResult {
 }
 
 type KycStatus {
-  accredited: Boolean!
-  frozen: Boolean!
-  jurisdiction: String!
   verified: Boolean!
 }
 
@@ -174,18 +161,14 @@ type RankedBook {
 }
 
 """
-The 6 on-chain custom errors + 2 off-chain engine HALT states, as one typed code.
+The 3 on-chain custom errors + 2 off-chain engine HALT states, as one typed code.
 """
 enum ReasonCode {
-  AccreditationRequired
   ExceedsPrincipal
   InsufficientReserve
   NavAnomaly
-  NotEligible
-  ReceiverFrozen
   ReceiverNotVerified
   ReconMismatch
-  SenderFrozen
 }
 
 enum ReconState {

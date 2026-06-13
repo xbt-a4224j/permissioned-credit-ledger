@@ -8,14 +8,12 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ICreditToken} from "./interfaces/ICreditToken.sol";
 import {IIdentityRegistry} from "./interfaces/IIdentityRegistry.sol";
-import {IComplianceRegistry} from "./interfaces/IComplianceRegistry.sol";
-import {InsufficientReserve, ExceedsPrincipal} from "./Errors.sol";
+import {ReceiverNotVerified, InsufficientReserve, ExceedsPrincipal} from "./Errors.sol";
 
-// #8 CreditToken — ERC-3643-lite permissioned security token representing a single
+// #8/#66 CreditToken — ERC-3643-lite permissioned security token representing a single
 // loan series. Every balance change routes through the OZ v5 `_update` hook, the
-// single chokepoint where the freeze -> receiver-verified -> compliance gauntlet
-// runs and reverts the typed errors matrix rows 3-6 assert. Issuer-gated
-// mint/burn.
+// single chokepoint where the permissioning check runs: the recipient must be
+// KYC-verified, else ReceiverNotVerified (matrix row 3). Issuer-gated mint/burn.
 // #9 accrual (accrued = balance * ratePerSecond * elapsed, gated by loan status —
 // no accrual at DEFAULT) + reentrancy-safe claim() paying from the mock-USDC
 // reserve (checks-effects-interactions + ReentrancyGuard).
@@ -24,9 +22,8 @@ contract CreditToken is ERC20, AccessControl, ReentrancyGuard, ICreditToken {
 
     bytes32 public constant ISSUER_ROLE = keccak256("ISSUER_ROLE");
 
-    // #8 the identity + compliance registries the gauntlet consults.
+    // #8/#66 the identity registry the permissioning check consults (verified-only).
     IIdentityRegistry public immutable identity;
-    IComplianceRegistry public immutable compliance;
 
     // #9 the mock-USDC reserve claim() pays interest from.
     IERC20 public immutable reserve;
@@ -68,18 +65,12 @@ contract CreditToken is ERC20, AccessControl, ReentrancyGuard, ICreditToken {
 
     mapping(address => Accrual) public accruals;
 
-    constructor(
-        address admin,
-        address identityReg,
-        address complianceReg,
-        address reserveToken,
-        uint256 ratePerSecond_,
-        uint256 principalCap_
-    ) ERC20("Credit Token", "CRDT") {
+    constructor(address admin, address identityReg, address reserveToken, uint256 ratePerSecond_, uint256 principalCap_)
+        ERC20("Credit Token", "CRDT")
+    {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(ISSUER_ROLE, admin);
         identity = IIdentityRegistry(identityReg);
-        compliance = IComplianceRegistry(complianceReg);
         reserve = IERC20(reserveToken);
         ratePerSecond = ratePerSecond_;
         principalCap = principalCap_;
@@ -91,8 +82,8 @@ contract CreditToken is ERC20, AccessControl, ReentrancyGuard, ICreditToken {
     }
 
     // #8 issuer-gated issuance: opens a position and emits PositionOpened. The
-    // gauntlet still runs on the recipient via _update (mint path), so minting to
-    // an unverified/frozen address reverts (matrix row 3).
+    // permissioning check still runs on the recipient via _update (mint path), so
+    // minting to an unverified address reverts ReceiverNotVerified (matrix row 3).
     function mint(address to, uint256 loanId, uint256 amount) external onlyRole(ISSUER_ROLE) {
         // #5 issuance cap: never mint more of a loan than its principal. Enforced here, on-chain,
         // because totalSupply is the authoritative record of how much exists — checked and applied
@@ -193,14 +184,14 @@ contract CreditToken is ERC20, AccessControl, ReentrancyGuard, ICreditToken {
         emit InterestClaimed(msg.sender, loanOf[msg.sender], owed);
     }
 
-    // #8 THE chokepoint — every mint/transfer/burn funnels here. Run the gauntlet
-    // on the recipient of a mint and on holder-to-holder transfers; skip burns
-    // (to == 0) so issuer clawback works. compliance.checkTransfer reverts the
-    // typed error; super._update runs LAST so a reverting check never mutates
-    // balances. #9: settle both parties' accrual on the PRE-change balance first.
+    // #8/#66 THE chokepoint — every mint/transfer/burn funnels here. The permissioning
+    // check requires the recipient (mint recipient + transfer receiver) to be verified,
+    // else ReceiverNotVerified; burns (to == 0) skip it so issuer clawback works.
+    // super._update runs LAST so a reverting check never mutates balances. #9: settle
+    // both parties' accrual on the PRE-change balance first.
     function _update(address from, address to, uint256 amount) internal override {
-        if (to != address(0)) {
-            compliance.checkTransfer(from, to, amount);
+        if (to != address(0) && !identity.isVerified(to)) {
+            revert ReceiverNotVerified(to);
         }
         // Settle on pre-change balances so the slice up to now is captured before
         // the transfer shifts principal between holders.

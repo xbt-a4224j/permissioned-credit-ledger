@@ -17,7 +17,7 @@ const LOAN: LoanId = loanId(1);
 
 // a fully-consistent baseline snapshot (every invariant holds).
 function baseSnapshot(): ReconSnapshot {
-  const identities = new Map<IdentityAddr, IdentityFacts>([[A, { addr: A, verified: true, frozen: false }]]);
+  const identities = new Map<IdentityAddr, IdentityFacts>([[A, { addr: A, verified: true }]]);
   return {
     onchainTotalSupply: usdc6(100_000n),
     offchainBackedPrincipal: usdc6(100_000n),
@@ -58,15 +58,8 @@ describe("each invariant fails independently with its InvariantId", () => {
     if (!r.ok) expect(r.failed).toBe("NavInBounds");
   });
 
-  test("I4 IdentityValid: a frozen holder", () => {
-    const identities = new Map<IdentityAddr, IdentityFacts>([[A, { addr: A, verified: true, frozen: true }]]);
-    const r = I4_identityValid({ ...baseSnapshot(), identities });
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.failed).toBe("IdentityValid");
-  });
-
   test("I4 IdentityValid: an unverified holder", () => {
-    const identities = new Map<IdentityAddr, IdentityFacts>([[A, { addr: A, verified: false, frozen: false }]]);
+    const identities = new Map<IdentityAddr, IdentityFacts>([[A, { addr: A, verified: false }]]);
     const r = I4_identityValid({ ...baseSnapshot(), identities });
     expect(r.ok).toBe(false);
   });

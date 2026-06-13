@@ -44,12 +44,8 @@ function describe(ev: NonNullable<ReturnType<typeof decodeChainEvent>>): string 
       return eventLine("InterestClaimed", yellow(`💰 loan #${ev.loan} · ${short(ev.holder)} claimed ${usd(ev.amount)}`));
     case "LoanStatusChanged":
       return eventLine("LoanStatusChanged", magenta(`🔁 loan #${ev.loan} → ${ev.status}`));
-    case "ClaimsUpdated": {
-      const flags = [ev.verified ? "verified" : "unverified", ev.accredited ? "accredited" : null, ev.frozen ? "frozen" : null, ev.jurisdiction]
-        .filter(Boolean)
-        .join(" · ");
-      return eventLine("ClaimsUpdated", blue(`🪪 KYC ${short(ev.account)} → ${flags}`));
-    }
+    case "ClaimsUpdated":
+      return eventLine("ClaimsUpdated", blue(`🪪 KYC ${short(ev.account)} → ${ev.verified ? "verified" : "unverified"}`));
   }
 }
 

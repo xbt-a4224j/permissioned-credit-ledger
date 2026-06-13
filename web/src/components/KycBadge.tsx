@@ -10,9 +10,6 @@ import { KycModal } from "./KycModal.tsx";
 
 interface Status {
   verified: boolean;
-  accredited: boolean;
-  jurisdiction: string;
-  frozen: boolean;
 }
 
 export function KycBadge(props: { wallet: string }): JSX.Element | null {
@@ -34,10 +31,8 @@ export function KycBadge(props: { wallet: string }): JSX.Element | null {
 
   return (
     <>
-      {status.frozen ? (
-        <Badge tone="halt" title="This wallet is frozen">Frozen</Badge>
-      ) : status.verified ? (
-        <Badge tone="positive" title={`KYC verified · ${status.jurisdiction}${status.accredited ? " · accredited" : ""}`}>
+      {status.verified ? (
+        <Badge tone="positive" title="KYC verified — this wallet can hold the token">
           KYC&nbsp;✓
         </Badge>
       ) : (

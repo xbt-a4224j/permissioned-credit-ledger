@@ -2,13 +2,10 @@
 import { builder } from "../builder.ts";
 import type { KycStatusView, KycResultView } from "../../kyc/resolve.ts";
 
-// #39 a wallet's current on-chain claims (the gauntlet's source of truth) — drives the UI badge.
+// #39/#66 a wallet's current on-chain `verified` claim (the permissioning source of truth) — drives the UI badge.
 export const KycStatus = builder.simpleObject("KycStatus", {
   fields: (t) => ({
     verified: t.boolean({ nullable: false }),
-    accredited: t.boolean({ nullable: false }),
-    jurisdiction: t.string({ nullable: false }),
-    frozen: t.boolean({ nullable: false }),
   }),
 });
 

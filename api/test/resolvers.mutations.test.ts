@@ -3,9 +3,8 @@
 //  • invest (accredited-US) broadcasts and returns a PENDING ref (row 1).
 //  • claim (anchor holder) broadcasts (row 7).
 //  • each eligibility branch surfaces its TYPED ReasonCode via simulateContract, not an RPC string:
-//    unverified invest -> NotEligible/ReceiverNotVerified; transfer-to-frozen -> ReceiverFrozen;
-//    transfer-to-unverified -> ReceiverNotVerified; US-non-accredited never seeded, so we assert
-//    the gauntlet's verified/eligible branches (rows 3-5) + claim InsufficientReserve (row 8).
+//    unverified invest -> ReceiverNotVerified; transfer-to-unverified -> ReceiverNotVerified
+//    (rows 3,5) + claim InsufficientReserve (row 8).
 //  • when recon is HALTED, claim/invest throw a ReconMismatch/NavAnomaly code and NEVER call
 //    writeContract (matrix rows 9-10 enforced at the API, not just displayed).
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
@@ -22,9 +21,7 @@ import {
   ACCREDITED_US_1,
   ACCREDITED_US_1_KEY,
   ACCREDITED_US_2,
-  REG_S_NONUS_1,
   UNVERIFIED,
-  FROZEN,
 } from "./helpers.ts";
 import { resolveInvest, resolveTransfer, resolveClaim } from "../src/resolvers/mutations.ts";
 import { resolveReportCash } from "../src/resolvers/ops.ts";
@@ -99,28 +96,15 @@ test("claim (anchor holder, funded reserve) broadcasts (row 7)", async () => {
 
 // --- typed error paths (simulateContract surfaces the typed custom error) ---
 
-test("unverified invest -> NotEligible/ReceiverNotVerified (rows 3)", async () => {
+test("unverified invest -> ReceiverNotVerified (row 3)", async () => {
   await expect(resolveInvest(ctx, { loanId: "1", wallet: UNVERIFIED, amount: "1000" })).rejects.toMatchObject({
-    extensions: { code: expect.stringMatching(/NotEligible|ReceiverNotVerified/) },
-  });
-});
-
-test("transfer to a frozen receiver -> ReceiverFrozen (row 4)", async () => {
-  await expect(resolveTransfer(ctx, { loanId: "1", from: ACCREDITED_US_1, to: FROZEN, amount: "1000" })).rejects.toMatchObject({
-    extensions: { code: "ReceiverFrozen" },
+    extensions: { code: "ReceiverNotVerified" },
   });
 });
 
 test("transfer to an unverified receiver -> ReceiverNotVerified (row 5)", async () => {
   await expect(resolveTransfer(ctx, { loanId: "1", from: ACCREDITED_US_1, to: UNVERIFIED, amount: "1000" })).rejects.toMatchObject({
     extensions: { code: "ReceiverNotVerified" },
-  });
-});
-
-test("Reg-S loan transfer to a US holder -> NotEligible (row 6 variant)", async () => {
-  // loan 3 is RegS; ACCREDITED_US_2 is US -> the RegS branch reverts NotEligible.
-  await expect(resolveTransfer(ctx, { loanId: "3", from: REG_S_NONUS_1, to: ACCREDITED_US_2, amount: "1000" })).rejects.toMatchObject({
-    extensions: { code: "NotEligible" },
   });
 });
 
