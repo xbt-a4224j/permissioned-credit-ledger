@@ -85,6 +85,19 @@ async function pendingRef(ctx: ApiContext, hash: `0x${string}`, kind: "invest" |
   return { hash, state: "PENDING", reasonCode: null, blockNumber: null, position };
 }
 
+// #66 resolve a loan's CreditToken address from the loans read model — the single source of truth for
+// ALL loans (the 6 seeded AND any runtime-tokenized one). A null/missing token is a typed BAD_INPUT,
+// never a guess. Replaces the old static-manifest lookup so a one-click-tokenized loan is investable
+// exactly like a seeded one.
+async function resolveTokenAddress(db: ApiContext["db"], loanId: string): Promise<Address> {
+  const rows = await db<{ token_address: string | null }[]>`select token_address from loans where id = ${loanId}`;
+  const addr = rows[0]?.token_address;
+  if (addr == null) {
+    throw new GraphQLError(`unknown loanId: ${loanId}`, { extensions: { code: "BAD_USER_INPUT" } });
+  }
+  return addr as Address;
+}
+
 // #21/#23 invest: mint the loan token to a wallet (PositionOpened; rows 1-3). Records PENDING +
 // optimistic position, returns immediately (does NOT block on confirmation — the watcher settles).
 export async function resolveInvest(ctx: ApiContext, input: InvestArgs): Promise<TxReceiptRefSource> {
@@ -109,7 +122,7 @@ export async function resolveInvest(ctx: ApiContext, input: InvestArgs): Promise
     throw new GraphQLError(`Loan #${input.loanId} is matured — not open for investment.`, { extensions: { code: "BAD_USER_INPUT" } });
   }
 
-  const request = investRequest(ctx.manifest, input.loanId, wallet, amount);
+  const request = investRequest(await resolveTokenAddress(ctx.db, input.loanId), input.loanId, wallet, amount);
   const hash = await broadcastGated(ctx, request);
   await recordPending(ctx.db, { hash, kind: "invest", holder: wallet, loanId: input.loanId, amount });
   return pendingRef(ctx, hash, "invest", wallet);
@@ -123,7 +136,7 @@ export async function resolveInvest(ctx: ApiContext, input: InvestArgs): Promise
 export async function resolveTransfer(ctx: ApiContext, input: TransferArgs): Promise<TxReceiptRefSource> {
   const to = input.to.toLowerCase() as Address;
   const amount = BigInt(input.amount);
-  const request = transferRequest(ctx.manifest, input.loanId, to, amount);
+  const request = transferRequest(await resolveTokenAddress(ctx.db, input.loanId), to, amount);
   const hash = await broadcastGated(ctx, request);
   await recordPending(ctx.db, { hash, kind: "transfer", holder: to, loanId: input.loanId });
   return pendingRef(ctx, hash, "transfer", to);
@@ -132,7 +145,7 @@ export async function resolveTransfer(ctx: ApiContext, input: TransferArgs): Pro
 // #21/#23 claim: pay a holder's accrued interest from the reserve (rows 7-8; InsufficientReserve).
 export async function resolveClaim(ctx: ApiContext, input: ClaimArgs): Promise<TxReceiptRefSource> {
   const wallet = input.wallet.toLowerCase() as Address;
-  const request = claimRequest(ctx.manifest, input.loanId);
+  const request = claimRequest(await resolveTokenAddress(ctx.db, input.loanId));
   const hash = await broadcastGated(ctx, request);
   await recordPending(ctx.db, { hash, kind: "claim", holder: wallet, loanId: input.loanId });
   return pendingRef(ctx, hash, "claim", wallet);
