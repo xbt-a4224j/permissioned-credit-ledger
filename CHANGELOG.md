@@ -1,3 +1,11 @@
+# [1.4.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.3.0...v1.4.0) (2026-06-13)
+
+
+### Features
+
+* **api:** tokenizeLoan — real on-chain CreditToken deploy from the warehouse ([#66](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/66) [#67](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/67) [#68](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/68)) ([eac0ee4](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/eac0ee43d3587f77350fb25313c772e283a7f8ae)), closes [#75](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/75) [#7](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/7)
+* **indexer:** db-driven watched-token set + runtime-token refresh ([#75](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/75)) ([6fa8987](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/6fa89871b6ff8f6a0558d59addca39a84a5532b9)), closes [#66](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/66)
+
 # [1.3.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.2.0...v1.3.0) (2026-06-12)
 
 
