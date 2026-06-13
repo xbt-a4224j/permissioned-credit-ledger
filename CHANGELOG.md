@@ -1,3 +1,10 @@
+## [1.11.3](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.11.2...v1.11.3) (2026-06-13)
+
+
+### Bug Fixes
+
+* **api:** correct display for runtime-tokenized loans ([bf74cfb](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/bf74cfb17551e31127d5990e58b99a5d3f907f37)), closes [#75](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/75)
+
 ## [1.11.2](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.11.1...v1.11.2) (2026-06-13)
 
 
