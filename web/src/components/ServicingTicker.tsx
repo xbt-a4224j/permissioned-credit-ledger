@@ -58,6 +58,13 @@ export function ServicingTicker(): JSX.Element {
           <span className="font-tabular tabular-nums">{count.toLocaleString()} events</span>
         </div>
       </div>
+      {/* #73 column headers — institutional data-table chrome. */}
+      <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50/60 px-4 py-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+        <span className="h-2 w-2 shrink-0" aria-hidden="true" />
+        <span className="w-24 shrink-0">Event</span>
+        <span className="flex-1">Loan</span>
+        <span className="w-28 shrink-0 text-right">Amount</span>
+      </div>
       {events.length === 0 ? (
         <div className="px-4 py-6 text-center text-sm text-slate-400">Waiting for servicing events…</div>
       ) : (
@@ -66,10 +73,10 @@ export function ServicingTicker(): JSX.Element {
             const meta = KIND_META[ev.kind] ?? { label: ev.kind, dot: "bg-slate-400" };
             return (
               <li key={ev.seq} className="flex items-center gap-3 px-4 py-2 text-sm">
-                <span className={`h-2 w-2 shrink-0 rounded-full ${meta.dot}`} />
+                <span className={`h-2 w-2 shrink-0 rounded-full ${meta.dot}`} aria-hidden="true" />
                 <span className="w-24 shrink-0 text-slate-700">{meta.label}</span>
-                <span className="font-tabular text-xs text-slate-500">{ev.loanId}</span>
-                <span className="ml-auto font-tabular tabular-nums text-slate-700">{ev.amount !== null ? usd(ev.amount) : "—"}</span>
+                <span className="flex-1 truncate font-tabular text-xs text-slate-500">{ev.loanId}</span>
+                <span className="w-28 shrink-0 text-right font-tabular tabular-nums text-slate-700">{ev.amount !== null ? usd(ev.amount) : "—"}</span>
               </li>
             );
           })}
