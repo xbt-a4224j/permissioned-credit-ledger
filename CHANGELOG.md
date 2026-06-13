@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.9.0...v1.10.0) (2026-06-13)
+
+
+### Features
+
+* **recon:** tokenized loans first-class + reconcile at indexer cursor ([#66](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/66)) ([6bb515a](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/6bb515a55d41151d335d024606cd448e17280c93))
+
 # [1.9.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.8.0...v1.9.0) (2026-06-13)
 
 
