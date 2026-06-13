@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.6.0...v1.7.0) (2026-06-13)
+
+
+### Features
+
+* **ui:** role-aware yield — net investor yield + expected distributions ([#81](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/81)) ([54550e8](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/54550e89baec340ba31819ebb98f75398eafc724))
+
 # [1.6.0](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.5.0...v1.6.0) (2026-06-13)
 
 
