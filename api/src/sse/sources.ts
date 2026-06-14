@@ -49,10 +49,12 @@ async function emitAccrualTicks(sql: Sql, manifest: Manifest, bus: EventBus, now
     }
     prevAccrued.set(key, accrued);
     const elapsed = BigInt(Math.max(0, now - anchor));
-    // #9 only a PERFORMING loan accrues on-chain; a DEFAULT/Matured loan's claimable is frozen at
-    // its settled accrued. Gate the projection so the display ticker can't show phantom yield on a
-    // non-performing loan (on-chain claimable() returns 0 there — the ticker must agree, not drift).
-    const pending = r.status === "PERFORMING" ? (BigInt(r.principal) * ratePerSecond * elapsed) / RATE_SCALE : 0n;
+    // #9 mirror the on-chain accrual gate EXACTLY: CreditToken halts accrual only on DEFAULT (it
+    // stamps accrualEndsAt) and on a NAV freeze (surfaced separately via the recon `frozen` flag the
+    // UI applies) — a DELINQUENT loan keeps accruing on-chain. Gating the display on PERFORMING-only
+    // understated delinquent loans to $0 while the chain accrued $80+ and climbing — the exact
+    // off-/on-chain drift this product exists to catch, showing up in our own UI.
+    const pending = r.status !== "DEFAULT" ? (BigInt(r.principal) * ratePerSecond * elapsed) / RATE_SCALE : 0n;
     const claimable = accrued + pending;
     bus.publish({
       type: "accrual",
