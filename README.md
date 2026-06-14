@@ -2,146 +2,171 @@
 
 [![CI](https://github.com/xbt-a4224j/permissioned-credit-ledger/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/xbt-a4224j/permissioned-credit-ledger/actions/workflows/ci.yml)
 
-> A deterministic, permissioned tokenized-credit ledger whose core is an off-chain↔on-chain **reconciliation engine**: it proves, every cycle, that servicing cash and on-chain claimable balances agree — and **halts distribution** the moment they don't.
+A permissioned tokenized-credit ledger. A CRE loan is originated off-chain, tokenized as a permissioned security token on Avalanche, and sold to verified investors. The core is an **off-chain↔on-chain reconciliation engine**: every cycle it proves servicing cash and on-chain claimable balances agree, and **halts distribution** when they don't.
 
-![off-chain ↔ on-chain reconciliation — the seam](docs/architecture/04-offchain-onchain-reconciliation.svg)
+## The problem
 
-## The problem this solves
+Tokenizing a loan creates two ledgers that drift:
 
-Tokenize a real-world loan and you are suddenly running **two ledgers in parallel** that inevitably drift apart:
+- **on-chain** — the token: investor claims, accrued interest, who holds what.
+- **off-chain** — the servicer: actual cash collected from the borrower.
 
-- **off-chain** — the servicing system that tracks the actual cash collected from a borrower, and
-- **on-chain** — the token that represents investors' claims on that cash.
+There is no two-phase commit across Postgres and a blockchain — separate systems, separate failure domains. So the chain is the single source of truth, the database is an eventually-consistent **projection** of it, and a reconciliation engine proves the projection still matches the chain — and fails closed when it can't.
 
-Interest accrues on-chain on a fixed schedule; cash arrives off-chain on its own messy timetable; a fat-fingered NAV mark or a buggy distribution lets holders claim value the servicer never actually collected. **Drift is not a bug in any single component — it is an emergent property of running two ledgers that cannot natively communicate.** Left unchecked, it is exactly how tokenized-RWA systems silently become insolvent: the token keeps accruing obligations it can't honor, and the shortfall only surfaces when someone tries to withdraw.
+> **Reconciliation is a gate, not a report.** It sits in front of every payout. Distribution is gated on a passing proof, not on a calendar.
 
-You cannot fix this with a transaction. There is **no two-phase commit across Postgres and a blockchain** — they are separate systems with separate failure domains. So this codebase doesn't pretend they're atomic. It treats the chain as the single source of truth, the database as an eventually-consistent **projection** of it, and adds a reconciliation engine that **proves the projection still matches the chain — continuously — and fails closed when it can't.**
+## Architecture
 
-> **Reconciliation is a gate, not a report.** The conventional approach reconciles monthly and surfaces a dashboard; the window between reconciliations is a window of unknown exposure, and a restatement after the fact does not un-send a bad distribution. Here, reconciliation sits *in front of* every value-moving action. Distribution is gated on a passing proof, not on a calendar.
-
-## How it works
-
-A first-lien mortgage (CRE-first, residential-ready) is tokenized as an **ERC-3643-lite permissioned security token** on Avalanche. The stack is four layers:
+```mermaid
+flowchart LR
+  WH["Warehouse sidecar (Java)<br/>~10k loan book, scoring"] -->|tokenize| API
+  subgraph onchain["On-chain (Avalanche / anvil)"]
+    CT["CreditToken (1 per loan)<br/>accrual · claim · _update gate"]
+    IR["IdentityRegistry<br/>verified bool"]
+    RES["MockUSDC reserve"]
+  end
+  API["GraphQL API (Pothos)<br/>+ SSE · recon engine"] -->|writeContract| onchain
+  onchain -->|events| IDX["Indexer (viem)<br/>idempotent by txHash:logIndex"]
+  IDX --> PG[("Postgres<br/>read models")]
+  PG --> API
+  API --> WEB["React + Vite UI"]
+  API -. "recon: read both, halt on mismatch" .-> onchain
+```
 
 | Layer | What it does | Where |
 |---|---|---|
-| **Permissioned token** | Every transfer routes through an on-chain compliance gauntlet (frozen → verified → eligible → accreditation/jurisdiction) and reverts a *typed* custom error. | `contracts/src/` — `CreditToken`, `IdentityRegistry`, `ComplianceRegistry` |
-| **Accrual + NAV** | Interest accrues per holder; `claim()` pays from a reserve (checks-effects-interactions). NAV marks must clear an acceptance bound or trip a `NavAnomaly` freeze. | `contracts/src/CreditToken.sol`, `api/src/nav/` |
-| **Indexer** | A viem reader streams `CreditToken` + `IdentityRegistry` events into Postgres read models, idempotently (`txHash:logIndex`), reorg-safe and resumable. | `indexer/src/` |
-| **Reconciliation engine** | Every ~2s: reads both sides, evaluates four invariants, recomputes state via a deterministic replay, and **halts** on any mismatch. | `api/src/recon/`, `api/src/replay/` |
+| **Permissioned token** | Mint/transfer routes through `CreditToken._update`, which reverts `ReceiverNotVerified` if the recipient isn't verified on-chain. Issuance capped at `principalCap` (`ExceedsPrincipal`). | `contracts/src/CreditToken.sol`, `IdentityRegistry.sol` |
+| **Accrual + NAV** | Interest accrues per holder; `claim()` pays from the reserve (checks-effects-interactions). An out-of-bounds NAV mark trips a `NavAnomaly` freeze. | `contracts/src/CreditToken.sol`, `api/src/nav/` |
+| **Indexer** | viem reader → Postgres read models, idempotent (`txHash:logIndex`), resumable from a cursor. Watches the token set from the DB, so runtime-tokenized loans are picked up without a restart. | `indexer/src/` |
+| **Reconciliation engine** | Every ~2s: snapshots both ledgers, checks four invariants, recomputes state via deterministic replay, and halts on mismatch. | `api/src/recon/` |
 
-A **Pothos** code-first GraphQL API (with **SSE** live feeds) sits over the read models; a **React + Vite** app is the UI.
+Stack: Solidity + Foundry · TypeScript on Bun · viem · Postgres (raw SQL, no ORM) · Pothos GraphQL + graphql-yoga + SSE · React/Vite · Java/Spring data sidecar.
 
-![component topology](docs/architecture/01-topology.svg)
+## Loan lifecycle
 
-### The two clocks
+```mermaid
+flowchart LR
+  O["Originate<br/>(warehouse book)"] --> T["Tokenize<br/>deploy CreditToken,<br/>fund reserve"]
+  T --> I["Invest<br/>mint — gated on<br/>verified holder"]
+  I --> A["Accrue<br/>on-chain, per holder"]
+  A --> C["Claim<br/>pays from reserve"]
+  A -.-> R["Reconcile<br/>gates every payout"]
+  C -.-> R
+```
 
-The system has two independent heartbeats, and the whole correctness story is about reconciling state across them. The **block clock** advances on-chain state every block (accrual grows, `claimable` ticks up, new events land). The **reconciliation clock** samples *both* sides every cycle and proves they still agree — or halts. The projection always lags the chain by an indexer cycle; the recon clock is what closes that gap provably, instead of pretending it isn't there.
+## Reconciliation engine (the core)
 
-![on-chain calls ↔ DB projection · the two heartbeats](docs/architecture/07-onchain-db-heartbeats.svg)
-
-## The reconciliation engine (the core)
-
-Each cycle, `runReconCycle` ([`api/src/recon/engine.ts`](api/src/recon/engine.ts)) loads a snapshot of both ledgers and evaluates four invariants in a fixed order, short-circuiting on the first failure so the recorded reason is deterministic:
+Each cycle, `runReconCycle` ([`api/src/recon/engine.ts`](api/src/recon/engine.ts)) loads a snapshot of both ledgers and checks four invariants in fixed order (short-circuiting so the recorded reason is deterministic):
 
 | # | Invariant | Predicate | Breaks into |
 |---|---|---|---|
 | I1 | `SupplyBacked` | on-chain total supply == off-chain backed principal | `ReconMismatch` |
-| I2 | `ClaimableCovered` | aggregate claimable ≤ off-chain collected cash (the solvency gate) | `ReconMismatch` |
-| I3 | `NavInBounds` | no active loan sits under a NAV-anomaly halt | `NavAnomaly` |
-| I4 | `IdentityValid` | every current holder is verified and not frozen | `ReconMismatch` |
+| I2 | `ClaimableCovered` | aggregate claimable ≤ off-chain collected cash (solvency) | `ReconMismatch` |
+| I3 | `NavInBounds` | no active loan under a NAV-anomaly halt | `NavAnomaly` |
+| I4 | `IdentityValid` | every current holder is verified | `ReconMismatch` |
 
-A break writes a typed halt to `recon_status` and gates every payout (`assertCanDistribute` in [`api/src/recon/halt.ts`](api/src/recon/halt.ts)).
+A break writes a typed halt to `recon_status` and gates every payout.
 
-**Determinism is what makes the halt trustworthy.** The state fingerprint is not a hash of the live snapshot — it is `stateHash(replay(loadInputs))`, a *cold replay* of the canonical event log. So the live verdict and an independent audit recompute the same byte-exact state and the same halt. That equality is pinned by a property test ([`api/test/replay.interleaving.prop.test.ts`](api/test/replay.interleaving.prop.test.ts)): replaying the same events in **any interleaving** yields an identical `stateHash`. The halt isn't "the dashboard thinks we're insolvent" — it's a reproducible proof.
+**Why the halt is trustworthy:** the state fingerprint is not a hash of the live snapshot — it's `stateHash(replay(inputs))`, a cold replay of the canonical event log. A property test ([`api/test/replay.interleaving.prop.test.ts`](api/test/replay.interleaving.prop.test.ts)) asserts that replaying the same events in **any interleaving** yields the identical `stateHash` (canonical order is `(blockNumber, logIndex)`). So the live verdict and an independent audit recompute byte-exact state. The halt is a reproducible proof, not a dashboard opinion.
 
-## Compliance, by construction
+### The two clocks
 
-A non-compliant holder is **impossible, not just disallowed**. Every transfer enters `CreditToken._update`, which calls `ComplianceRegistry.checkTransfer` *before* any balance moves; the gauntlet reverts the first failing typed custom error. Identity (who a wallet is) lives in `IdentityRegistry`; the rules (per-offering Reg D / Reg S) live in `ComplianceRegistry` — so the same wallet can be eligible for one loan series and rejected by another.
+```mermaid
+flowchart TD
+  subgraph block["Block clock — every block"]
+    B["on-chain state advances<br/>accrual grows, claimable ticks, events land"]
+  end
+  subgraph recon["Recon clock — every cycle"]
+    RC["sample BOTH sides → prove they agree → halt if not"]
+  end
+  B --> IDXc["indexer projects (lags by one cycle)"]
+  IDXc --> RC
+  B --> RC
+```
 
-![transfer lifecycle — the gauntlet](docs/architecture/03-transfer-lifecycle.svg)
+The projection always lags the chain by an indexer cycle. The recon clock is what closes that gap provably instead of pretending it's closed.
 
-Onboarding runs through a **KYC** flow: the document is hashed in the browser (only `{filename, size, sha256}` is sent — no bytes, no PII), a provider returns a verdict, and on approval the issuer signs `IdentityRegistry.setClaims`. From that point the wallet's on-chain claims drive every transfer. The off-chain layer surfaces the same eligibility by *simulating* a transfer and decoding the typed revert — so the UI shows the exact reason the chain would give, for free.
+## Design notes (anticipating the obvious questions)
 
-![KYC onboarding — verdict becomes an on-chain claim](docs/architecture/06-kyc-onboarding.svg)
+- **Is accrued interest stored on-chain?** No — it's computed. The contract stores the inputs (`balance`, `ratePerSecond`, a per-holder `{accrued, lastAccruedAt}` checkpoint); `claimable()` is a `view` that returns `accrued + balance·rate·elapsed/SCALE`. The stored `accrued` is only written on a settle event (transfer, claim, status change). Ticking a number every second would be gas-suicide.
+- **Why a local node *and* Fuji?** All correctness (the matrix, every property/invariant test) runs against a deterministic local anvil node. Fuji is the live-demo target only — public RPCs are flaky, so nothing asserts correctness against them.
+- **Why is the DB allowed to lag?** Because you can't transact across Postgres and a chain. The DB is a projection; the recon engine is what makes "is it still correct?" answerable instead of assumed.
+- **How are runtime-tokenized loans indexed?** The indexer's watched-token set comes from the `loans` table, not a static deploy manifest. A 3s refresh loop picks up a newly tokenized loan, backfills its history from block 0, and re-subscribes — no restart.
+- **Why verified-only, not full ERC-3643?** The interesting part is the *mechanism* — compliance enforced in `_update`, by construction, so a non-verified holder is impossible rather than disallowed. Per-offering claim machinery (jurisdiction/accreditation, a `TrustedIssuersRegistry`) is the named production drop-in, not built.
+- **Reserve accounting:** the reserve is an append-only `reserve_ledger` (every credit/debit is an entry); the balance recon reads is a maintained running-sum cache, not a mutable field.
 
 ## Quick start
 
-Brings the whole stack up on fixed, non-default ports in about a minute.
-
-**Prerequisites:** [Bun](https://bun.sh) · [Foundry](https://book.getfoundry.sh) (`forge` / `anvil`) · [Docker](https://docs.docker.com/get-docker/) (daemon running).
+**Prerequisites:** [Bun](https://bun.sh) · [Foundry](https://book.getfoundry.sh) (`forge`/`anvil`) · [Docker](https://docs.docker.com/get-docker/) (daemon running).
 
 ```bash
-cp .env.example .env          # RPC URLs + DATABASE_URL (defaults target the local stack)
-bun install                   # off-chain workspaces (shared/api/indexer/web/scripts)
-bun run dev                   # one command: stop -> test -> start (idempotent, port-safe)
+cp .env.example .env
+bun install
+bun run dev          # stop -> test -> start (idempotent, port-safe). --no-test for fast restarts.
 ```
 
-`bun run dev` frees the fixed ports, runs `forge test` + `bun run test`, starts Postgres (Docker) and a local anvil node, deploys + seeds the 6 identities and 6 loans, and launches the indexer, API, and web app — each gated on a health check. Use `--no-test` for fast restarts.
+`bun run dev` frees the fixed ports, runs the tests, starts Postgres (Docker) + a local anvil node, deploys + seeds 3 identities and 6 loans, and launches the warehouse, indexer, API, and web app — each gated on a health check.
 
 | Service | URL |
 |---|---|
 | Web app | http://localhost:51730 |
 | GraphQL API | http://localhost:41990/graphql |
 | SSE live feed | http://localhost:41990/sse |
+| Data platform (warehouse) | http://localhost:47100 |
 | Local EVM (anvil) | http://127.0.0.1:18545 (chain id 31337) |
 | Postgres | postgres://postgres:postgres@localhost:55432/pcl |
 
-## The 10-scenario matrix
+## The scenario matrix
 
-`scripts/verify_matrix.ts` drives all ten scenarios end-to-end through the real GraphQL surface and the reconciliation engine against the local node, asserting each typed outcome, then prints `10/10 scenarios passed.` plus an order-independence property over permutations.
+`scripts/verify_matrix.ts` drives seven scenarios end-to-end through the real GraphQL surface and the recon engine against the local node, each against its own fresh fixture, then asserts an order-independence property over replay permutations.
 
 ```bash
-bun run scripts/verify_matrix.ts     # expect: 10/10 scenarios passed.
+bun run scripts/verify_matrix.ts     # expect: 7/7 scenarios passed.
 ```
 
 | # | Scenario | Expected |
 |---|---|---|
-| 1 | accredited-US invest | OK — `PositionOpened` |
-| 2 | Reg-S non-US invest | OK |
+| 1 | verified invest (loan 1) | OK — `PositionOpened`, accrual starts |
+| 2 | verified invest (loan 3) | OK — `PositionOpened` |
 | 3 | unverified invest | revert `ReceiverNotVerified` |
-| 4 | frozen holder initiates transfer | revert `SenderFrozen` |
-| 5 | US holder on a Reg-S offering | revert `NotEligible` |
-| 6 | US non-accredited holds Reg-D token | revert `AccreditationRequired` |
-| 7 | claim, reserve funded | OK — `InterestClaimed`, reserve debited |
-| 8 | claim, reserve underfunded | revert `InsufficientReserve` |
-| 9 | NAV feed +40% out-of-bounds | HALT `NavAnomaly`, accrual frozen |
-| 10 | inject servicing cash below claimable | HALT distribution `ReconMismatch` |
+| 4 | claim, reserve funded | OK — `InterestClaimed`, reserve debited |
+| 5 | claim, reserve underfunded | revert `InsufficientReserve` |
+| 6 | NAV feed +40% out-of-bounds | HALT `NavAnomaly`, accrual frozen |
+| 7 | inject servicing cash below claimable | HALT distribution `ReconMismatch` |
+| P | `replay(events)` over any interleaving | identical `stateHash` |
 
-Plus: issuance is capped at the loan's principal **on-chain** — `mint()` reverts `ExceedsPrincipal` rather than over-issuing — and a matured loan refuses new investment. The click-by-click walkthrough is in [`docs/DEMO.md`](docs/DEMO.md).
+The click-by-click walkthrough is in [`docs/DEMO.md`](docs/DEMO.md).
 
 ## Deliberately cut & mocked
 
-The boundary is explicit, not accidental — full reasoning in [`docs/architecture/DESIGN.md`](docs/architecture/DESIGN.md):
+Full reasoning in [`docs/architecture/DESIGN.md`](docs/architecture/DESIGN.md):
 
-- **Real fiat ramp + USDC** — the reserve is a `MockUSDC` contract; the servicer's collected cash is reported, not wired. The protocol layer above it is real; the cash-in/out is the mock.
-- **ERC-3643-lite** — the transfer gauntlet, identity registry, and modular compliance are modeled and enforced. The full ONCHAINID claim-issuer machinery (a `TrustedIssuersRegistry`, signed verifiable claims) is named as the production drop-in, not built.
-- **Custody** — the issuer is a single server signer. Production custody (MPC / multisig) is the seam, not implemented.
-- **Borrow-against & tranche waterfall** — named Phase-2 modules, deliberately **not** built: you don't bolt a money market or a senior/junior waterfall onto a distribution core whose backing isn't yet continuously proven.
-- **Auth / login** — out of scope entirely.
-
-The litmus test the codebase holds itself to: if a design decision can't be justified without reference to a specific vendor's quirks, it doesn't belong at the protocol layer.
+- **Real fiat + USDC** — the reserve is `MockUSDC`; collected cash is reported, not wired.
+- **Full ERC-3643 compliance** — identity is a single verified bool; the per-offering claim machinery is the named drop-in.
+- **Custody** — a single server signer; production MPC/multisig is the seam.
+- **Borrow-against & tranche waterfall** — named Phase-2 modules, not built: you don't bolt a money market onto a distribution core whose backing isn't yet continuously proven.
+- **Auth/login** — out of scope.
 
 ## Layout
 
 ```
 permissioned-credit-ledger/
-├── contracts/   # Foundry: IdentityRegistry, ComplianceRegistry, CreditToken, MockUSDC (+ fuzz/invariant tests)
-├── indexer/     # viem indexer: chain events -> Postgres read models (idempotent, resumable)
-├── api/         # Pothos GraphQL + graphql-yoga + SSE; recon/ engine + replay/ (the seam)
-├── web/         # React 18 + Vite + Tailwind (wallet picker, invest/claim, Health panel)
+├── contracts/       # Foundry: IdentityRegistry, CreditToken, MockUSDC (+ fuzz/invariant tests)
+├── indexer/         # viem indexer: chain events -> Postgres (idempotent, resumable, DB-sourced token set)
+├── api/             # Pothos GraphQL + yoga + SSE; recon/ engine + replay (the seam)
+├── web/             # React 18 + Vite + Tailwind (marketplace, positions, origination, health)
+├── warehouse/       # Java/Spring data sidecar: the ~10k-loan origination book + scoring
 ├── db/migrations/   # raw SQL migrations (no ORM)
-├── scripts/     # verify_matrix.ts, dev.sh, demo_reset.ts
-└── docs/        # DEMO.md + architecture/ (DESIGN.md, MAP.md, 7 SVGs)
+├── scripts/         # verify_matrix.ts, dev.sh, demo_reset.ts
+└── docs/            # DEMO.md + architecture/ (DESIGN.md, MAP.md, diagrams)
 ```
 
-## Test suite
+## Tests
 
 ```bash
-forge test -vv                       # Solidity unit + fuzz + invariant tests
+forge test -vv                       # Solidity unit + fuzz + invariant
 bun run test                         # Vitest + fast-check (incl. the deterministic-replay property)
-bun run scripts/verify_matrix.ts     # the 10-scenario integration suite — expect 10/10 scenarios passed.
-bun run scripts/demo_reset.ts        # reset the local demo world to a known-good cold state (local node only)
+bun run scripts/verify_matrix.ts     # the 7-scenario integration suite
 ```
 
-Correctness is **typed and proven, not asserted**: Solidity custom errors + TypeScript discriminated unions (no stringly-typed failures), and the reconciliation halt is backed by an order-independence property over the event replay — the property that makes the whole ledger auditable.
+Correctness is typed, not stringly-typed (Solidity custom errors + TS discriminated unions), and the reconciliation halt is backed by an order-independence property over the event replay.
