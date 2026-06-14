@@ -1,3 +1,10 @@
+## [1.11.5](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.11.4...v1.11.5) (2026-06-14)
+
+
+### Bug Fixes
+
+* **api:** accrue delinquent loans in the display ticker (match the chain) ([016a082](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/016a08238aa797d58a2f9bf0db9945a4e7220b16))
+
 ## [1.11.4](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.11.3...v1.11.4) (2026-06-13)
 
 
