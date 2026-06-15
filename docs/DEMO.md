@@ -21,6 +21,7 @@ The seam at a glance: [`architecture/04-offchain-onchain-reconciliation.svg`](ar
    ```bash
    bun run scripts/verify_matrix.ts     # must print: 7/7 scenarios passed.
    ```
+   > **Then reset once more before demoing.** `verify_matrix` mutates the local world (the live indexer ingests its transient mints), which trips a spurious recon halt. Run `bun run scripts/demo_reset.ts` again, then go live on a clean stack.
 4. Open the web app at http://localhost:51730. Five views: **Marketplace** and **My positions** (investor tabs — the "Acting as" wallet picker shows here), **Origination** (the warehouse loan book + the **Tokenize** action), plus the platform tabs **Servicing** and **Health** (header reads "Acting as Issuer / servicer"). The **Servicing** view has the global reserve panel at top — Collected / Claimable / Covered badge plus the "Report collected cash" form (USDC base units) — then per-loan cards with each loan's NAV mark (bps of par — 10000 = 100%) and NAV history.
 
 **Abort rule:** if any step above fails — `bun run dev` doesn't reach the banner, or `verify_matrix.ts` prints anything other than `7/7 scenarios passed.` — **stop and reset** (`bun run scripts/demo_reset.ts`) before demoing. Never demo against a stack that isn't `7/7`.
