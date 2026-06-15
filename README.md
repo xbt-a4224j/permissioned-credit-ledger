@@ -107,14 +107,15 @@ bun run dev          # stop -> test -> start (idempotent, port-safe). --no-test 
 
 `bun run dev` frees the fixed ports, runs the tests, starts Postgres (Docker) + a local anvil node, deploys + seeds 3 identities and 6 loans, and launches the warehouse, indexer, API, and web app — each gated on a health check.
 
-| Service | URL |
-|---|---|
-| Web app | http://localhost:51730 |
-| GraphQL API | http://localhost:41990/graphql |
-| SSE live feed | http://localhost:41990/sse |
-| Data platform (warehouse) | http://localhost:47100 |
-| Local EVM (anvil) | http://127.0.0.1:18545 (chain id 31337) |
-| Postgres | postgres://postgres:postgres@localhost:55432/pcl |
+| Service | Port | Runtime | URL | Role |
+|---|---|---|---|---|
+| Web app | 51730 | Vite / React | <http://localhost:51730> | the UI |
+| GraphQL API + SSE | 41990 | Bun / graphql-yoga | <http://localhost:41990/graphql> · <http://localhost:41990/sse> | API + recon engine — the only client-facing data surface |
+| Warehouse (data sidecar) | 47100 | Java / Spring (Tomcat) | <http://localhost:47100/book> · <http://localhost:47100/actuator/health> | origination book + scoring — **proxied by the API, not called from the browser** |
+| Local EVM (anvil) | 18545 | anvil | <http://127.0.0.1:18545> | the chain (id 31337) |
+| Postgres | 55432 | Docker | `postgres://postgres:postgres@localhost:55432/pcl` | read models |
+
+The browser only ever talks to **51730** (UI) and **41990** (GraphQL). The API reaches the warehouse (**47100**) and the chain (**18545**) server-side; Postgres (**55432**) is internal. So there is one client-facing data surface — GraphQL — in front of three back-end systems.
 
 ## The scenario matrix
 
