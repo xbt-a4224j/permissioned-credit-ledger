@@ -21,7 +21,7 @@ The seam at a glance: [`architecture/04-offchain-onchain-reconciliation.svg`](ar
    ```bash
    bun run scripts/verify_matrix.ts     # must print: 7/7 scenarios passed.
    ```
-4. Open the web app at http://localhost:51730. Four views: **Marketplace** and **My positions** (investor tabs — the "Acting as" wallet picker shows here), plus the platform tabs **Servicing** and **Health** (header reads "Acting as Issuer / servicer"). The **Servicing** view has the global reserve panel at top — Collected / Claimable / Covered badge plus the "Report collected cash" form (USDC base units) — then per-loan cards with each loan's NAV mark (bps of par — 10000 = 100%) and NAV history.
+4. Open the web app at http://localhost:51730. Five views: **Marketplace** and **My positions** (investor tabs — the "Acting as" wallet picker shows here), **Origination** (the warehouse loan book + the **Tokenize** action), plus the platform tabs **Servicing** and **Health** (header reads "Acting as Issuer / servicer"). The **Servicing** view has the global reserve panel at top — Collected / Claimable / Covered badge plus the "Report collected cash" form (USDC base units) — then per-loan cards with each loan's NAV mark (bps of par — 10000 = 100%) and NAV history.
 
 **Abort rule:** if any step above fails — `bun run dev` doesn't reach the banner, or `verify_matrix.ts` prints anything other than `7/7 scenarios passed.` — **stop and reset** (`bun run scripts/demo_reset.ts`) before demoing. Never demo against a stack that isn't `7/7`.
 
@@ -52,6 +52,16 @@ bun run scripts/demo_reset.ts
 ```
 
 **Narration beats:** rows 1–2 are the happy path (the verified-receiver check *passes*); row 3 is the permissioning check *rejecting* an unverified receiver with a typed reason-code badge (no stringly-typed errors); rows 4–5 are the cash path (claim against the reserve); rows 6–7 show the engine failing closed — halting distribution rather than paying out value that isn't there.
+
+## Bonus beat — origination → tokenization
+
+The matrix above is the correctness story; the **Origination** view is the business story, and it's a strong single beat for the room — the originate → tokenize → distribute arc end to end.
+
+1. **Origination** → the warehouse book (~10k scored CRE loans). Pick an un-tokenized loan, hit **Tokenize**.
+2. A real `CreditToken` deploys on-chain; the loan flips to a **Tokenized** badge and appears in the **Marketplace** under its warehouse id (e.g. `L03857`, not a numeric `#7`).
+3. Invest in it as a verified wallet — it accrues like any seeded loan. The `#75` indexer refresh discovers the new token and backfills it automatically (no restart), and the same reconciliation gate now covers it.
+
+The narration: the warehouse is the asset factory, the chain is the rail, and the reconciliation engine extends to a runtime-tokenized loan with zero special-casing.
 
 ## Fuji deploy
 
