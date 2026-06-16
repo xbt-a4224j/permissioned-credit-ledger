@@ -27,6 +27,7 @@ import {
   loadManifest,
   makeChainClient,
   seedReference,
+  setCursor,
   tokenAddresses,
   tokenToLoanMap,
   type Manifest,
@@ -298,6 +299,11 @@ export async function setupFixture(): Promise<Fixture> {
     cashMismatch: async (ln, wallet) => {
       await testClient.increaseTime({ seconds: 30 * 24 * 3600 });
       await testClient.mine({ blocks: 1 });
+      // #66 loadSnapshot pins on-chain reads to the indexer cursor block. The warp above advances
+      // chain time but emits no indexable events, so the cursor (and thus the snapshot's claimable
+      // read) would stay at the pre-warp height where accrued == 0 — underflowing the shortfall math.
+      // In production the cursor tracks head continuously; mirror that by bumping it to the warped head.
+      await setCursor(sql, await publicClient.getBlockNumber());
       // load the current snapshot to learn the on-chain claimable, then collected := claimable-1.
       const snapMod = await import("../../api/src/recon/snapshot.ts");
       const snap = await snapMod.loadSnapshot(sql, publicClient, manifest);

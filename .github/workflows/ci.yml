@@ -98,11 +98,11 @@ jobs:
       - name: gradlew build
         run: ./gradlew build --no-daemon
 
-  # #28 verify-matrix — the 10-scenario end-to-end gate on a REAL local node + REAL Postgres.
+  # #28 verify-matrix — the 7-scenario end-to-end gate on a REAL local node + REAL Postgres.
   # The core claim (eligibility gauntlet + both HALT states) is only credible if its proof runs
   # on every change. This job spins anvil (a real local EVM node) + a real postgres:16-alpine
   # service, deploys Deploy.s.sol (#12), and runs scripts/verify_matrix.ts (#27) — which migrates
-  # the read model, seeds the world, boots the API in-process, and drives all 10 rows through the
+  # the read model, seeds the world, boots the API in-process, and drives all 7 rows through the
   # GraphQL surface + the NAV/recon engine. The verifier's nonzero exit (any row mismatch) fails the
   # build. Separate, heavier job gated behind the fast unit jobs. 0 mocked chain, 0 mocked DB.
   verify-matrix:
@@ -173,7 +173,7 @@ jobs:
       # on a clean chain (run locally via `bun run dev`'s test gate). verify_matrix.ts below is the
       # authoritative CI e2e gate (its own fresh chain). Proper per-file anvil snapshot/revert
       # isolation to re-enable the full suite in CI is tracked separately.
-      - name: Run the 10-scenario matrix verifier
-        # migrates the service Postgres, boots the API in-process, drives all 10 rows; any row
+      - name: Run the 7-scenario matrix verifier
+        # migrates the service Postgres, boots the API in-process, drives all 7 rows; any row
         # mismatch is a nonzero exit that fails this step (and therefore the merge gate).
         run: bun run scripts/verify_matrix.ts

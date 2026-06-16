@@ -1,10 +1,10 @@
 // The 10-row scenario-matrix verifier (end-to-end, local node) · #27
 // The falsifiable proof the whole system behaves as specified. Against a REAL local anvil node +
-// REAL Postgres (brought up by ./scripts/dev.sh #31 / CI #28), it drives all 10 CLAUDE.md scenario
+// REAL Postgres (brought up by ./scripts/dev.sh #31 / CI #28), it drives all 7 CLAUDE.md scenario
 // rows through the REAL GraphQL surface (rows 1-3, 5-8; row 4 via a holder-simulated eth_call) and the NAV feed / reconciliation engine
 // (rows 9-10), asserting each row's typed outcome — OK event / typed-revert ReasonCode / typed-HALT
 // EngineState — with deepEqual(actual, expect). Every row is run against its OWN fresh fixture so
-// outcomes are isolated and order-independent (the property below). Exit 0 iff all 10 pass, else 1.
+// outcomes are isolated and order-independent (the property below). Exit 0 iff all 7 pass, else 1.
 import { isDeepStrictEqual } from "node:util";
 import fc from "fast-check";
 import { setupFixture, type Fixture } from "./lib/harness.ts";
@@ -33,7 +33,7 @@ async function evaluateRow(scenario: Scenario): Promise<{ row: number; name: str
   }
 }
 
-// #27 run all 10 rows (each on a fresh fixture) and fold into a typed MatrixReport. `order` lets the
+// #27 run all 7 rows (each on a fresh fixture) and fold into a typed MatrixReport. `order` lets the
 // property drive a permutation; the per-row result is independent of position by construction.
 export async function runMatrix(order: Scenario[] = SCENARIOS): Promise<MatrixReport> {
   const results: MatrixReport["results"] = [];
@@ -52,7 +52,7 @@ function fmt(o: Expected | Actual): string {
   return `HALT(${o.state})`;
 }
 
-// #27 pretty-print the matrix report: one line per row + a final N/10 summary + any diff.
+// #27 pretty-print the matrix report: one line per row + a final N/7 summary + any diff.
 function printReport(report: MatrixReport): void {
   console.log("\nScenario matrix (local node, GraphQL surface):\n");
   for (const r of report.results) {
