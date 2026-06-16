@@ -91,7 +91,7 @@ permissioned-credit-ledger/
 ├── scripts/                   # verify_matrix.ts (7-scenario integration), tooling
 └── docs/
     ├── DEMO.md                # guided demo
-    └── architecture/          # DESIGN.md (incl. what's-cut, build-vs-buy), MAP.md, diagrams
+    └── architecture/          # DESIGN.md (incl. what's-cut, build-vs-buy) + reconciliation diagram
 ```
 
 ## Build order

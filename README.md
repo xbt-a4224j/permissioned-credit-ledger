@@ -159,7 +159,7 @@ permissioned-credit-ledger/
 ├── warehouse/       # Java/Spring data sidecar: the ~10k-loan origination book + scoring
 ├── db/migrations/   # raw SQL migrations (no ORM)
 ├── scripts/         # verify_matrix.ts, dev.sh, demo_reset.ts
-└── docs/            # DEMO.md + architecture/ (DESIGN.md, MAP.md, diagrams)
+└── docs/            # DEMO.md + architecture/ (DESIGN.md + reconciliation diagram)
 ```
 
 ## Tests
