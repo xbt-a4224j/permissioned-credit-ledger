@@ -1,3 +1,10 @@
+## [1.11.6](https://github.com/xbt-a4224j/permissioned-credit-ledger/compare/v1.11.5...v1.11.6) (2026-06-16)
+
+
+### Bug Fixes
+
+* **ci:** row 7 reads claimable at the warped instant, not the stale cursor block ([f191e88](https://github.com/xbt-a4224j/permissioned-credit-ledger/commit/f191e88883525cec0c1112a99945af7546f17b68)), closes [#66](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/66) [#66](https://github.com/xbt-a4224j/permissioned-credit-ledger/issues/66)
+
 # 1.0.0 (2026-06-16)
 
 
