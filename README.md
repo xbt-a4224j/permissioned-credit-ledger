@@ -4,6 +4,14 @@
 
 A permissioned tokenized-credit ledger. A CRE loan is originated off-chain, tokenized as a permissioned security token on Avalanche, and sold to verified investors. The core is an **off-chain↔on-chain reconciliation engine**: every cycle it proves servicing cash and on-chain claimable balances agree, and **halts distribution** when they don't.
 
+![Reconciliation health: an out-of-bounds NAV mark trips the gate, the engine HALTS, and the NavInBounds invariant goes red while the other three stay green.](docs/screenshots/health-halt.png)
+
+*The halt is the product. A +40% NAV mark fails the validation gate; accrual freezes on-chain and distribution stops until the invariant clears.*
+
+![Loan marketplace: six seeded first-lien mortgage series with principal, net yield, LTV, DSCR and unsubscribed balance; verified investors invest against the permissioned token.](docs/screenshots/marketplace.png)
+
+*Investor view. Each series is one permissioned token capped at the loan's principal on-chain; investing as an unverified wallet reverts `ReceiverNotVerified`.*
+
 ## The problem
 
 Tokenizing a loan creates two ledgers that drift:
